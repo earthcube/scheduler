@@ -9,18 +9,25 @@ version: "3.9"
 # is even needed if the network is defined.
 
 # secrets not working... these become files, so not really working
+networks:
+  traefik_proxy:
+    external: true
+volumes:
+  dagster-postgres:
+        driver: local
+#  dagster-project:
+#    external: true
+#    name: dagster-${PROJECT}
+# external so it could be shared accross docker swarms
 secrets:
   MINIO_ROOT_ACCESS_KEY:
     external: true
   MINIO_ROOT_SECRET_KEY:
     external: true
-networks:
-  traefik_proxy:
-    external: true
-    name:   traefik_proxy
 services:
     dagster-dagit:
-        image: docker.io/nsfearthcube/dagster-${PROJECT}:latest
+        image: docker.io/nsfearthcube/dagster-${PROJECT}:sha-4d94ff8
+
         secrets:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
@@ -82,7 +89,10 @@ services:
               - "traefik.http.middlewares.sched-${PROJECT}.headers.accesscontrolmaxage=100"
               - "traefik.http.middlewares.sched-${PROJECT}.headers.addvaryheader=true"
     dagster-daemon:
-        image: docker.io/nsfearthcube/dagster-${PROJECT}:latest
+        image: docker.io/nsfearthcube/dagster-${PROJECT}:sha-4d94ff8
+
+
+
         secrets:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
@@ -134,10 +144,4 @@ services:
         networks:
            - traefik_proxy
 
-volumes:
-  dagster-postgres:
-        driver: local
-  dagster-project:
-    external: true
-    name: dagster-${PROJECT}
-# external so it could be shared accross docker swarms
+
