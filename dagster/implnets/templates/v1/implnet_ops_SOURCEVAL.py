@@ -5,6 +5,7 @@ import subprocess
 import os, json, io
 import urllib
 from urllib import request
+from urllib.error import HTTPError
 from dagster import job, op, get_dagster_logger
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 from minio import Minio
