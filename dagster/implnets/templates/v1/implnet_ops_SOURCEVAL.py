@@ -106,6 +106,7 @@ def s3loader(data, name):
     f = io.BytesIO()
     #length = f.write(bytes(json_str, 'utf-8'))
     length = f.write(data)
+    f.seek(0)
     client.put_object(os.environ.get('GLEANER_MINIO_BUCKET'),
                       objPrefix,
                       f, #io.BytesIO(data),
