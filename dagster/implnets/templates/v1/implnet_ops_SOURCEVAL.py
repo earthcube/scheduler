@@ -18,11 +18,11 @@ APIKEY = os.environ.get('PORTAINER_KEY')
 
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
 
-MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
-MINIO_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
-MINIO_SECRET = os.environ.get('GLEANER_MINIO_SECRET_KEY')
-MINIO_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
-MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
+GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
+GLEANER_MINIO_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
+GLEANER_MINIO_SECRET = os.environ.get('GLEANER_MINIO_SECRET_KEY')
+GLEANER_MINIO_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
+GLEANER_MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
 def _pythonMinioUrl(url):
     if (url.endswith(".amazonaws.com")):
         PYTHON_MINIO_URL = "s3.amazonaws.com"
@@ -158,11 +158,11 @@ def gleanerio(mode, source):
     # add in env variables here"Env": ["FOO=bar","BAZ=quux"],
     enva = []
     enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS)))
-    enva.append(str("MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
+    enva.append(str("GLEANER_MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
     enva.append(str("MINIO_USE_SSL={}".format(GLEANER_MINIO_USE_SSL)))
     enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
     enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
-    enva.append(str("MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
+    enva.append(str("GLEANER_MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
     enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(GLEANER_HEADLESS_ENDPOINT)))
 
     data["Env"] = enva
