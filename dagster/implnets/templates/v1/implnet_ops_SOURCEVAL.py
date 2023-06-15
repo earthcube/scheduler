@@ -103,10 +103,13 @@ def s3loader(data, name):
 
     logname = name + '_{}.log'.format(date_string)
     objPrefix = os.environ.get('GLEANERIO_LOG_PREFIX') + logname
+    f = io.BytesIO()
+    #length = f.write(bytes(json_str, 'utf-8'))
+    length = f.write(data)
     client.put_object(os.environ.get('GLEANER_MINIO_BUCKET'),
                       objPrefix,
-                      io.BytesIO(data),
-                      len(data),
+                      f, #io.BytesIO(data),
+                      length, #len(data),
                       content_type="text/plain"
                          )
     get_dagster_logger().info(f"Log uploaded: {str(objPrefix)}")
