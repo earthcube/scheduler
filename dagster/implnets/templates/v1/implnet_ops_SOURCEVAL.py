@@ -5,6 +5,7 @@ import subprocess
 import os, json, io
 import urllib
 from urllib import request
+from urllib.error import HTTPError
 from dagster import job, op, get_dagster_logger
 from minio import Minio
 from minio.error import S3Error
