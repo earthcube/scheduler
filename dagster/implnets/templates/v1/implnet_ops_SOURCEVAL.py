@@ -280,7 +280,7 @@ def gleanerio(mode, source):
     # write to s3
 
     #s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
-    s3loader(bytes(c, 'utf-8'), NAME)  # s3loader needs a bytes like object
+    s3loader(bytes(str(c), 'utf-8'), NAME)  # s3loader needs a bytes like object
     # write to minio (would need the minio info here)
 
     get_dagster_logger().info(f"Logs: {str(r.status)}")
