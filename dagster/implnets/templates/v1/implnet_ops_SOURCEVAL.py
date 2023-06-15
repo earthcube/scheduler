@@ -16,12 +16,12 @@ from datetime import datetime
 URL = os.environ.get('PORTAINER_URL')
 APIKEY = os.environ.get('PORTAINER_KEY')
 
-MINIO_URL = os.environ.get('GLEANER_MINIO_URL')
+GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
 
 MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
-MINIO_SSL = os.environ.get('GLEANER_MINIO_SSL')
-MINIO_SECRET = os.environ.get('GLEANER_MINIO_SECRET')
-MINIO_KEY = os.environ.get('GLEANER_MINIO_KEY')
+MINIO_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
+MINIO_SECRET = os.environ.get('GLEANER_MINIO_SECRET_KEY')
+MINIO_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
 MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
 def _pythonMinioUrl(url):
     if (url.endswith(".amazonaws.com")):
@@ -46,8 +46,8 @@ def load_data(file_or_url):
 
 
 def s3reader(object):
-    server =  _pythonMinioUrl(os.environ.get('GLEANER_MINIO_URL')) + ":" + os.environ.get('GLEANER_MINIO_PORT')
-    get_dagster_logger().info(f"S3 URL    : {str(os.environ.get('GLEANER_MINIO_URL'))}")
+    server =  _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS')) + ":" + os.environ.get('GLEANER_MINIO_PORT')
+    get_dagster_logger().info(f"S3 URL    : {str(os.environ.get('GLEANER_MINIO_ADDRESS'))}")
     get_dagster_logger().info(f"S3 PYTHON SERVER : {server}")
     get_dagster_logger().info(f"S3 PORT   : {str(os.environ.get('GLEANER_MINIO_PORT'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_KEY'))}")
@@ -58,9 +58,9 @@ def s3reader(object):
     client = Minio(
         server,
         # secure=True,
-        secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL'))),
-        access_key=os.environ.get('GLEANER_MINIO_KEY'),
-        secret_key=os.environ.get('GLEANER_MINIO_SECRET'),
+        secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL'))),
+        access_key=os.environ.get('GLEANER_MINIO_ACCESS_KEY'),
+        secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
     )
     try:
         data = client.get_object(os.environ.get('GLEANER_MINIO_BUCKET'), object)
@@ -70,23 +70,23 @@ def s3reader(object):
 
 
 def s3loader(data, name):
-    secure= bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL')))
+    secure= bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL')))
     if (os.environ.get('GLEANER_MINIO_PORT') and os.environ.get('GLEANER_MINIO_PORT') == 80
              and secure == False):
-        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_URL'))
+        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))
     elif (os.environ.get('GLEANER_MINIO_PORT') and os.environ.get('GLEANER_MINIO_PORT') == 443
                 and secure == True):
-        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_URL'))
+        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))
     else:
         # it's not on a normal port
-        server = f"{_pythonMinioUrl(os.environ.get('GLEANER_MINIO_URL'))}:{os.environ.get('GLEANER_MINIO_PORT')}"
+        server = f"{_pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))}:{os.environ.get('GLEANER_MINIO_PORT')}"
 
     client = Minio(
         server,
         secure=secure,
         #secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL'))),
-        access_key=os.environ.get('GLEANER_MINIO_KEY'),
-        secret_key=os.environ.get('GLEANER_MINIO_SECRET'),
+        access_key=os.environ.get('GLEANER_MINIO_ACCESS_KEY'),
+        secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
     )
 
     # Make 'X' bucket if not exist.
@@ -157,12 +157,13 @@ def gleanerio(mode, source):
 
     # add in env variables here"Env": ["FOO=bar","BAZ=quux"],
     enva = []
-    enva.append(str("MINIO_URL={}".format(MINIO_URL)))
-    enva.append(str("MINIO_PORT={}".format(MINIO_PORT)))
-    enva.append(str("MINIO_SSL={}".format(MINIO_SSL)))
-    enva.append(str("MINIO_SECRET={}".format(MINIO_SECRET)))
-    enva.append(str("MINIO_KEY={}".format(MINIO_KEY)))
-    enva.append(str("MINIO_BUCKET={}".format(MINIO_BUCKET)))
+    enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS)))
+    enva.append(str("MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
+    enva.append(str("MINIO_USE_SSL={}".format(GLEANER_MINIO_USE_SSL)))
+    enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
+    enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
+    enva.append(str("MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
+    enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(GLEANER_HEADLESS_ENDPOINT)))
 
     data["Env"] = enva
 

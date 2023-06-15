@@ -1,4 +1,9 @@
 version: "3.9"
+
+# ###########
+# This is for a single dagster instance, that does not use an externally defined network
+########
+
 # this NEEDS
 # $HOST
 # $PROJECT
@@ -11,7 +16,9 @@ version: "3.9"
 # secrets not working... these become files, so not really working
 networks:
   traefik_proxy:
-    external: true
+    driver: overlay
+    name: traefik-${PROJECT}
+    attachable: true
 volumes:
     dagster-postgres:
         driver: local
@@ -139,3 +146,19 @@ services:
             - dagster-postgres:/var/lib/postgresql/data
         networks:
            - traefik_proxy
+    headless:
+      image: chromedp/headless-shell:latest
+  #    build:
+  #      context: .
+  #      shm_size: "2gb"
+      restart: unless-stopped
+      shm_size: "2gb"
+      labels:
+        - "traefik.backend=headlesschrome"
+        - "traefik.port=9222"
+      ports:
+        - 9222:9222
+      environment:
+        - SERVICE_PORTS=9222
+      networks:
+        - traefik_proxy
