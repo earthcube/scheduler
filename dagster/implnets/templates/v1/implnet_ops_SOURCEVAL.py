@@ -192,8 +192,15 @@ def gleanerio(mode, source):
         print(r.status)
         get_dagster_logger().info(f"Create: {str(r.status)}")
     except HTTPError as err:
-        print("failed to create container: ", err)
-        get_dagster_logger().info(f"Create Failed: {str(err)}")
+        if (err.code == 409):
+            print("failed to create container: container exists; use docker container ls -a : ", err)
+            get_dagster_logger().info(f"Create Failed: exsting container:  container exists; use docker container ls -a : {str(err)}")
+        elif (err.code == 404):
+            print("failed to create container: bad GLEANER_CONTAINER_IMAGE? : ", err)
+            get_dagster_logger().info(f"Create Failed: bad GLEANER_CONTAINER_IMAGE? : reason {str(err)}")
+        else:
+            print("failed to create container:  unknown reason: ", err)
+            get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
         raise err
 
     # print(cid)
