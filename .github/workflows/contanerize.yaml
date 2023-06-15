@@ -5,7 +5,9 @@ name: Dockerize  Dagster
 on:
   push:
     branches:
-      - "**"
+      - main
+      - dev
+      - dev_eco
     tags:
       - "v*.*.*"
 
