@@ -14,7 +14,7 @@ networks:
     external: true
   dagster_host:
     driver: overlay
-    name: dagster-${PROJECT}
+    name: dagster-${PROJECT:-eco}
     attachable: true
 volumes:
   dagster-postgres:
@@ -30,12 +30,12 @@ secrets:
     external: true
 services:
     dagster-dagit:
-        image: docker.io/nsfearthcube/dagster-${PROJECT}:sha-4d94ff8
+        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
 
         secrets:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
-        environment:
+        environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
             - PORTAINER_KEY=${PORTAINER_KEY}
@@ -76,63 +76,33 @@ services:
             - dagster-postgres
         labels:
               - "traefik.enable=true"
-              - "traefik.http.routers.sched-${PROJECT}.entrypoints=http"
-              - "traefik.http.routers.sched-${PROJECT}.priority=13"
-              - "traefik.http.routers.sched-${PROJECT}.rule=Host(`sched.${HOST}`)"
+              - "traefik.http.routers.sched-${PROJECT:-eco}.entrypoints=http"
+              - "traefik.http.routers.sched-${PROJECT:-eco}.priority=13"
+              - "traefik.http.routers.sched-${PROJECT:-eco}.rule=Host(`sched.${HOST? HOST is required}`)"
               - "traefik.http.middlewares.sched-https-redirect.redirectscheme.scheme=https"
-              - "traefik.http.routers.sched-${PROJECT}.middlewares=sched-https-redirect"
-              - "traefik.http.routers.sched-${PROJECT}-secure.entrypoints=https"
-              - "traefik.http.routers.sched-${PROJECT}-secure.priority=12"
-              - "traefik.http.routers.sched-${PROJECT}-secure.rule=Host(`sched.${HOST}`)"
-              - "traefik.http.routers.sched-${PROJECT}-secure.tls=true"
-              - "traefik.http.routers.sched-${PROJECT}-secure.tls.certresolver=httpresolver"
-              - "traefik.http.routers.sched-${PROJECT}-secure.service=sched-${PROJECT}"
-              - "traefik.http.services.sched-${PROJECT}.loadbalancer.server.port=3000"
+              - "traefik.http.routers.sched-${PROJECT:-eco}.middlewares=sched-https-redirect"
+              - "traefik.http.routers.sched-${PROJECT:-eco}-secure.entrypoints=https"
+              - "traefik.http.routers.sched-${PROJECT:-eco}-secure.priority=12"
+              - "traefik.http.routers.sched-${PROJECT:-eco}-secure.rule=Host(`sched.${HOST? HOST is required}`)"
+              - "traefik.http.routers.sched-${PROJECT:-eco}-secure.tls=true"
+              - "traefik.http.routers.sched-${PROJECT:-eco}-secure.tls.certresolver=httpresolver"
+              - "traefik.http.routers.sched-${PROJECT:-eco}-secure.service=sched-${PROJECT}"
+              - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=3000"
               - "traefik.docker.network=traefik_proxy"
-              - "traefik.http.middlewares.sched-${PROJECT}.headers.accesscontrolallowmethods=GET,OPTIONS,POST"
-              - "traefik.http.middlewares.sched-${PROJECT}.headers.accesscontrolalloworigin=*"
-              - "traefik.http.middlewares.sched-${PROJECT}.headers.accesscontrolmaxage=100"
-              - "traefik.http.middlewares.sched-${PROJECT}.headers.addvaryheader=true"
+              - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.accesscontrolallowmethods=GET,OPTIONS,POST"
+              - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.accesscontrolalloworigin=*"
+              - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.accesscontrolmaxage=100"
+              - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.addvaryheader=true"
     dagster-daemon:
-        image: docker.io/nsfearthcube/dagster-${PROJECT}:sha-4d94ff8
+        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
 
 
 
         secrets:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
-        environment:
-            - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-            - PORTAINER_URL=${PORTAINER_URL}
-            - PORTAINER_KEY=${PORTAINER_KEY}
-            - GLEANERIO_GLEANER_IMAGE=${GLEANERIO_GLEANER_IMAGE}
-            - GLEANERIO_GLEANER_ARCHIVE_OBJECT=${GLEANERIO_GLEANER_ARCHIVE_OBJECT}
-            - GLEANERIO_GLEANER_ARCHIVE_PATH=${GLEANERIO_GLEANER_ARCHIVE_PATH}
-            - GLEANERIO_NABU_IMAGE=${GLEANERIO_NABU_IMAGE}
-            - GLEANERIO_NABU_ARCHIVE_OBJECT=${GLEANERIO_NABU_ARCHIVE_OBJECT}
-            - GLEANERIO_NABU_ARCHIVE_PATH=${GLEANERIO_NABU_ARCHIVE_PATH}
-            - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
-            - GLEANER_MINIO_ADDRESS=${GLEANER_MINIO_ADDRESS}
-            - GLEANER_MINIO_PORT=${GLEANER_MINIO_PORT}
-            - GLEANER_MINIO_USE_SSL=${GLEANER_MINIO_USE_SSL}
-            - GLEANER_MINIO_BUCKET=${GLEANER_MINIO_BUCKET}
-            - GLEANER_MINIO_ACCESS_KEY=${GLEANER_MINIO_ACCESS_KEY}
-            - GLEANER_MINIO_SECRET_KEY=${GLEANER_MINIO_SECRET_KEY}
-#            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
-#            - GLEANER_MINIO_SECRET=/run/secrets/MINIO_ROOT_SECRET_KEY
-            - GLEANER_BASE=${GLEANER_BASE}
-            - GLEANER_OBJECTS=${GLEANER_OBJECTS}
-            - GLEANER_MEILI=${GLEANER_MEILI}
-            - GLEANER_GRAPH=${GLEANER_GRAPH}
-            - GLEANER_GRAPH_CONF=${GLEANER_GRAPH_CONF}
-            - GLEANER_TRAEFIK=${GLEANER_TRAEFIK}
-            - GLEANER_DOMAIN=${GLEANER_DOMAIN}
-            - GLEANER_OSS_DOMAIN=${GLEANER_OSS_DOMAIN}
-            - GLEANER_GRAPH_DOMAIN=${GLEANER_GRAPH_DOMAIN}
-            - GLEANER_WEB_DOMAIN=${GLEANER_WEB_DOMAIN}
-            - GLEANER_WEB2_DOMAIN=${GLEANER_WEB2_DOMAIN}
-            - GLEANER_INDEX_DOMAIN=${GLEANER_INDEX_DOMAIN}
-            - GLEANER_ADMIN_DOMAIN=${GLEANER_ADMIN_DOMAIN}
+        environment: *env
+
         command: "dagster-daemon run"
         depends_on:
             - dagster-postgres
