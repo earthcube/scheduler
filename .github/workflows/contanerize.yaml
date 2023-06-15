@@ -4,6 +4,8 @@ name: Dockerize  Dagster
 # overwrites any files created.
 on:
   push:
+    # be wary of using **  for the branch...
+    # it will fail, and only pull the main branch... which means old code, usually
     branches:
       - main
       - dev
