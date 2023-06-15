@@ -137,7 +137,6 @@ services:
         depends_on:
             - dagster-postgres
         networks:
-            - traefik_proxy
             - dagster_host
     dagster-postgres:
         image: postgres:13.3
@@ -148,7 +147,6 @@ services:
         volumes:
             - dagster-postgres:/var/lib/postgresql/data
         networks:
-           - traefik_proxy
            - dagster_host
     headless:
       image: chromedp/headless-shell:latest
@@ -165,6 +163,5 @@ services:
       environment:
         - SERVICE_PORTS=9222
       networks:
-        - traefik_proxy
         - dagster_host
 
