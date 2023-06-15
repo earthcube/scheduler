@@ -45,12 +45,12 @@ services:
             - GLEANERIO_NABU_ARCHIVE_OBJECT=${GLEANERIO_NABU_ARCHIVE_OBJECT}
             - GLEANERIO_NABU_ARCHIVE_PATH=${GLEANERIO_NABU_ARCHIVE_PATH}
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
-            - GLEANER_MINIO_URL=${GLEANER_MINIO_URL}
+            - GLEANER_MINIO_ADDRESS=${GLEANER_MINIO_ADDRESS}
             - GLEANER_MINIO_PORT=${GLEANER_MINIO_PORT}
-            - GLEANER_MINIO_SSL=${GLEANER_MINIO_SSL}
+            - GLEANER_MINIO_USE_SSL=${GLEANER_MINIO_USE_SSL}
             - GLEANER_MINIO_BUCKET=${GLEANER_MINIO_BUCKET}
-            - GLEANER_MINIO_KEY=${GLEANER_MINIO_KEY}
-            - GLEANER_MINIO_SECRET=${GLEANER_MINIO_SECRET}
+            - GLEANER_MINIO_ACCESS_KEY=${GLEANER_MINIO_ACCESS_KEY}
+            - GLEANER_MINIO_SECRET_KEY=${GLEANER_MINIO_SECRET_KEY}
 #            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
 #            - GLEANER_MINIO_SECRET=/run/secrets/MINIO_ROOT_SECRET_KEY
             - GLEANER_BASE=${GLEANER_BASE}
@@ -70,6 +70,7 @@ services:
             - 3000:3000
         networks:
           - traefik_proxy
+          - dagster_host
         depends_on:
             - dagster-postgres
         labels:
@@ -110,12 +111,12 @@ services:
             - GLEANERIO_NABU_ARCHIVE_OBJECT=${GLEANERIO_NABU_ARCHIVE_OBJECT}
             - GLEANERIO_NABU_ARCHIVE_PATH=${GLEANERIO_NABU_ARCHIVE_PATH}
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
-            - GLEANER_MINIO_URL=${GLEANER_MINIO_URL}
+            - GLEANER_MINIO_ADDRESS=${GLEANER_MINIO_ADDRESS}
             - GLEANER_MINIO_PORT=${GLEANER_MINIO_PORT}
-            - GLEANER_MINIO_SSL=${GLEANER_MINIO_SSL}
+            - GLEANER_MINIO_USE_SSL=${GLEANER_MINIO_USE_SSL}
             - GLEANER_MINIO_BUCKET=${GLEANER_MINIO_BUCKET}
-            - GLEANER_MINIO_KEY=${GLEANER_MINIO_KEY}
-            - GLEANER_MINIO_SECRET=${GLEANER_MINIO_SECRET}
+            - GLEANER_MINIO_ACCESS_KEY=${GLEANER_MINIO_ACCESS_KEY}
+            - GLEANER_MINIO_SECRET_KEY=${GLEANER_MINIO_SECRET_KEY}
 #            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
 #            - GLEANER_MINIO_SECRET=/run/secrets/MINIO_ROOT_SECRET_KEY
             - GLEANER_BASE=${GLEANER_BASE}
@@ -135,7 +136,7 @@ services:
         depends_on:
             - dagster-postgres
         networks:
-            - traefik_proxy
+            - dagster_host
     dagster-postgres:
         image: postgres:13.3
         ports:
