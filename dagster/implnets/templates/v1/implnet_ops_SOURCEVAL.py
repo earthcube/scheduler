@@ -274,7 +274,7 @@ def gleanerio(mode, source):
     req.add_header('accept', 'application/json')
     r = request.urlopen(req)
     print(r.status)
-    c = r.read().decode('utf-8')
+    c = r.read().decode()
 
     # write to file
     # f = open(LOGFILE, 'w')
