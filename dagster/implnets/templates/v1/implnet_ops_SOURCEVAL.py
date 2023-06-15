@@ -23,6 +23,7 @@ GLEANER_MINIO_USE_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
 GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANER_MINIO_SECRET_KEY')
 GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
+GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT')
 def _pythonMinioUrl(url):
     if (url.endswith(".amazonaws.com")):
         PYTHON_MINIO_URL = "s3.amazonaws.com"
