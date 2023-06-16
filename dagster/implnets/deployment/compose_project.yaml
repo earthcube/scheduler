@@ -52,6 +52,7 @@ services:
             - GLEANER_MINIO_BUCKET=${GLEANER_MINIO_BUCKET}
             - GLEANER_MINIO_ACCESS_KEY=${GLEANER_MINIO_ACCESS_KEY}
             - GLEANER_MINIO_SECRET_KEY=${GLEANER_MINIO_SECRET_KEY}
+            - GLEANER_HEADLESS_ENDPOINT= ${GLEANER_HEADLESS_ENDPOINT}
 #            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
 #            - GLEANER_MINIO_SECRET=/run/secrets/MINIO_ROOT_SECRET_KEY
             - GLEANER_BASE=${GLEANER_BASE}
@@ -126,8 +127,22 @@ services:
       restart: unless-stopped
       shm_size: "2gb"
       labels:
+        -  "traefik.enable=true"
         - "traefik.backend=headlesschrome"
         - "traefik.port=9222"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.entrypoints=http"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.priority=13"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
+        - "traefik.http.middlewares.headlesschrome-https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.middlewares=sched-https-redirect"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.entrypoints=https"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.priority=12"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls=true"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls.certresolver=httpresolver"
+        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.service=headlesschrome-${PROJECT}"
+        - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=9222"
+        - "traefik.docker.network=traefik_proxy"
       ports:
         - 9222:9222
       environment:
