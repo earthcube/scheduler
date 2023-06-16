@@ -120,7 +120,9 @@ services:
         networks:
            - traefik_proxy
     headless:
-      image: chromedp/headless-shell:latest
+      # image: chromedp/headless-shell:stable
+      # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
+      image: chromedp/headless-shell:105.0.5195.127
   #    build:
   #      context: .
   #      shm_size: "2gb"
