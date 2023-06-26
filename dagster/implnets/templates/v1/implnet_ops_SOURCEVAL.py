@@ -369,7 +369,7 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
 #Can we simplify and use just a method. Then import these methods?
 def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 
-    source= getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", sourcename=source)
+    source= getSitemapSourcesFromGleaner("/scheduler/ddagster/implnets/configs/eco/gleanerconfig.yaml", sourcename=source)
     source_url = source.url
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -384,7 +384,8 @@ def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 @graph
 def harvest_SOURCEVAL():
     harvest = SOURCEVAL_gleaner()
-    report1 =SOURCEVAL_missingreport_s3(harvest)
+    if "SOURCEVAL"=="eco":
+         report1 =SOURCEVAL_missingreport_s3(harvest)
     #report1 = missingreport_s3(harvest, source="SOURCEVAL")
     load1 = SOURCEVAL_nabu(harvest)
     load2 = SOURCEVAL_nabuprov(load1)
