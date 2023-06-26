@@ -340,7 +340,7 @@ def SOURCEVAL_naburelease(context, msg: str):
 @op
 def SOURCEVAL_missingreport_s3(context, msg: str):
     # TODO: WE NEED TO GET THE 'PROJECT' VARIABLE USING DURING THIS GENERATION PHASE
-    source = getSitemapSourcesFromGleaner("/scheduler/dagster/implnets/configs/eco/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
     source_url = source.url
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -356,7 +356,7 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
 #Can we simplify and use just a method. Then import these methods?
 def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 
-    source= getSitemapSourcesFromGleaner("/scheduler/dagster/implnets/configs/SOURCEVAL/gleanerconfig.yaml", sourcename=source)
+    source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
     source_url = source.url
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
