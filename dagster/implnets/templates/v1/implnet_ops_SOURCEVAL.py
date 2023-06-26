@@ -353,10 +353,11 @@ def SOURCEVAL_naburelease(context, msg: str):
 #
 @op
 def SOURCEVAL_missingreport_s3(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", source="SOURCEVAL")
+    source_url = source.url
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
-    source_url="SOURCEVAL"
     bucket = GLEANER_MINIO_BUCKET
-    source_name="SOURCEVAL"
+    source_name = "SOURCEVAL"
 
     graphendpoint = None
     milled = False
@@ -383,8 +384,8 @@ def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 @graph
 def harvest_SOURCEVAL():
     harvest = SOURCEVAL_gleaner()
-    #report1 =SOURCEVAL_missingreport_s3(harvest)
-    report1 = missingreport_s3(harvest, source="SOURCEVAL")
+    report1 =SOURCEVAL_missingreport_s3(harvest)
+    #report1 = missingreport_s3(harvest, source="SOURCEVAL")
     load1 = SOURCEVAL_nabu(harvest)
     load2 = SOURCEVAL_nabuprov(load1)
     load3 = SOURCEVAL_nabuorg(load2)
