@@ -5,10 +5,14 @@ import subprocess
 import os, json, io
 import urllib
 from urllib import request
+from urllib.error import HTTPError
 from dagster import job, op, get_dagster_logger
+from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
+from ec.reporting.report import missingReport
+from ec.datastore import s3
 
 # Vars and Envs
 
@@ -16,17 +20,21 @@ from datetime import datetime
 URL = os.environ.get('PORTAINER_URL')
 APIKEY = os.environ.get('PORTAINER_KEY')
 
-MINIO_URL = os.environ.get('GLEANER_MINIO_URL')
+GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
 
-MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
-MINIO_SSL = os.environ.get('GLEANER_MINIO_SSL')
-MINIO_SECRET = os.environ.get('GLEANER_MINIO_SECRET')
-MINIO_KEY = os.environ.get('GLEANER_MINIO_KEY')
-MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
-if (MINIO_URL.endswith(".amazonaws.com")):
-    PYTHON_MINIO_URL = "s3.amazonaws.com"
-else:
-    PYTHON_MINIO_URL = MINIO_URL
+GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
+GLEANER_MINIO_USE_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
+GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANER_MINIO_SECRET_KEY')
+GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
+GLEANER_MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
+GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT')
+def _pythonMinioUrl(url):
+    if (url.endswith(".amazonaws.com")):
+        PYTHON_MINIO_URL = "s3.amazonaws.com"
+    else:
+        PYTHON_MINIO_URL = url
+    return PYTHON_MINIO_URL
+
 def read_file_bytestream(image_path):
     data = open(image_path, 'rb').read()
     return data
@@ -43,8 +51,9 @@ def load_data(file_or_url):
 
 
 def s3reader(object):
-    server = PYTHON_MINIO_URL + ":" + os.environ.get('GLEANER_MINIO_PORT')
-    get_dagster_logger().info(f"S3 URL    : {str(os.environ.get('GLEANER_MINIO_PYTHON_URL'))}")
+    server =  _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS')) + ":" + os.environ.get('GLEANER_MINIO_PORT')
+    get_dagster_logger().info(f"S3 URL    : {str(os.environ.get('GLEANER_MINIO_ADDRESS'))}")
+    get_dagster_logger().info(f"S3 PYTHON SERVER : {server}")
     get_dagster_logger().info(f"S3 PORT   : {str(os.environ.get('GLEANER_MINIO_PORT'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_KEY'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_SECRET'))}")
@@ -54,9 +63,9 @@ def s3reader(object):
     client = Minio(
         server,
         # secure=True,
-        secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL'))),
-        access_key=os.environ.get('GLEANER_MINIO_KEY'),
-        secret_key=os.environ.get('GLEANER_MINIO_SECRET'),
+        secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL'))),
+        access_key=os.environ.get('GLEANER_MINIO_ACCESS_KEY'),
+        secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
     )
     try:
         data = client.get_object(os.environ.get('GLEANER_MINIO_BUCKET'), object)
@@ -66,22 +75,23 @@ def s3reader(object):
 
 
 def s3loader(data, name):
-    secure= bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL')))
+    secure= bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL')))
     if (os.environ.get('GLEANER_MINIO_PORT') and os.environ.get('GLEANER_MINIO_PORT') == 80
              and secure == False):
-        server = PYTHON_MINIO_URLL
+        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))
     elif (os.environ.get('GLEANER_MINIO_PORT') and os.environ.get('GLEANER_MINIO_PORT') == 443
                 and secure == True):
-        server = PYTHON_MINIO_URL
+        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))
     else:
         # it's not on a normal port
-        server = f"{PYTHON_MINIO_URL}:{os.environ.get('GLEANER_MINIO_PORT')}"
+        server = f"{_pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))}:{os.environ.get('GLEANER_MINIO_PORT')}"
+
     client = Minio(
         server,
         secure=secure,
         #secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL'))),
-        access_key=os.environ.get('GLEANER_MINIO_KEY'),
-        secret_key=os.environ.get('GLEANER_MINIO_SECRET'),
+        access_key=os.environ.get('GLEANER_MINIO_ACCESS_KEY'),
+        secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
     )
 
     # Make 'X' bucket if not exist.
@@ -96,10 +106,16 @@ def s3loader(data, name):
 
     logname = name + '_{}.log'.format(date_string)
     objPrefix = os.environ.get('GLEANERIO_LOG_PREFIX') + logname
+    f = io.BytesIO()
+    #length = f.write(bytes(json_str, 'utf-8'))
+    length = f.write(data)
+    f.seek(0)
     client.put_object(os.environ.get('GLEANER_MINIO_BUCKET'),
                       objPrefix,
-                      io.BytesIO(data),
-                      len(data))
+                      f, #io.BytesIO(data),
+                      length, #len(data),
+                      content_type="text/plain"
+                         )
     get_dagster_logger().info(f"Log uploaded: {str(objPrefix)}")
 
 
@@ -152,12 +168,13 @@ def gleanerio(mode, source):
 
     # add in env variables here"Env": ["FOO=bar","BAZ=quux"],
     enva = []
-    enva.append(str("MINIO_URL={}".format(MINIO_URL)))
-    enva.append(str("MINIO_PORT={}".format(MINIO_PORT)))
-    enva.append(str("MINIO_SSL={}".format(MINIO_SSL)))
-    enva.append(str("MINIO_SECRET={}".format(MINIO_SECRET)))
-    enva.append(str("MINIO_KEY={}".format(MINIO_KEY)))
-    enva.append(str("MINIO_BUCKET={}".format(MINIO_BUCKET)))
+    enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS)))
+    enva.append(str("GLEANER_MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
+    enva.append(str("MINIO_USE_SSL={}".format(GLEANER_MINIO_USE_SSL)))
+    enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
+    enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
+    enva.append(str("GLEANER_MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
+    enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
 
     data["Env"] = enva
 
@@ -174,13 +191,24 @@ def gleanerio(mode, source):
     req.add_header('X-API-Key', APIKEY)
     req.add_header('content-type', 'application/json')
     req.add_header('accept', 'application/json')
-    r = request.urlopen(req)
-    c = r.read()
-    d = json.loads(c)
-    cid = d['Id']
-
-    print(r.status)
-    get_dagster_logger().info(f"Create: {str(r.status)}")
+    try:
+        r = request.urlopen(req)
+        c = r.read()
+        d = json.loads(c)
+        cid = d['Id']
+        print(r.status)
+        get_dagster_logger().info(f"Create: {str(r.status)}")
+    except HTTPError as err:
+        if (err.code == 409):
+            print("failed to create container: container exists; use docker container ls -a : ", err)
+            get_dagster_logger().info(f"Create Failed: exsting container:  container exists; use docker container ls -a : {str(err)}")
+        elif (err.code == 404):
+            print("failed to create container: missing GLEANER_CONTAINER_IMAGE: load into portainer/docker : ", err)
+            get_dagster_logger().info(f"Create Failed: bad GLEANER_CONTAINER_IMAGE: load into portainer/docker : reason {str(err)}")
+        else:
+            print("failed to create container:  unknown reason: ", err)
+            get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
+        raise err
 
     # print(cid)
 
@@ -249,7 +277,7 @@ def gleanerio(mode, source):
     req.add_header('accept', 'application/json')
     r = request.urlopen(req)
     print(r.status)
-    c = r.read()
+    c = r.read().decode('latin-1')
 
     # write to file
     # f = open(LOGFILE, 'w')
@@ -257,8 +285,9 @@ def gleanerio(mode, source):
     # f.close()
 
     # write to s3
-    s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
 
+    s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
+    #s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
     # write to minio (would need the minio info here)
 
     get_dagster_logger().info(f"Logs: {str(r.status)}")
@@ -307,9 +336,55 @@ def magic_naburelease(context, msg: str):
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
+# @click.command()
+# @click.option('--cfgfile', help='gleaner config file', type=click.Path(exists=True))
+# @click.option('--graphendpoint', help='graph endpoint'
+#               )
+# # no default for s3 parameters here. read from gleaner. if provided, these override the gleaner config
+# @click.option('--s3server', help='s3 server address')
+# @click.option('--s3bucket', help='s3 bucket')
+# @click.option('--no_upload', help='do not upload to s3 bucket',is_flag=True, default=False)
+# @click.option('--output', help='dump to file', type=click.File('wb'))
+# @click.option('--source', help='gone or more repositories (--source a --source b)', multiple=True)
+# @click.option('--milled', help='include milled', is_flag=True,default=False)
+# @click.option('--summon', help='check summon only',is_flag=True, default=False)
+#
+# def writeMissingReport(cfgfile, graphendpoint, s3server, s3bucket, no_upload, output, source, milled, summon)
+#
+@op
+def magic_missingreport_s3(context, msg: str):
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    source_url="magic"
+    bucket = GLEANER_MINIO_BUCKET
+    source_name="magic"
+
+    graphendpoint = None
+    milled = False
+    summon = True
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+    r = str('returned value:{}'.format(returned_value))
+    return msg + r
+
+#Can we simplify and use just a method
+def missingreport_s3(context, msg: str, source="magic"):
+
+    source= getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", source=source)
+    source_url = source.url
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    bucket = GLEANER_MINIO_BUCKET
+    source_name="magic"
+
+    graphendpoint = None
+    milled = False
+    summon = True
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+    r = str('returned value:{}'.format(returned_value))
+    return msg + r
 @graph
 def harvest_magic():
     harvest = magic_gleaner()
+    #report1 =magic_missingreport_s3(harvest)
+    report1 = magic_missingreport_s3(harvest)
     load1 = magic_nabu(harvest)
     load2 = magic_nabuprov(load1)
     load3 = magic_nabuorg(load2)

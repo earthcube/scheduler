@@ -7,9 +7,12 @@ import urllib
 from urllib import request
 from urllib.error import HTTPError
 from dagster import job, op, get_dagster_logger
+from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
+from ec.reporting.report import missingReport
+from ec.datastore import s3
 
 # Vars and Envs
 
@@ -333,9 +336,55 @@ def SOURCEVAL_naburelease(context, msg: str):
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
+# @click.command()
+# @click.option('--cfgfile', help='gleaner config file', type=click.Path(exists=True))
+# @click.option('--graphendpoint', help='graph endpoint'
+#               )
+# # no default for s3 parameters here. read from gleaner. if provided, these override the gleaner config
+# @click.option('--s3server', help='s3 server address')
+# @click.option('--s3bucket', help='s3 bucket')
+# @click.option('--no_upload', help='do not upload to s3 bucket',is_flag=True, default=False)
+# @click.option('--output', help='dump to file', type=click.File('wb'))
+# @click.option('--source', help='gone or more repositories (--source a --source b)', multiple=True)
+# @click.option('--milled', help='include milled', is_flag=True,default=False)
+# @click.option('--summon', help='check summon only',is_flag=True, default=False)
+#
+# def writeMissingReport(cfgfile, graphendpoint, s3server, s3bucket, no_upload, output, source, milled, summon)
+#
+@op
+def SOURCEVAL_missingreport_s3(context, msg: str):
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    source_url="SOURCEVAL"
+    bucket = GLEANER_MINIO_BUCKET
+    source_name="SOURCEVAL"
+
+    graphendpoint = None
+    milled = False
+    summon = True
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+    r = str('returned value:{}'.format(returned_value))
+    return msg + r
+
+#Can we simplify and use just a method. Then import these methods?
+def missingreport_s3(context, msg: str, source="SOURCEVAL"):
+
+    source= getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", source=source)
+    source_url = source.url
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    bucket = GLEANER_MINIO_BUCKET
+    source_name="SOURCEVAL"
+
+    graphendpoint = None
+    milled = False
+    summon = True
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+    r = str('returned value:{}'.format(returned_value))
+    return msg + r
 @graph
 def harvest_SOURCEVAL():
     harvest = SOURCEVAL_gleaner()
+    #report1 =SOURCEVAL_missingreport_s3(harvest)
+    report1 = missingreport_s3(harvest)
     load1 = SOURCEVAL_nabu(harvest)
     load2 = SOURCEVAL_nabuprov(load1)
     load3 = SOURCEVAL_nabuorg(load2)
