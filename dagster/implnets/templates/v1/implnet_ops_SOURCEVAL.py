@@ -357,7 +357,7 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
 def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 
     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
-    source_url = source.url
+    source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
     source_name="SOURCEVAL"
