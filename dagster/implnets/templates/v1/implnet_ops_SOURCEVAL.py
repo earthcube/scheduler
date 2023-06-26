@@ -353,7 +353,7 @@ def SOURCEVAL_naburelease(context, msg: str):
 #
 @op
 def SOURCEVAL_missingreport_s3(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", source="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", sourcename="SOURCEVAL")
     source_url = source.url
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -369,7 +369,7 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
 #Can we simplify and use just a method. Then import these methods?
 def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 
-    source= getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", source=source)
+    source= getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", sourcename=source)
     source_url = source.url
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
