@@ -336,24 +336,11 @@ def SOURCEVAL_naburelease(context, msg: str):
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
-# @click.command()
-# @click.option('--cfgfile', help='gleaner config file', type=click.Path(exists=True))
-# @click.option('--graphendpoint', help='graph endpoint'
-#               )
-# # no default for s3 parameters here. read from gleaner. if provided, these override the gleaner config
-# @click.option('--s3server', help='s3 server address')
-# @click.option('--s3bucket', help='s3 bucket')
-# @click.option('--no_upload', help='do not upload to s3 bucket',is_flag=True, default=False)
-# @click.option('--output', help='dump to file', type=click.File('wb'))
-# @click.option('--source', help='gone or more repositories (--source a --source b)', multiple=True)
-# @click.option('--milled', help='include milled', is_flag=True,default=False)
-# @click.option('--summon', help='check summon only',is_flag=True, default=False)
-#
-# def writeMissingReport(cfgfile, graphendpoint, s3server, s3bucket, no_upload, output, source, milled, summon)
-#
+
 @op
 def SOURCEVAL_missingreport_s3(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/dagster/implnets/configs/SOURCEVAL/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    # TODO: WE NEED TO GET THE 'PROJECT' VARIABLE USING DURING THIS GENERATION PHASE
+    source = getSitemapSourcesFromGleaner("/scheduler/dagster/implnets/configs/eco/gleanerconfig.yaml", sourcename="SOURCEVAL")
     source_url = source.url
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
