@@ -350,6 +350,8 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     summon = True
     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
     r = str('returned value:{}'.format(returned_value))
+    report = json.dumps(returned_value, indent=2)
+    s3Minio.putReportFile(bucket, source_name, "missing_report.json", report)
     return msg + r
 
 #Can we simplify and use just a method. Then import these methods?
