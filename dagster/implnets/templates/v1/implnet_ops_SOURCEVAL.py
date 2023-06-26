@@ -339,9 +339,8 @@ def SOURCEVAL_naburelease(context, msg: str):
 
 @op
 def SOURCEVAL_missingreport_s3(context, msg: str):
-    # TODO: WE NEED TO GET THE 'PROJECT' VARIABLE USING DURING THIS GENERATION PHASE
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
-    source_url = source.url
+    source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
@@ -354,20 +353,20 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     return msg + r
 
 #Can we simplify and use just a method. Then import these methods?
-def missingreport_s3(context, msg: str, source="SOURCEVAL"):
-
-    source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
-    source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
-    bucket = GLEANER_MINIO_BUCKET
-    source_name="SOURCEVAL"
-
-    graphendpoint = None
-    milled = False
-    summon = True
-    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
-    r = str('returned value:{}'.format(returned_value))
-    return msg + r
+# def missingreport_s3(context, msg: str, source="SOURCEVAL"):
+#
+#     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
+#     source_url = source.get('url')
+#     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+#     bucket = GLEANER_MINIO_BUCKET
+#     source_name="SOURCEVAL"
+#
+#     graphendpoint = None
+#     milled = False
+#     summon = True
+#     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+#     r = str('returned value:{}'.format(returned_value))
+#     return msg + r
 @graph
 def harvest_SOURCEVAL():
     harvest = SOURCEVAL_gleaner()
