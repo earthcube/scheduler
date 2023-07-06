@@ -61,7 +61,7 @@ def postRelease(source):
     get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
     r = requests.post(url)
     log.debug(f' status:{r.status_code}')  # status:404
-    get_dagster_logger().info(f'graph: error: status:{r.status_code}')
+    get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
     if r.status_code == 200:
         # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
         if 'data modified="0"' in r.text:
@@ -434,9 +434,9 @@ def SOURCEVAL_graph_reports(context, msg: str):
     summon = True
     returned_value = generateGraphReportsRepo(source_name,  graphendpoint)
     r = str('returned value:{}'.format(returned_value))
-    report = json.dumps(returned_value, indent=2)
-
-    s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
+    #report = json.dumps(returned_value, indent=2)
+    report = returned_value
+    s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
 
     return msg + r
 
