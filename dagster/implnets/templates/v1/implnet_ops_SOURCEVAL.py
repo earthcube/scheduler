@@ -400,6 +400,7 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     report = json.dumps(returned_value, indent=2)
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
+@op
 def SOURCEVAL_missingreport_graph(context, msg: str):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
     source_url = source.get('url')
@@ -418,6 +419,7 @@ def SOURCEVAL_missingreport_graph(context, msg: str):
     s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
 
     return msg + r
+@op
 def SOURCEVAL_graph_reports(context, msg: str):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
     #source_url = source.get('url')
