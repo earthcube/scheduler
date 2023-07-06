@@ -10,7 +10,7 @@ from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
-from ec.reporting.report import missingReport
+from ec.reporting.report import missingReport, generateGraphReportsRepo
 from ec.datastore import s3
 from ec.graph.manageGraph import ManageBlazegraph as mg
 
@@ -390,14 +390,49 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
-
     graphendpoint = None
     milled = False
     summon = True
     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
     r = str('returned value:{}'.format(returned_value))
     report = json.dumps(returned_value, indent=2)
-    s3Minio.putReportFile(bucket, source_name, "missing_report.json", report)
+    s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
+    return msg + r
+def SOURCEVAL_missingreport_grpah(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    source_url = source.get('url')
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    bucket = GLEANER_MINIO_BUCKET
+    source_name = "SOURCEVAL"
+
+    graphendpoint = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
+
+    milled = False
+    summon = True
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+    r = str('returned value:{}'.format(returned_value))
+    report = json.dumps(returned_value, indent=2)
+
+    s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
+
+    return msg + r
+def SOURCEVAL_graph_reports(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    #source_url = source.get('url')
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    bucket = GLEANER_MINIO_BUCKET
+    source_name = "SOURCEVAL"
+
+    graphendpoint = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
+
+    milled = False
+    summon = True
+    returned_value = generateGraphReportsRepo(source_name,  graphendpoint)
+    r = str('returned value:{}'.format(returned_value))
+    report = json.dumps(returned_value, indent=2)
+
+    s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
+
     return msg + r
 
 #Can we simplify and use just a method. Then import these methods?
@@ -426,4 +461,6 @@ def harvest_SOURCEVAL():
     load3 = SOURCEVAL_nabuorg(load2)
     load4 = SOURCEVAL_naburelease(load3)
     load5 = SOURCEVAL_uploadrelease(load4)
+    report2=SOURCEVAL_missingreport_grpah(load5)
+    report3=SOURCEVAL_graph_reports(report2)
 
