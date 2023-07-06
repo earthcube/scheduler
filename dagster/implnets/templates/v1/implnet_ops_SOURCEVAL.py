@@ -58,18 +58,19 @@ def postRelease(source):
     path = "graphs/latest"
     release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
     url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
-    log.info(f'insert "{source}" to {url} ')
-
+    get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
     r = requests.post(url)
     log.debug(f' status:{r.status_code}')  # status:404
-    log.info(f' status:{r.status_code}')  # status:404
+    get_dagster_logger().info(f'graph: error: status:{r.status_code}')
     if r.status_code == 200:
         # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
         if 'data modified="0"' in r.text:
+            get_dagster_logger().info(f'graph: no data inserted ')
             raise Exception("No Data Added: " + r.text)
         return True
     else:
-        return False
+        get_dagster_logger().info(f'graph: error')
+        raise Exception(f' graph: insert failed: status:{r.status_code}')
 
 def _pythonMinioUrl(url):
 
@@ -276,7 +277,7 @@ def gleanerio(mode, source):
         r = request.urlopen(req)
 
         print(r.status)
-        get_dagster_logger().info(f"Archive: {str(r.status)}")
+        get_dagster_logger().info(f"Container Archive added: {str(r.status)}")
 
         # c = r.read()
         # print(c)
@@ -292,7 +293,7 @@ def gleanerio(mode, source):
         req.add_header('accept', 'application/json')
         r = request.urlopen(req)
         print(r.status)
-        get_dagster_logger().info(f"Start: {str(r.status)}")
+        get_dagster_logger().info(f"Start container: {str(r.status)}")
 
         ## ------------  Wait expect 200
 
@@ -303,7 +304,7 @@ def gleanerio(mode, source):
         req.add_header('accept', 'application/json')
         r = request.urlopen(req)
         print(r.status)
-        get_dagster_logger().info(f"Wait: {str(r.status)}")
+        get_dagster_logger().info(f"Container Wait: {str(r.status)}")
 
         ## ------------  Copy logs  expect 200
 
@@ -333,7 +334,7 @@ def gleanerio(mode, source):
         #s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
         # write to minio (would need the minio info here)
 
-        get_dagster_logger().info(f"Logs: {str(r.status)}")
+        get_dagster_logger().info(f"container Logs to s3: {str(r.status)}")
 
         ## ------------  Remove   expect 204
     finally:
@@ -344,7 +345,7 @@ def gleanerio(mode, source):
         req.add_header('accept', 'application/json')
         r = request.urlopen(req)
         print(r.status)
-        get_dagster_logger().info(f"Remove: {str(r.status)}")
+        get_dagster_logger().info(f"Container Remove: {str(r.status)}")
 
     return 0
 
@@ -396,7 +397,7 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     milled = False
     summon = True
     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
-    r = str('returned value:{}'.format(returned_value))
+    r = str('missing repoort returned value:{}'.format(returned_value))
     report = json.dumps(returned_value, indent=2)
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
@@ -413,7 +414,7 @@ def SOURCEVAL_missingreport_graph(context, msg: str):
     milled = False
     summon = True
     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
-    r = str('returned value:{}'.format(returned_value))
+    r = str('missing report graph returned value:{}'.format(returned_value))
     report = json.dumps(returned_value, indent=2)
 
     s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
