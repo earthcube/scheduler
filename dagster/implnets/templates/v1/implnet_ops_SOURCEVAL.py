@@ -33,6 +33,7 @@ def _pythonMinioUrl(url):
     else:
         PYTHON_MINIO_URL = url
     return PYTHON_MINIO_URL
+
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
 GLEANER_MINIO_USE_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
@@ -43,6 +44,7 @@ GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT')
 # using GLEANER, even though this is a nabu property... same prefix seems easier
 GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
 GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
+
 def postRelease(source):
     # revision of EC utilities, will have a insertFromURL
     #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
@@ -398,7 +400,7 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     report = json.dumps(returned_value, indent=2)
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
-def SOURCEVAL_missingreport_grpah(context, msg: str):
+def SOURCEVAL_missingreport_graph(context, msg: str):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -461,6 +463,6 @@ def harvest_SOURCEVAL():
     load3 = SOURCEVAL_nabuorg(load2)
     load4 = SOURCEVAL_naburelease(load3)
     load5 = SOURCEVAL_uploadrelease(load4)
-    report2=SOURCEVAL_missingreport_grpah(load5)
+    report2=SOURCEVAL_missingreport_graph(load5)
     report3=SOURCEVAL_graph_reports(report2)
 

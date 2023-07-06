@@ -5,12 +5,19 @@ import subprocess
 import os, json, io
 import urllib
 from urllib import request
-from urllib.error import HTTPError
 from dagster import job, op, get_dagster_logger
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
+from ec.reporting.report import missingReport, generateGraphReportsRepo
+from ec.datastore import s3
+from ec.graph.manageGraph import ManageBlazegraph as mg
+
+import requests
+import logging as log
+
+from requests import HTTPError
 from ec.reporting.report import missingReport
 from ec.datastore import s3
 
@@ -20,14 +27,6 @@ from ec.datastore import s3
 URL = os.environ.get('PORTAINER_URL')
 APIKEY = os.environ.get('PORTAINER_KEY')
 
-GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
-
-GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
-GLEANER_MINIO_USE_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
-GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANER_MINIO_SECRET_KEY')
-GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
-GLEANER_MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
-GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT')
 def _pythonMinioUrl(url):
     if (url.endswith(".amazonaws.com")):
         PYTHON_MINIO_URL = "s3.amazonaws.com"
@@ -35,6 +34,50 @@ def _pythonMinioUrl(url):
         PYTHON_MINIO_URL = url
     return PYTHON_MINIO_URL
 
+GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
+GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
+GLEANER_MINIO_USE_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
+GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANER_MINIO_SECRET_KEY')
+GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
+GLEANER_MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
+GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT')
+# using GLEANER, even though this is a nabu property... same prefix seems easier
+GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
+GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
+
+def postRelease(source):
+    # revision of EC utilities, will have a insertFromURL
+    #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
+    proto = "http"
+
+    if os.environ.get('GLEANER_MINIO_USE_SSL'):
+        proto = "https"
+    port = os.environ.get('GLEANER_MINIO_PORT')
+    address = os.environ.get('GLEANER_MINIO_ADDRESS')
+    bucket = os.environ.get('GLEANER_MINIO_BUCKET')
+    path = "graphs/latest"
+    release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
+    url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    log.info(f'insert "{source}" to {url} ')
+
+    r = requests.post(url)
+    log.debug(f' status:{r.status_code}')  # status:404
+    log.info(f' status:{r.status_code}')  # status:404
+    if r.status_code == 200:
+        # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+        if 'data modified="0"' in r.text:
+            raise Exception("No Data Added: " + r.text)
+        return True
+    else:
+        return False
+
+def _pythonMinioUrl(url):
+
+    if (url.endswith(".amazonaws.com")):
+        PYTHON_MINIO_URL = "s3.amazonaws.com"
+    else:
+        PYTHON_MINIO_URL = url
+    return PYTHON_MINIO_URL
 def read_file_bytestream(image_path):
     data = open(image_path, 'rb').read()
     return data
@@ -177,131 +220,131 @@ def gleanerio(mode, source):
     enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
 
     data["Env"] = enva
-
-    url = URL + 'containers/create'
-    params = {
-        "name": NAME
-    }
-    query_string = urllib.parse.urlencode(params)
-    url = url + "?" + query_string
-
-    get_dagster_logger().info(f"URL: {str(url)}")
-
-    req = request.Request(url, str.encode(json.dumps(data)))
-    req.add_header('X-API-Key', APIKEY)
-    req.add_header('content-type', 'application/json')
-    req.add_header('accept', 'application/json')
     try:
+        url = URL + 'containers/create'
+        params = {
+            "name": NAME
+        }
+        query_string = urllib.parse.urlencode(params)
+        url = url + "?" + query_string
+
+        get_dagster_logger().info(f"URL: {str(url)}")
+
+        req = request.Request(url, str.encode(json.dumps(data)))
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('content-type', 'application/json')
+        req.add_header('accept', 'application/json')
+        try:
+            r = request.urlopen(req)
+            c = r.read()
+            d = json.loads(c)
+            cid = d['Id']
+            print(r.status)
+            get_dagster_logger().info(f"Create: {str(r.status)}")
+        except HTTPError as err:
+            if (err.code == 409):
+                print("failed to create container: container exists; use docker container ls -a : ", err)
+                get_dagster_logger().info(f"Create Failed: exsting container:  container exists; use docker container ls -a : {str(err)}")
+            elif (err.code == 404):
+                print("failed to create container: missing GLEANER_CONTAINER_IMAGE: load into portainer/docker : ", err)
+                get_dagster_logger().info(f"Create Failed: bad GLEANER_CONTAINER_IMAGE: load into portainer/docker : reason {str(err)}")
+            else:
+                print("failed to create container:  unknown reason: ", err)
+                get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
+            raise err
+
+        # print(cid)
+
+        ## ------------  Archive to load, which is how to send in the config (from where?)
+
+        url = URL + 'containers/' + cid + '/archive'
+        params = {
+            'path': ARCHIVE_PATH
+        }
+        query_string = urllib.parse.urlencode(params)
+        url = url + "?" + query_string
+
+        # print(url)
+
+        # DATA = read_file_bytestream(ARCHIVE_FILE)
+        DATA = s3reader(ARCHIVE_FILE)
+
+        req = request.Request(url, data=DATA, method="PUT")
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('content-type', 'application/x-compressed')
+        req.add_header('accept', 'application/json')
         r = request.urlopen(req)
-        c = r.read()
-        d = json.loads(c)
-        cid = d['Id']
+
         print(r.status)
-        get_dagster_logger().info(f"Create: {str(r.status)}")
-    except HTTPError as err:
-        if (err.code == 409):
-            print("failed to create container: container exists; use docker container ls -a : ", err)
-            get_dagster_logger().info(f"Create Failed: exsting container:  container exists; use docker container ls -a : {str(err)}")
-        elif (err.code == 404):
-            print("failed to create container: missing GLEANER_CONTAINER_IMAGE: load into portainer/docker : ", err)
-            get_dagster_logger().info(f"Create Failed: bad GLEANER_CONTAINER_IMAGE: load into portainer/docker : reason {str(err)}")
-        else:
-            print("failed to create container:  unknown reason: ", err)
-            get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
-        raise err
+        get_dagster_logger().info(f"Archive: {str(r.status)}")
 
-    # print(cid)
+        # c = r.read()
+        # print(c)
+        # d = json.loads(c)
+        # print(d)
 
-    ## ------------  Archive to load, which is how to send in the config (from where?)
+        ## ------------  Start
 
-    url = URL + 'containers/' + cid + '/archive'
-    params = {
-        'path': ARCHIVE_PATH
-    }
-    query_string = urllib.parse.urlencode(params)
-    url = url + "?" + query_string
+        url = URL + 'containers/' + cid + '/start'
+        req = request.Request(url, method="POST")
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('content-type', 'application/json')
+        req.add_header('accept', 'application/json')
+        r = request.urlopen(req)
+        print(r.status)
+        get_dagster_logger().info(f"Start: {str(r.status)}")
 
-    # print(url)
+        ## ------------  Wait expect 200
 
-    # DATA = read_file_bytestream(ARCHIVE_FILE)
-    DATA = s3reader(ARCHIVE_FILE)
+        url = URL + 'containers/' + cid + '/wait'
+        req = request.Request(url, method="POST")
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('content-type', 'application/json')
+        req.add_header('accept', 'application/json')
+        r = request.urlopen(req)
+        print(r.status)
+        get_dagster_logger().info(f"Wait: {str(r.status)}")
 
-    req = request.Request(url, data=DATA, method="PUT")
-    req.add_header('X-API-Key', APIKEY)
-    req.add_header('content-type', 'application/x-compressed')
-    req.add_header('accept', 'application/json')
-    r = request.urlopen(req)
+        ## ------------  Copy logs  expect 200
 
-    print(r.status)
-    get_dagster_logger().info(f"Archive: {str(r.status)}")
+        url = URL + 'containers/' + cid + '/logs'
+        params = {
+            'stdout': 'true',
+            'stderr': 'false'
+        }
+        query_string = urllib.parse.urlencode(params)
 
-    # c = r.read()
-    # print(c)
-    # d = json.loads(c)
-    # print(d)
+        url = url + "?" + query_string
+        req = request.Request(url, method="GET")
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('accept', 'application/json')
+        r = request.urlopen(req)
+        print(r.status)
+        c = r.read().decode('latin-1')
 
-    ## ------------  Start
+        # write to file
+        # f = open(LOGFILE, 'w')
+        # f.write(str(c))
+        # f.close()
 
-    url = URL + 'containers/' + cid + '/start'
-    req = request.Request(url, method="POST")
-    req.add_header('X-API-Key', APIKEY)
-    req.add_header('content-type', 'application/json')
-    req.add_header('accept', 'application/json')
-    r = request.urlopen(req)
-    print(r.status)
-    get_dagster_logger().info(f"Start: {str(r.status)}")
+        # write to s3
 
-    ## ------------  Wait expect 200
+        s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
+        #s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
+        # write to minio (would need the minio info here)
 
-    url = URL + 'containers/' + cid + '/wait'
-    req = request.Request(url, method="POST")
-    req.add_header('X-API-Key', APIKEY)
-    req.add_header('content-type', 'application/json')
-    req.add_header('accept', 'application/json')
-    r = request.urlopen(req)
-    print(r.status)
-    get_dagster_logger().info(f"Wait: {str(r.status)}")
+        get_dagster_logger().info(f"Logs: {str(r.status)}")
 
-    ## ------------  Copy logs  expect 200
-
-    url = URL + 'containers/' + cid + '/logs'
-    params = {
-        'stdout': 'true',
-        'stderr': 'false'
-    }
-    query_string = urllib.parse.urlencode(params)
-
-    url = url + "?" + query_string
-    req = request.Request(url, method="GET")
-    req.add_header('X-API-Key', APIKEY)
-    req.add_header('accept', 'application/json')
-    r = request.urlopen(req)
-    print(r.status)
-    c = r.read().decode('latin-1')
-
-    # write to file
-    # f = open(LOGFILE, 'w')
-    # f.write(str(c))
-    # f.close()
-
-    # write to s3
-
-    s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
-    #s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
-    # write to minio (would need the minio info here)
-
-    get_dagster_logger().info(f"Logs: {str(r.status)}")
-
-    ## ------------  Remove   expect 204
-
-    url = URL + 'containers/' + cid
-    req = request.Request(url, method="DELETE")
-    req.add_header('X-API-Key', APIKEY)
-    # req.add_header('content-type', 'application/json')
-    req.add_header('accept', 'application/json')
-    r = request.urlopen(req)
-    print(r.status)
-    get_dagster_logger().info(f"Remove: {str(r.status)}")
+        ## ------------  Remove   expect 204
+    finally:
+        url = URL + 'containers/' + cid
+        req = request.Request(url, method="DELETE")
+        req.add_header('X-API-Key', APIKEY)
+        # req.add_header('content-type', 'application/json')
+        req.add_header('accept', 'application/json')
+        r = request.urlopen(req)
+        print(r.status)
+        get_dagster_logger().info(f"Remove: {str(r.status)}")
 
     return 0
 
@@ -335,57 +378,91 @@ def neotomadb_naburelease(context, msg: str):
     returned_value = gleanerio(("release"), "neotomadb")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
+@op
+def neotomadb_uploadrelease(context, msg: str):
+    returned_value = postRelease("neotomadb")
+    r = str('returned value:{}'.format(returned_value))
+    return msg + r
 
-# @click.command()
-# @click.option('--cfgfile', help='gleaner config file', type=click.Path(exists=True))
-# @click.option('--graphendpoint', help='graph endpoint'
-#               )
-# # no default for s3 parameters here. read from gleaner. if provided, these override the gleaner config
-# @click.option('--s3server', help='s3 server address')
-# @click.option('--s3bucket', help='s3 bucket')
-# @click.option('--no_upload', help='do not upload to s3 bucket',is_flag=True, default=False)
-# @click.option('--output', help='dump to file', type=click.File('wb'))
-# @click.option('--source', help='gone or more repositories (--source a --source b)', multiple=True)
-# @click.option('--milled', help='include milled', is_flag=True,default=False)
-# @click.option('--summon', help='check summon only',is_flag=True, default=False)
-#
-# def writeMissingReport(cfgfile, graphendpoint, s3server, s3bucket, no_upload, output, source, milled, summon)
-#
+
 @op
 def neotomadb_missingreport_s3(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="neotomadb")
+    source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
-    source_url="neotomadb"
     bucket = GLEANER_MINIO_BUCKET
-    source_name="neotomadb"
-
+    source_name = "neotomadb"
     graphendpoint = None
     milled = False
     summon = True
     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
     r = str('returned value:{}'.format(returned_value))
+    report = json.dumps(returned_value, indent=2)
+    s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
-
-#Can we simplify and use just a method
-def missingreport_s3(context, msg: str, source="neotomadb"):
-
-    source= getSitemapSourcesFromGleaner("/gleaner/gleanerconfig.yaml", source=source)
-    source_url = source.url
+def neotomadb_missingreport_grpah(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="neotomadb")
+    source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name="neotomadb"
+    source_name = "neotomadb"
 
-    graphendpoint = None
+    graphendpoint = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
+
     milled = False
     summon = True
     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
     r = str('returned value:{}'.format(returned_value))
+    report = json.dumps(returned_value, indent=2)
+
+    s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
+
     return msg + r
+def neotomadb_graph_reports(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="neotomadb")
+    #source_url = source.get('url')
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    bucket = GLEANER_MINIO_BUCKET
+    source_name = "neotomadb"
+
+    graphendpoint = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
+
+    milled = False
+    summon = True
+    returned_value = generateGraphReportsRepo(source_name,  graphendpoint)
+    r = str('returned value:{}'.format(returned_value))
+    report = json.dumps(returned_value, indent=2)
+
+    s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
+
+    return msg + r
+
+#Can we simplify and use just a method. Then import these methods?
+# def missingreport_s3(context, msg: str, source="neotomadb"):
+#
+#     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
+#     source_url = source.get('url')
+#     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+#     bucket = GLEANER_MINIO_BUCKET
+#     source_name="neotomadb"
+#
+#     graphendpoint = None
+#     milled = False
+#     summon = True
+#     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+#     r = str('returned value:{}'.format(returned_value))
+#     return msg + r
 @graph
 def harvest_neotomadb():
     harvest = neotomadb_gleaner()
-    #report1 =neotomadb_missingreport_s3(harvest)
-    report1 = neotomadb_missingreport_s3(harvest)
+
+    report1 =neotomadb_missingreport_s3(harvest)
+    #report1 = missingreport_s3(harvest, source="neotomadb")
     load1 = neotomadb_nabu(harvest)
     load2 = neotomadb_nabuprov(load1)
     load3 = neotomadb_nabuorg(load2)
     load4 = neotomadb_naburelease(load3)
+    load5 = neotomadb_uploadrelease(load4)
+    report2=neotomadb_missingreport_grpah(load5)
+    report3=neotomadb_graph_reports(report2)
+
