@@ -223,7 +223,7 @@ def gleanerio(mode, source):
 
         data["Env"] = enva
         data["HostConfig"] = {
-            "NetworkMode": "dagster_host"
+            "NetworkMode": "traefik_proxy"
             }
 
         # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
