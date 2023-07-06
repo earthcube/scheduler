@@ -225,13 +225,19 @@ def gleanerio(mode, source):
         url = URL + 'containers/create'
         params = {
             "name": NAME
+
+        }
+        body ={
+            "HostConfig":{
+        "NetworkMode": "dagster_host"
+        }
         }
         query_string = urllib.parse.urlencode(params)
         url = url + "?" + query_string
 
         get_dagster_logger().info(f"URL: {str(url)}")
 
-        req = request.Request(url, str.encode(json.dumps(data)))
+        req = request.Request(url, str.encode(json.dumps(data) ), data=json.dumps(body))
         req.add_header('X-API-Key', APIKEY)
         req.add_header('content-type', 'application/json')
         req.add_header('accept', 'application/json')
