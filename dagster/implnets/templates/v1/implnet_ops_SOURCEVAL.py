@@ -221,23 +221,22 @@ def gleanerio(mode, source):
     enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
 
     data["Env"] = enva
+    data["HostConfig"] = {
+        "NetworkMode": "dagster_host"
+        }
     try:
         url = URL + 'containers/create'
         params = {
             "name": NAME
 
         }
-        body ={
-            "HostConfig":{
-        "NetworkMode": "dagster_host"
-        }
-        }
+
         query_string = urllib.parse.urlencode(params)
         url = url + "?" + query_string
 
         get_dagster_logger().info(f"URL: {str(url)}")
 
-        req = request.Request(url, str.encode(json.dumps(data) ), data=json.dumps(body))
+        req = request.Request(url, str.encode(json.dumps(data) ))
         req.add_header('X-API-Key', APIKEY)
         req.add_header('content-type', 'application/json')
         req.add_header('accept', 'application/json')
