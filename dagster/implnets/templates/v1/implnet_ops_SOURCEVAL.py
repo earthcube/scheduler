@@ -205,26 +205,28 @@ def gleanerio(mode, source):
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     else:
         return 1
-
-    data = {}
-    data["Image"] = IMAGE
-    data["Cmd"] = CMD
-
-    # add in env variables here"Env": ["FOO=bar","BAZ=quux"],
-    enva = []
-    enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS)))
-    enva.append(str("GLEANER_MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
-    enva.append(str("MINIO_USE_SSL={}".format(GLEANER_MINIO_USE_SSL)))
-    enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
-    enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
-    enva.append(str("GLEANER_MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
-    enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
-
-    data["Env"] = enva
-    data["HostConfig"] = {
-        "NetworkMode": "dagster_host"
-        }
     try:
+        # setup data/body for  container create
+        data = {}
+        data["Image"] = IMAGE
+        data["Cmd"] = CMD
+
+        # add in env variables here"Env": ["FOO=bar","BAZ=quux"],
+        enva = []
+        enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS)))
+        enva.append(str("GLEANER_MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
+        enva.append(str("MINIO_USE_SSL={}".format(GLEANER_MINIO_USE_SSL)))
+        enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
+        enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
+        enva.append(str("GLEANER_MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
+        enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
+
+        data["Env"] = enva
+        data["HostConfig"] = {
+            "NetworkMode": "dagster_host"
+            }
+        # end setup of data
+
         url = URL + 'containers/create'
         params = {
             "name": NAME
