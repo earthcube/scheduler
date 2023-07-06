@@ -14,7 +14,9 @@ networks:
     external: true
   dagster_host:
     driver: overlay
-    name: dagster-${PROJECT:-eco}
+    # using project name is a bit tricky from dagster code
+    #name: dagster-${PROJECT:-eco}
+    name: dagster_host
     attachable: true
 volumes:
   dagster-postgres:

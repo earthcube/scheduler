@@ -225,6 +225,8 @@ def gleanerio(mode, source):
         data["HostConfig"] = {
             "NetworkMode": "dagster_host"
             }
+
+        # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
         # end setup of data
 
         url = URL + 'containers/create'
