@@ -434,7 +434,7 @@ def SOURCEVAL_graph_reports(context, msg: str):
     summon = True
     returned_value = generateGraphReportsRepo(source_name,  graphendpoint)
     r = str('returned value:{}'.format(returned_value))
-    #report = json.dumps(returned_value, indent=2)
+    #report = json.dumps(returned_value, indent=2) # value already json.dumps
     report = returned_value
     s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
 
