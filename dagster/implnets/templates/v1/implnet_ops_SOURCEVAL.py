@@ -210,15 +210,54 @@ def gleanerio(mode, source):
         data = {}
         data["Image"] = IMAGE
         data["Cmd"] = CMD
+#### gleaner
+        # v.BindEnv("minio.address", "MINIO_ADDRESS")
+        # v.BindEnv("minio.port", "MINIO_PORT")
+        # v.BindEnv("minio.ssl", "MINIO_USE_SSL")
+        # v.BindEnv("minio.accesskey", "MINIO_ACCESS_KEY")
+        # v.BindEnv("minio.secretkey", "MINIO_SECRET_KEY")
+        # v.BindEnv("minio.bucket", "MINIO_BUCKET")
+        # // v.BindEnv("minio.region", "MINIO_REGION")
+        # v.BindEnv("sparql.endpoint", "SPARQL_ENDPOINT")
+        # v.BindEnv("sparql.authenticate", "SPARQL_AUTHENTICATE")
+        # v.BindEnv("sparql.username", "SPARQL_USERNAME")
+        # v.BindEnv("sparql.password", "SPARQL_PASSWORD")
+        # v.BindEnv("s3.domain", "S3_DOMAIN")
+### gleaner summoner config
+        # viperSubtree.BindEnv("headless", "GLEANER_HEADLESS_ENDPOINT")
+        # viperSubtree.BindEnv("threads", "GLEANER_THREADS")
+        # viperSubtree.BindEnv("mode", "GLEANER_MODE")
 
+        #### NABU config
+        # minioSubtress.BindEnv("address", "MINIO_ADDRESS")
+        # minioSubtress.BindEnv("port", "MINIO_PORT")
+        # minioSubtress.BindEnv("ssl", "MINIO_USE_SSL")
+        # minioSubtress.BindEnv("accesskey", "MINIO_ACCESS_KEY")
+        # minioSubtress.BindEnv("secretkey", "MINIO_SECRET_KEY")
+        # minioSubtress.BindEnv("secretkey", "MINIO_SECRET_KEY")
+        # minioSubtress.BindEnv("bucket", "MINIO_BUCKET")
+        # viperSubtree.BindEnv("endpoint", "SPARQL_ENDPOINT")
+        ###### nabu sparql config
+        # viperSubtree.BindEnv("endpointBulk", "SPARQL_ENDPOINTBULK")
+        # viperSubtree.BindEnv("endpointMethod", "SPARQL_ENDPOINTMETHOD")
+        # viperSubtree.BindEnv("contentType", "SPARQL_CONTENTTYPE")
+        # viperSubtree.BindEnv("authenticate", "SPARQL_AUTHENTICATE")
+        # viperSubtree.BindEnv("username", "SPARQL_USERNAME")
+        # viperSubtree.BindEnv("password", "SPARQL_PASSWORD")
+        ### NABU object
+        # viperSubtree.BindEnv("bucket", "MINIO_BUCKET")
+        # viperSubtree.BindEnv("domain", "S3_DOMAIN")
         # add in env variables here"Env": ["FOO=bar","BAZ=quux"],
+
+        # TODO: Build SPARQL_ENDPOINT from  GLEANER_GRAPH_URL, GLEANER_GRAPH_NAMESPACE
         enva = []
         enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS)))
-        enva.append(str("GLEANER_MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
+        enva.append(str("MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
         enva.append(str("MINIO_USE_SSL={}".format(GLEANER_MINIO_USE_SSL)))
         enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
         enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
-        enva.append(str("GLEANER_MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
+        enva.append(str("MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
+        #enva.append(str("SPARQL_ENDPOINT={}".format(SOME VARIABLE)))
         enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
         enva.append(str("GLEANER_HEADLESS_NETWORK={}".format(os.environ.get('GLEANER_HEADLESS_NETWORK'))))
 

@@ -138,6 +138,7 @@ services:
         networks:
            - dagster_host
     headless:
+      # GLEANER_HEADLESS_ENDPOINT=http://headless:9222
       # image: chromedp/headless-shell:stable
       # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
       image: chromedp/headless-shell:105.0.5195.127
@@ -147,7 +148,7 @@ services:
       restart: unless-stopped
       shm_size: "2gb"
       labels:
-        -  "traefik.enable=true"
+        -  "traefik.enable=false"
         - "traefik.backend=headlesschrome"
         - "traefik.port=9222"
         - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.entrypoints=http"
