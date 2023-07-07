@@ -12,9 +12,13 @@ version: "3.9"
 networks:
   traefik_proxy:
     external: true
+  headless:
+    external: true
+    name: headless_gleanerio
   dagster_host:
     driver: overlay
-    # using project name is a bit tricky from dagster code
+    # using project name is a bit tricky from dagster code, and needs to be external for a
+    # container to use them
     #name: dagster-${PROJECT:-eco}
     name: dagster_host
     attachable: true
@@ -55,6 +59,7 @@ services:
             - GLEANER_MINIO_ACCESS_KEY=${GLEANER_MINIO_ACCESS_KEY}
             - GLEANER_MINIO_SECRET_KEY=${GLEANER_MINIO_SECRET_KEY}
             - GLEANER_HEADLESS_ENDPOINT=${GLEANER_HEADLESS_ENDPOINT}
+            - GLEANER_HEADLESS_NETWORK=${GLEANER_HEADLESS_NETWORK}
             - GLEANER_GRAPH_URL=${GLEANER_GRAPH_URL}
             - GLEANER_GRAPH_NAMESPACE=${GLEANER_GRAPH_NAMESPACE}
 #            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
@@ -157,4 +162,6 @@ services:
       # by this process. There is no name resolution on that network.
       networks:
         - dagster_host
+        - headless
+        # in code, use names defined in network above
 

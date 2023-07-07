@@ -22,7 +22,7 @@ from ec.reporting.report import missingReport
 from ec.datastore import s3
 
 # Vars and Envs
-
+GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANER_HEADLESS_NETWORK')
 # env items
 URL = os.environ.get('PORTAINER_URL')
 APIKEY = os.environ.get('PORTAINER_KEY')
@@ -220,10 +220,11 @@ def gleanerio(mode, source):
         enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
         enva.append(str("GLEANER_MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
         enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
+        enva.append(str("GLEANER_HEADLESS_NETWORK={}".format(os.environ.get('GLEANER_HEADLESS_NETWORK'))))
 
         data["Env"] = enva
         data["HostConfig"] = {
-            "NetworkMode": "traefik_proxy"
+            "NetworkMode": GLEANER_HEADLESS_NETWORK
             }
 
         # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
