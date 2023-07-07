@@ -226,7 +226,9 @@ def gleanerio(mode, source):
         data["HostConfig"] = {
             "NetworkMode": GLEANER_HEADLESS_NETWORK
             }
-
+        # data["Binds"] = [
+        #     "dagster-project:/configs"
+        # ]
         # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
         # end setup of data
 
