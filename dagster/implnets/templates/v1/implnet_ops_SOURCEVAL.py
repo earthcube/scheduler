@@ -173,7 +173,7 @@ def gleanerio(mode, source):
         IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE')
         ARCHIVE_FILE = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH')
-        CMD = f"-cfg/gleaner/gleanerconfig.yaml -source {source} --rude"
+        CMD = f"gleaner --cfg/gleaner/gleanerconfig.yaml -source {source} --rude"
         NAME = "gleaner01_" + source
         WorkingDir = "/gleaner/"
         EntryPoint = "gleaner"
@@ -221,7 +221,7 @@ def gleanerio(mode, source):
         data = {}
         data["Image"] = IMAGE
         data["WorkingDir"] = WorkingDir
-       # data["EntryPoint"] = [""]
+        data["EntryPoint"] = [""]
         data["Cmd"] = CMD
 #### gleaner
         # v.BindEnv("minio.address", "MINIO_ADDRESS")
