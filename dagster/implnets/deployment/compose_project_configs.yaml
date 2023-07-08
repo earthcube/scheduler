@@ -51,6 +51,7 @@ services:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
         environment: &env
+            - DEGUB=${DEBUG:-False}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
             - PORTAINER_KEY=${PORTAINER_KEY}
