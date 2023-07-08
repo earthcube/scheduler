@@ -172,8 +172,7 @@ def gleanerio(mode, source):
         IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE')
         ARCHIVE_FILE = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH')
-      #  CMD = ["--cfg", "/gleaner/gleanerconfig.yaml", "--source", source, "--rude"]
-        CMD = ["--cfg", "/gleaner/gleanerconfig", "--source", source, "--rude"]
+        CMD = ["--cfg", "/gleaner/gleanerconfig.yaml", "--source", source, "--rude"]
         NAME = "gleaner01_" + source
         # LOGFILE = 'log_gleaner.txt'  # only used for local log file writing
     elif (str(mode) == "nabu"):
