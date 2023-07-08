@@ -58,7 +58,7 @@ def postRelease(source):
     bucket = os.environ.get('GLEANER_MINIO_BUCKET')
     path = "graphs/latest"
     release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
-    url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    url = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
     get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
     r = requests.post(url)
     log.debug(f' status:{r.status_code}')  # status:404
@@ -72,6 +72,10 @@ def postRelease(source):
     else:
         get_dagster_logger().info(f'graph: error')
         raise Exception(f' graph: insert failed: status:{r.status_code}')
+
+def _graphEndpoint():
+    url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    return url
 
 def _pythonMinioUrl(url):
 
@@ -271,7 +275,7 @@ def gleanerio(mode, source):
         enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
         enva.append(str("MINIO_ACCESS_KEY={}".format(GLEANER_MINIO_ACCESS_KEY)))
         enva.append(str("MINIO_BUCKET={}".format(GLEANER_MINIO_BUCKET)))
-        #enva.append(str("SPARQL_ENDPOINT={}".format(SOME VARIABLE)))
+        enva.append(str("SPARQL_ENDPOINT={}".format(_graphEndpoint())))
         enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(os.environ.get('GLEANER_HEADLESS_ENDPOINT'))))
         enva.append(str("GLEANER_HEADLESS_NETWORK={}".format(os.environ.get('GLEANER_HEADLESS_NETWORK'))))
 
@@ -478,7 +482,7 @@ def SOURCEVAL_missingreport_graph(context, msg: str):
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
 
-    graphendpoint = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
+    graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
     milled = False
     summon = True
@@ -497,7 +501,7 @@ def SOURCEVAL_graph_reports(context, msg: str):
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
 
-    graphendpoint = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
+    graphendpoint = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
     milled = False
     summon = True
