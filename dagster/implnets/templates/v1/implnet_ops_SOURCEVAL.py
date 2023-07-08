@@ -222,7 +222,7 @@ def gleanerio(mode, source):
         data = {}
         data["Image"] = IMAGE
         data["WorkingDir"] = WorkingDir
-        data["Entrypoint"] = [Entrypoint]
+        data["Entrypoint"] = Entrypoint
         #data["Cmd"] = CMD
 #### gleaner
         # v.BindEnv("minio.address", "MINIO_ADDRESS")
