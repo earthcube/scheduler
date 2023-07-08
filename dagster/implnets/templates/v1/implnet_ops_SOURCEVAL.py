@@ -173,7 +173,7 @@ def gleanerio(mode, source):
         IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE')
         ARCHIVE_FILE = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH')
-        CMD = ["gleaner", "--cfg", "/gleaner/gleanerconfig.yaml","--source", source, "--rude"]
+        CMD = ["gleaner", "-cfg", "/gleaner/gleanerconfig.yaml","-source", source, "--rude"]
         NAME = "gleaner01_" + source
         WorkingDir = "/gleaner/"
         EntryPoint = "gleaner"
