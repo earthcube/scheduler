@@ -21,6 +21,7 @@ from requests import HTTPError
 from ec.reporting.report import missingReport
 from ec.datastore import s3
 
+DEBUG=True
 # Vars and Envs
 GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANER_HEADLESS_NETWORK')
 # env items
@@ -389,14 +390,18 @@ def gleanerio(mode, source):
 
         ## ------------  Remove   expect 204
     finally:
-        url = URL + 'containers/' + cid
-        req = request.Request(url, method="DELETE")
-        req.add_header('X-API-Key', APIKEY)
-        # req.add_header('content-type', 'application/json')
-        req.add_header('accept', 'application/json')
-        r = request.urlopen(req)
-        print(r.status)
-        get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+        if (not DEBUG) :
+            url = URL + 'containers/' + cid
+            req = request.Request(url, method="DELETE")
+            req.add_header('X-API-Key', APIKEY)
+            # req.add_header('content-type', 'application/json')
+            req.add_header('accept', 'application/json')
+            r = request.urlopen(req)
+            print(r.status)
+            get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+        else:
+            get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
+
 
     return 0
 
