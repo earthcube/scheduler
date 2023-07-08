@@ -21,7 +21,7 @@ from requests import HTTPError
 from ec.reporting.report import missingReport
 from ec.datastore import s3
 
-DEBUG=True
+DEBUG=os.environ.get('DEBUG')
 # Vars and Envs
 GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANER_HEADLESS_NETWORK')
 # env items

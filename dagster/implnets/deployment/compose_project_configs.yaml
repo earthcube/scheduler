@@ -51,6 +51,7 @@ services:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
         environment: &env
+            - DEGUB=${DEBUG:-False}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
             - PORTAINER_KEY=${PORTAINER_KEY}
@@ -185,7 +186,7 @@ services:
      # restart: unless-stopped
       volumes:
         - dagster-project:/configs
-      command: ["/bin/busybox", "httpd", "-f", "-p", "8080"]
+      #command: ["/bin/busybox", "httpd", "-f", "-p", "8080"]
       configs:
             - source: gleaner
               target: /configs/gleanerconfig.yaml
