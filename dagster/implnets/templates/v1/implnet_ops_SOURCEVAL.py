@@ -484,8 +484,8 @@ def SOURCEVAL_missingreport_graph(context, msg: str):
 
     graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
-    milled = False
-    summon = True
+    milled = True
+    summon = False # summon only off
     returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
     r = str('missing report graph returned value:{}'.format(returned_value))
     report = json.dumps(returned_value, indent=2)
