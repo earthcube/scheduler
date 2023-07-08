@@ -177,7 +177,7 @@ def gleanerio(mode, source):
         CMD = ["--cfg", "/gleaner/gleanerconfig.yaml","-source", source, "--rude"]
         NAME = "gleaner01_" + source
         WorkingDir = "/gleaner/"
-        Entrypoint = "/gleaner/gleaner"
+        Entrypoint = ["/gleaner/gleaner", "--cfg", "/gleaner/gleanerconfig.yaml", "-source", source, "--rude"]
         # LOGFILE = 'log_gleaner.txt'  # only used for local log file writing
     elif (str(mode) == "nabu"):
         IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
@@ -223,7 +223,7 @@ def gleanerio(mode, source):
         data["Image"] = IMAGE
         data["WorkingDir"] = WorkingDir
         data["Entrypoint"] = [Entrypoint]
-        data["Cmd"] = CMD
+        #data["Cmd"] = CMD
 #### gleaner
         # v.BindEnv("minio.address", "MINIO_ADDRESS")
         # v.BindEnv("minio.port", "MINIO_PORT")
