@@ -173,9 +173,10 @@ def gleanerio(mode, source):
         IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE')
         ARCHIVE_FILE = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH')
-        CMD = ["gleaner", "--cfg=/gleaner/gleanerconfig.yaml",f"--source={source}", "--rude"]
+        CMD = ["gleaner", "--cfg", "/gleaner/gleanerconfig.yaml","--source", source, "--rude"]
         NAME = "gleaner01_" + source
-        WorkingDir = "/gleaner"
+        WorkingDir = "/gleaner/"
+        EntryPoint = "gleaner"
         # LOGFILE = 'log_gleaner.txt'  # only used for local log file writing
     elif (str(mode) == "nabu"):
         IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
@@ -183,8 +184,8 @@ def gleanerio(mode, source):
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prune", "--prefix", "summoned/" + source]
         NAME = "nabu01_" + source
-        WorkingDir = "/nabu"
-        EntryPoint = "naub"
+        WorkingDir = "/nabu/"
+        EntryPoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     elif (str(mode) == "prov"):
         IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
@@ -192,8 +193,8 @@ def gleanerio(mode, source):
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prefix", "--prefix", "prov/" + source]
         NAME = "nabu01_" + source
-        WorkingDir = "/nabu"
-        EntryPoint = "naub"
+        WorkingDir = "/nabu/"
+        EntryPoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     elif (str(mode) == "orgs"):
         IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
@@ -201,8 +202,8 @@ def gleanerio(mode, source):
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prefix", "--prefix", "orgs"]
         NAME = "nabu01_" + source
-        WorkingDir = "/nabu"
-        EntryPoint = "naub"
+        WorkingDir = "/nabu/"
+        EntryPoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     elif (str(mode) == "release"):
         IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
@@ -210,8 +211,8 @@ def gleanerio(mode, source):
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "release", "--prefix", "summoned/" + source]
         NAME = "nabu01_" + source
-        WorkingDir = "/nabu"
-        EntryPoint = "naub"
+        WorkingDir = "/nabu/"
+        EntryPoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     else:
         return 1
@@ -220,7 +221,7 @@ def gleanerio(mode, source):
         data = {}
         data["Image"] = IMAGE
         data["WorkingDir"] = WorkingDir
-        data["EntryPoint"] = ''
+       # data["EntryPoint"] = [""]
         data["Cmd"] = CMD
 #### gleaner
         # v.BindEnv("minio.address", "MINIO_ADDRESS")
