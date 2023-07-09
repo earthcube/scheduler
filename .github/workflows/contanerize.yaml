@@ -34,8 +34,7 @@ jobs:
         run: |
             REGISTRY_IMAGE=nsfearthcube/dagster-${{ matrix.project }}
             echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
-        with:
-          working-directory:  /
+        working-directory:  /
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Set up QEMU
@@ -137,8 +136,7 @@ jobs:
         run: |
             REGISTRY_IMAGE=nsfearthcube/dagster-${{ matrix.project }}
             echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
-        with:
-          working-directory:  /
+        working-directory:  /
       - name: Download digests
         uses: actions/download-artifact@v3
         with:
