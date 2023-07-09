@@ -18,7 +18,6 @@ on:
 defaults:
   run:
     working-directory:  dagster/implnets
-    shell: sh
 
 jobs:
   build:
