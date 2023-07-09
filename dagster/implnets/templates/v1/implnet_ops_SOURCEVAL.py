@@ -182,7 +182,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prune", "--prefix", "summoned/" + source]
-        NAME = "nabu01_" + source
+        NAME = "nabu01_prune_" + source
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -191,7 +191,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prefix", "--prefix", "prov/" + source]
-        NAME = "nabu01_" + source
+        NAME = "nabu01_prov_" + source
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -200,7 +200,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prefix", "--prefix", "orgs"]
-        NAME = "nabu01_" + source
+        NAME = "nabu01_orgs_" + source
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -209,7 +209,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "release", "--prefix", "summoned/" + source]
-        NAME = "nabu01_" + source
+        NAME = "nabu01_release_" + source
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -424,7 +424,7 @@ def SOURCEVAL_gleaner(context):
     return r
 
 @op
-def SOURCEVAL_nabu(context, msg: str):
+def SOURCEVAL_nabu_prune(context, msg: str):
     returned_value = gleanerio(("nabu"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
@@ -528,7 +528,7 @@ def harvest_SOURCEVAL():
 
     report1 =SOURCEVAL_missingreport_s3(harvest)
     #report1 = missingreport_s3(harvest, source="SOURCEVAL")
-    load1 = SOURCEVAL_nabu(harvest)
+    load1 = SOURCEVAL_nabu_prune(harvest)
     load2 = SOURCEVAL_nabuprov(load1)
     load3 = SOURCEVAL_nabuorg(load2)
     load4 = SOURCEVAL_naburelease(load3)
