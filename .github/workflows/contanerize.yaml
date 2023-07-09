@@ -21,7 +21,7 @@ defaults:
 
 
 jobs:
-  deploy:
+  build:
     name: Dockerize  Scheduler for Project
     runs-on: ubuntu-latest
     strategy:
