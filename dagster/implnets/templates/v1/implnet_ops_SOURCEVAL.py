@@ -28,12 +28,6 @@ GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANER_HEADLESS_NETWORK')
 URL = os.environ.get('PORTAINER_URL')
 APIKEY = os.environ.get('PORTAINER_KEY')
 
-def _pythonMinioUrl(url):
-    if (url.endswith(".amazonaws.com")):
-        PYTHON_MINIO_URL = "s3.amazonaws.com"
-    else:
-        PYTHON_MINIO_URL = url
-    return PYTHON_MINIO_URL
 
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
@@ -46,35 +40,9 @@ GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT')
 GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
 GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
 
-def postRelease(source):
-    # revision of EC utilities, will have a insertFromURL
-    #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
-    proto = "http"
-
-    if os.environ.get('GLEANER_MINIO_USE_SSL'):
-        proto = "https"
-    port = os.environ.get('GLEANER_MINIO_PORT')
-    address = os.environ.get('GLEANER_MINIO_ADDRESS')
-    bucket = os.environ.get('GLEANER_MINIO_BUCKET')
-    path = "graphs/latest"
-    release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
-    url = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
-    get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-    r = requests.post(url)
-    log.debug(f' status:{r.status_code}')  # status:404
-    get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
-    if r.status_code == 200:
-        # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
-        if 'data modified="0"' in r.text:
-            get_dagster_logger().info(f'graph: no data inserted ')
-            raise Exception("No Data Added: " + r.text)
-        return True
-    else:
-        get_dagster_logger().info(f'graph: error')
-        raise Exception(f' graph: insert failed: status:{r.status_code}')
 
 def _graphEndpoint():
-    url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
     return url
 
 def _pythonMinioUrl(url):
@@ -166,6 +134,32 @@ def s3loader(data, name):
                       content_type="text/plain"
                          )
     get_dagster_logger().info(f"Log uploaded: {str(objPrefix)}")
+def postRelease(source):
+    # revision of EC utilities, will have a insertFromURL
+    #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
+    proto = "http"
+
+    if os.environ.get('GLEANER_MINIO_USE_SSL'):
+        proto = "https"
+    port = os.environ.get('GLEANER_MINIO_PORT')
+    address = os.environ.get('GLEANER_MINIO_ADDRESS')
+    bucket = os.environ.get('GLEANER_MINIO_BUCKET')
+    path = "graphs/latest"
+    release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
+    url = f"{_graphEndpoint()}?uri={release_url}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
+    r = requests.post(url)
+    log.debug(f' status:{r.status_code}')  # status:404
+    get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
+    if r.status_code == 200:
+        # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+        if 'data modified="0"' in r.text:
+            get_dagster_logger().info(f'graph: no data inserted ')
+            raise Exception("No Data Added: " + r.text)
+        return True
+    else:
+        get_dagster_logger().info(f'graph: error')
+        raise Exception(f' graph: insert failed: status:{r.status_code}')
 
 
 def gleanerio(mode, source):
