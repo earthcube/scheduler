@@ -399,7 +399,26 @@ def gleanerio(mode, source):
 
         get_dagster_logger().info(f"container Logs to s3: {str(r.status)}")
 
+## get log files
+
         ## ------------  Remove   expect 204
+        url = URL + 'containers/' + cid + '/archive'
+        params = {
+            'path': f"{WorkingDir}/logs"
+        }
+        query_string = urllib.parse.urlencode(params)
+        url = url + "?" + query_string
+
+        # print(url)
+        req = request.Request(url,  method="GET")
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('content-type', 'application/x-compressed')
+        req.add_header('accept', 'application/json')
+        r = request.urlopen(req)
+
+        log.info(f"{r.status} :{r.data}")
+        get_dagster_logger().info(f"Container Archive Retrieved: {str(r.status)}")
+        s3loader(r.read().decode('latin-1'), NAME)
     finally:
         if (not DEBUG) :
             url = URL + 'containers/' + cid
