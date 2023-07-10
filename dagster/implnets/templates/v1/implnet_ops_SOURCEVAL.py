@@ -277,11 +277,11 @@ def gleanerio(mode, source):
         data["Env"] = enva
         data["HostConfig"] = {
             "NetworkMode": GLEANER_HEADLESS_NETWORK,
-            "Binds":  "dagster_gleaner_configs:/configs"
+            "Binds":  ["dagster_gleaner_configs:/configs"]
         }
-        data["Volumes"] = [
-            "dagster-project:/configs"
-        ]
+        # data["Volumes"] = [
+        #     "dagster-project:/configs"
+        # ]
         # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
         # end setup of data
 
