@@ -22,6 +22,7 @@ from ec.reporting.report import missingReport
 from ec.datastore import s3
 
 DEBUG=os.environ.get('DEBUG')
+GLEANER_VOLUME=os.environ.get('GLEANER_VOLUME')
 # Vars and Envs
 GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANER_HEADLESS_NETWORK')
 # env items
@@ -278,9 +279,9 @@ def gleanerio(mode, source):
             "NetworkMode": GLEANER_HEADLESS_NETWORK,
             "Binds":  "dagster_gleaner_configs:/configs"
         }
-        # data["Binds"] = [
-        #     "dagster-project:/configs"
-        # ]
+        data["Binds"] = [
+            "dagster-project:/configs"
+        ]
         # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
         # end setup of data
 
