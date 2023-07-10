@@ -318,7 +318,10 @@ def gleanerio(mode, source):
                 print("failed to create container:  unknown reason: ", err)
                 get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
             raise err
-
+        except Exception as err:
+            print("failed to create container:  unknown reason: ", err)
+            get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
+            raise err
         # print(cid)
 
         ## ------------  Archive to load, which is how to send in the config (from where?)
@@ -423,14 +426,17 @@ def gleanerio(mode, source):
         s3loader(r.read().decode('latin-1'), NAME)
     finally:
         if (not DEBUG) :
-            url = URL + 'containers/' + cid
-            req = request.Request(url, method="DELETE")
-            req.add_header('X-API-Key', APIKEY)
-            # req.add_header('content-type', 'application/json')
-            req.add_header('accept', 'application/json')
-            r = request.urlopen(req)
-            print(r.status)
-            get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+            if (cid):
+                url = URL + 'containers/' + cid
+                req = request.Request(url, method="DELETE")
+                req.add_header('X-API-Key', APIKEY)
+                # req.add_header('content-type', 'application/json')
+                req.add_header('accept', 'application/json')
+                r = request.urlopen(req)
+                print(r.status)
+                get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+            else:
+                get_dagster_logger().info(f"Container Not created, so not removed.")
         else:
             get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
 
