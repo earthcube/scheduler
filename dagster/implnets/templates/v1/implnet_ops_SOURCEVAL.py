@@ -424,7 +424,7 @@ def gleanerio(mode, source):
         log.info(f"{r.status} ")
         get_dagster_logger().info(f"Container Archive Retrieved: {str(r.status)}")
        # s3loader(r.read().decode('latin-1'), NAME)
-        s3loader(r.read(), NAME)
+        s3loader(r.read().encode(), NAME)
     finally:
         if (not DEBUG) :
             if (cid):
