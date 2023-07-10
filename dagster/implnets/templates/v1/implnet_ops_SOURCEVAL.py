@@ -275,8 +275,9 @@ def gleanerio(mode, source):
 
         data["Env"] = enva
         data["HostConfig"] = {
-            "NetworkMode": GLEANER_HEADLESS_NETWORK
-            }
+            "NetworkMode": GLEANER_HEADLESS_NETWORK,
+            "Binds":  "dagster_gleaner_configs:/configs"
+        }
         # data["Binds"] = [
         #     "dagster-project:/configs"
         # ]
