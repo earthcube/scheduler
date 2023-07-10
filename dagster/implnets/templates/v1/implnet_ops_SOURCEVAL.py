@@ -10,7 +10,7 @@ from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
-from ec.reporting.report import missingReport, generateGraphReportsRepo
+from ec.reporting.report import missingReport, generateGraphReportsRepo, reportTypes
 from ec.datastore import s3
 from ec.graph.manageGraph import ManageBlazegraph as mg
 
@@ -527,7 +527,7 @@ def SOURCEVAL_graph_reports(context, msg: str):
 
     milled = False
     summon = True
-    returned_value = generateGraphReportsRepo(source_name,  graphendpoint)
+    returned_value = generateGraphReportsRepo(source_name,  graphendpoint, reportList=reportTypes["repo_detailed"])
     r = str('returned value:{}'.format(returned_value))
     #report = json.dumps(returned_value, indent=2) # value already json.dumps
     report = returned_value
