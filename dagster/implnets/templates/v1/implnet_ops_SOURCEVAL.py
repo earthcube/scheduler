@@ -421,7 +421,7 @@ def gleanerio(mode, source):
         req.add_header('accept', 'application/json')
         r = request.urlopen(req)
 
-        log.info(f"{r.status} :{r.data}")
+        log.info(f"{r.status} ")
         get_dagster_logger().info(f"Container Archive Retrieved: {str(r.status)}")
         s3loader(r.read().decode('latin-1'), NAME)
     finally:
