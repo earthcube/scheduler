@@ -279,7 +279,7 @@ def gleanerio(mode, source):
             "NetworkMode": GLEANER_HEADLESS_NETWORK,
             "Binds":  "dagster_gleaner_configs:/configs"
         }
-        data["Binds"] = [
+        data["Volumes"] = [
             "dagster-project:/configs"
         ]
         # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
