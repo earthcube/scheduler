@@ -333,7 +333,7 @@ def gleanerio(mode, source):
         query_string = urllib.parse.urlencode(params)
         url = url + "?" + query_string
 
-        # print(url)
+        get_dagster_logger().info(f"Container archive url: {url}")
 
         # DATA = read_file_bytestream(ARCHIVE_FILE)
         DATA = s3reader(ARCHIVE_FILE)
@@ -355,6 +355,7 @@ def gleanerio(mode, source):
         ## ------------  Start
 
         url = URL + 'containers/' + cid + '/start'
+        get_dagster_logger().info(f"Container start url: {url}")
         req = request.Request(url, method="POST")
         req.add_header('X-API-Key', APIKEY)
         req.add_header('content-type', 'application/json')
