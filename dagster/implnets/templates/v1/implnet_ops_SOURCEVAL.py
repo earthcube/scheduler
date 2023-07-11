@@ -355,7 +355,7 @@ def gleanerio(mode, source):
         ## ------------  Start
         ## note new issue:
         # {"message": "starting container with non-empty request body was deprecated since API v1.22 and removed in v1.24"}
-        EMPTY_DATA=bytes("{}")
+        EMPTY_DATA="{}".encode('utf-8')
         url = URL + 'containers/' + cid + '/start'
         get_dagster_logger().info(f"Container start url: {url}")
         req = request.Request(url,data=EMPTY_DATA, method="POST")
@@ -377,7 +377,7 @@ def gleanerio(mode, source):
         ## ------------  Wait expect 200
 
         url = URL + 'containers/' + cid + '/wait'
-        req = request.Request(url, method="POST")
+        req = request.Request(url, data=EMPTY_DATA, method="POST")
         req.add_header('X-API-Key', APIKEY)
         req.add_header('content-type', 'application/json')
         req.add_header('accept', 'application/json')
