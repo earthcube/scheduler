@@ -307,7 +307,7 @@ def gleanerio(mode, source):
             cid = d['Id']
             print(r.status)
             get_dagster_logger().info(f"Create: {str(r.status)}")
-        except HTTPError as err:
+        except HTTPError or requests.HTTPError as err:
             if (err.code == 409):
                 print("failed to create container: container exists; use docker container ls -a : ", err)
                 get_dagster_logger().info(f"Create Failed: exsting container:  container exists; use docker container ls -a : {str(err)}")
@@ -322,7 +322,7 @@ def gleanerio(mode, source):
             print("failed to create container:  unknown reason: ", err)
             get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
             raise err
-        # print(cid)
+        print(f"containerid:{cid}")
 
         ## ------------  Archive to load, which is how to send in the config (from where?)
 
