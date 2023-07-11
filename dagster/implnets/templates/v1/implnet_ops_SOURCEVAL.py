@@ -355,7 +355,7 @@ def gleanerio(mode, source):
         ## ------------  Start
         ## note new issue:
         # {"message": "starting container with non-empty request body was deprecated since API v1.22 and removed in v1.24"}
-        EMPTY_DATA={}
+        EMPTY_DATA=bytes("{}")
         url = URL + 'containers/' + cid + '/start'
         get_dagster_logger().info(f"Container start url: {url}")
         req = request.Request(url,data=EMPTY_DATA, method="POST")
