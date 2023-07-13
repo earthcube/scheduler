@@ -10,18 +10,19 @@ from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
-from ec.reporting.report import missingReport, generateGraphReportsRepo
+from ec.reporting.report import missingReport, generateGraphReportsRepo, reportTypes
 from ec.datastore import s3
 from ec.graph.manageGraph import ManageBlazegraph as mg
 
 import requests
 import logging as log
 
-from requests import HTTPError
+from urllib.error import HTTPError
 from ec.reporting.report import missingReport
 from ec.datastore import s3
 
 DEBUG=os.environ.get('DEBUG')
+GLEANER_CONFIG_VOLUME=os.environ.get('GLEANER_CONFIG_VOLUME')
 # Vars and Envs
 GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANER_HEADLESS_NETWORK')
 # env items
@@ -275,9 +276,10 @@ def gleanerio(mode, source):
 
         data["Env"] = enva
         data["HostConfig"] = {
-            "NetworkMode": GLEANER_HEADLESS_NETWORK
-            }
-        # data["Binds"] = [
+            "NetworkMode": GLEANER_HEADLESS_NETWORK,
+            "Binds":  [f"{GLEANER_CONFIG_VOLUME}:/configs"]
+        }
+        # data["Volumes"] = [
         #     "dagster-project:/configs"
         # ]
         # we would like this to be "dagster-${PROJECT:-eco}" but that is a bit tricky
@@ -293,7 +295,7 @@ def gleanerio(mode, source):
         url = url + "?" + query_string
 
         get_dagster_logger().info(f"URL: {str(url)}")
-
+        get_dagster_logger().info(f"container config: {str(json.dumps(data))}")
         req = request.Request(url, str.encode(json.dumps(data) ))
         req.add_header('X-API-Key', APIKEY)
         req.add_header('content-type', 'application/json')
@@ -305,7 +307,7 @@ def gleanerio(mode, source):
             cid = d['Id']
             print(r.status)
             get_dagster_logger().info(f"Create: {str(r.status)}")
-        except HTTPError as err:
+        except HTTPError or requests.HTTPError as err:
             if (err.code == 409):
                 print("failed to create container: container exists; use docker container ls -a : ", err)
                 get_dagster_logger().info(f"Create Failed: exsting container:  container exists; use docker container ls -a : {str(err)}")
@@ -316,8 +318,11 @@ def gleanerio(mode, source):
                 print("failed to create container:  unknown reason: ", err)
                 get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
             raise err
-
-        # print(cid)
+        except Exception as err:
+            print("failed to create container:  unknown reason: ", err)
+            get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
+            raise err
+        print(f"containerid:{cid}")
 
         ## ------------  Archive to load, which is how to send in the config (from where?)
 
@@ -328,7 +333,7 @@ def gleanerio(mode, source):
         query_string = urllib.parse.urlencode(params)
         url = url + "?" + query_string
 
-        # print(url)
+        get_dagster_logger().info(f"Container archive url: {url}")
 
         # DATA = read_file_bytestream(ARCHIVE_FILE)
         DATA = s3reader(ARCHIVE_FILE)
@@ -348,20 +353,31 @@ def gleanerio(mode, source):
         # print(d)
 
         ## ------------  Start
-
+        ## note new issue:
+        # {"message": "starting container with non-empty request body was deprecated since API v1.22 and removed in v1.24"}
+        EMPTY_DATA="{}".encode('utf-8')
         url = URL + 'containers/' + cid + '/start'
-        req = request.Request(url, method="POST")
+        get_dagster_logger().info(f"Container start url: {url}")
+        req = request.Request(url,data=EMPTY_DATA, method="POST")
         req.add_header('X-API-Key', APIKEY)
         req.add_header('content-type', 'application/json')
         req.add_header('accept', 'application/json')
-        r = request.urlopen(req)
+        try:
+            r = request.urlopen(req)
+        except HTTPError as err:
+            get_dagster_logger().fatal(f"Container Start failed: {str(err.code)} reason: {err.reason}")
+            raise err
+        except Exception as err:
+            print("failed to start container:  unknown reason: ", err)
+            get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
+            raise err
         print(r.status)
         get_dagster_logger().info(f"Start container: {str(r.status)}")
 
         ## ------------  Wait expect 200
 
         url = URL + 'containers/' + cid + '/wait'
-        req = request.Request(url, method="POST")
+        req = request.Request(url, data=EMPTY_DATA, method="POST")
         req.add_header('X-API-Key', APIKEY)
         req.add_header('content-type', 'application/json')
         req.add_header('accept', 'application/json')
@@ -399,17 +415,40 @@ def gleanerio(mode, source):
 
         get_dagster_logger().info(f"container Logs to s3: {str(r.status)}")
 
+## get log files
+
         ## ------------  Remove   expect 204
+        url = URL + 'containers/' + cid + '/archive'
+        params = {
+            'path': f"{WorkingDir}/logs"
+        }
+        query_string = urllib.parse.urlencode(params)
+        url = url + "?" + query_string
+
+        # print(url)
+        req = request.Request(url,  method="GET")
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('content-type', 'application/x-compressed')
+        req.add_header('accept', 'application/json')
+        r = request.urlopen(req)
+
+        log.info(f"{r.status} ")
+        get_dagster_logger().info(f"Container Archive Retrieved: {str(r.status)}")
+       # s3loader(r.read().decode('latin-1'), NAME)
+        s3loader(r.read(), f"{source}_runlogs")
     finally:
         if (not DEBUG) :
-            url = URL + 'containers/' + cid
-            req = request.Request(url, method="DELETE")
-            req.add_header('X-API-Key', APIKEY)
-            # req.add_header('content-type', 'application/json')
-            req.add_header('accept', 'application/json')
-            r = request.urlopen(req)
-            print(r.status)
-            get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+            if (cid):
+                url = URL + 'containers/' + cid
+                req = request.Request(url, method="DELETE")
+                req.add_header('X-API-Key', APIKEY)
+                # req.add_header('content-type', 'application/json')
+                req.add_header('accept', 'application/json')
+                r = request.urlopen(req)
+                print(r.status)
+                get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+            else:
+                get_dagster_logger().info(f"Container Not created, so not removed.")
         else:
             get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
 
@@ -499,7 +538,7 @@ def SOURCEVAL_graph_reports(context, msg: str):
 
     milled = False
     summon = True
-    returned_value = generateGraphReportsRepo(source_name,  graphendpoint)
+    returned_value = generateGraphReportsRepo(source_name,  graphendpoint, reportList=reportTypes["repo_detailed"])
     r = str('returned value:{}'.format(returned_value))
     #report = json.dumps(returned_value, indent=2) # value already json.dumps
     report = returned_value
