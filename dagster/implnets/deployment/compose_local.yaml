@@ -1,43 +1,17 @@
-version: "3.9"
+version: "3"
 
-# networks: production uses traefik_proxy, buth
-#  this is local testing
 networks:
   traefik_proxy:
-  #  driver: bridge
-  headless:
-    external: true
-    name: ${GLEANER_HEADLESS_NETWORK:-headless_gleanerio}
-volumes:
-    dagster-postgres:
-        driver: local
-    dagster-project:
-      driver: local
-      #name: dagster-${PROJECT:-eco}
-      name: ${GLEANER_CONFIG_VOLUME:-dagster_gleaner_configs}
-# let yourself use local configuration
-configs:
-  gleaner:
-    name: ${GLEANER_GLEANER_DOCKER_CONFIG:-gleaner}
-    file: ../configs/${PROJECT:-eco}/gleanerconfig.yaml
-  nabu:
-    name: ${GLEANER_NABU_DOCKER_CONFIG:-nabu}
-    file: ../configs/${PROJECT:-eco}/nabuconfig.yaml
-
-# DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
-# USE:
-# ./docker_localstart.sh
+    external: false
 services:
     dagster-dagit:
         platform: linux/x86_64
         build:
-          #context: .
-          context: ..
-          dockerfile: build/Dockerfile_local
-        image: dagster-${PROJECT:-eco}:latest4
-        volumes: &vol
-          - ../dagster.yaml:/usr/src/app/dagster.yaml
-          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/output
+          context: ../build
+          dockerfile: Dockerfile_local
+        image: docker.io/fils/dagster_eco:0.0.44
+        #volumes:
+          #- ..:scheduler
         environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
@@ -49,21 +23,12 @@ services:
             - GLEANERIO_NABU_ARCHIVE_OBJECT=${GLEANERIO_NABU_ARCHIVE_OBJECT}
             - GLEANERIO_NABU_ARCHIVE_PATH=${GLEANERIO_NABU_ARCHIVE_PATH}
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
-            - GLEANER_MINIO_ADDRESS=${GLEANER_MINIO_ADDRESS}
+            - GLEANER_MINIO_URL=${GLEANER_MINIO_URL}
             - GLEANER_MINIO_PORT=${GLEANER_MINIO_PORT}
-            - GLEANER_MINIO_USE_SSL=${GLEANER_MINIO_USE_SSL}
+            - GLEANER_MINIO_SSL=${GLEANER_MINIO_SSL}
             - GLEANER_MINIO_BUCKET=${GLEANER_MINIO_BUCKET}
-            - GLEANER_MINIO_ACCESS_KEY=${GLEANER_MINIO_ACCESS_KEY}
-            - GLEANER_MINIO_SECRET_KEY=${GLEANER_MINIO_SECRET_KEY}
-            - GLEANER_HEADLESS_ENDPOINT=${GLEANER_HEADLESS_ENDPOINT}
-            - GLEANER_HEADLESS_NETWORK=${GLEANER_HEADLESS_NETWORK}
-            - GLEANER_GRAPH_URL=${GLEANER_GRAPH_URL}
-            - GLEANER_GRAPH_NAMESPACE=${GLEANER_GRAPH_NAMESPACE}
-            - GLEANER_CONFIG_VOLUME=${GLEANER_CONFIG_VOLUME}
-            - GLEANERIO_NABU_CONFIG_PATH=${GLEANER_GLEANER_DOCKER_CONFIG:-/configs/gleaner/nabuconfig.yaml}
-            - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANER_NABU_DOCKER_CONFIG:-/configs/gleaner/gleanerconfig.yaml}
-#            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
-#            - GLEANER_MINIO_SECRET=/run/secrets/MINIO_ROOT_SECRET_KEY
+            - GLEANER_MINIO_KEY=${GLEANER_MINIO_KEY}
+            - GLEANER_MINIO_SECRET=${GLEANER_MINIO_SECRET}
             - GLEANER_BASE=${GLEANER_BASE}
             - GLEANER_OBJECTS=${GLEANER_OBJECTS}
             - GLEANER_MEILI=${GLEANER_MEILI}
@@ -77,7 +42,6 @@ services:
             - GLEANER_WEB2_DOMAIN=${GLEANER_WEB2_DOMAIN}
             - GLEANER_INDEX_DOMAIN=${GLEANER_INDEX_DOMAIN}
             - GLEANER_ADMIN_DOMAIN=${GLEANER_ADMIN_DOMAIN}
-
         ports:
             - 3000:3000
         networks:
@@ -106,13 +70,11 @@ services:
     dagster-daemon:
         platform: linux/x86_64
         build:
-          #context: .
-          context: ..
-          dockerfile: build/Dockerfile_local
-        image: dagster-${PROJECT:-eco}:latest
+          context: ../build
+          dockerfile: Dockerfile_local
+        image: docker.io/fils/dagster_eco:0.0.44
         environment: *env
-        command: "dagster-daemon run -w ./output/workspace.yaml"
-        volumes: *vol
+        command: "dagster-daemon run"
         depends_on:
             - dagster-postgres
         networks:
@@ -127,72 +89,6 @@ services:
             - dagster-postgres:/var/lib/postgresql/data
         networks:
            - traefik_proxy
-    headless:
-      platform: linux/x86_64
-      # image: chromedp/headless-shell:stable
-      # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
-      image: chromedp/headless-shell:105.0.5195.127
-      #    build:
-  #      context: .
-  #      shm_size: "2gb"
-      restart: unless-stopped
-      shm_size: 1gb
-      labels:
-        -  "traefik.enable=false"
-        - "traefik.backend=headlesschrome"
-        - "traefik.port=9222"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.entrypoints=http"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.priority=13"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
-        - "traefik.http.middlewares.headlesschrome-https-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.middlewares=sched-https-redirect"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.entrypoints=https"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.priority=12"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls=true"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls.certresolver=httpresolver"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.service=headlesschrome-${PROJECT}"
-        - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=9222"
-        - "traefik.docker.network=traefik_proxy"
-      ports:
-        - 9222:9222
-      environment:
-        - SERVICE_PORTS=9222
-        # method to get a bigger shm space, since shm_size does not work on a swarm
-      tmpfs:
-        - /tmp:size=512M
-      volumes:
-        - type: tmpfs
-          target: /dev/shm
-
-      # adding the "bridge" network does not work to give access to the 'gleaner and nabu' containers started
-      # by this process. There is no name resolution on that network.
-      networks:
-        - traefik_proxy
-        - headless
-        # in code, use names defined in network above
-
-    configs_volume:
-      # image: chromedp/headless-shell:stable
-      # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
-      image: busybox
-      #    build:
-  #      context: .
-  #      shm_size: "2gb"
-      restart: "no"
-      volumes:
-        - dagster-project:/configs
-      #command: ["/bin/busybox", "httpd", "-f", "-p", "8080"]
-      configs:
-            - source: gleaner
-              target: /configs/gleaner/gleanerconfig.yaml
-             # uid: "103"
-             # gid: "103"
-              mode: 0444
-            - source: nabu
-              target: /configs/nabu/nabuconfig.yaml
-             # uid: "103"
-             # gid: "103"
-              mode: 0444
-        # in code, use names defined in network above
-
+volumes:
+    dagster-postgres:
+        driver: local
