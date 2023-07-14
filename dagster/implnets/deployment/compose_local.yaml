@@ -10,8 +10,8 @@ services:
           context: ../build
           dockerfile: Dockerfile_local
         image: docker.io/fils/dagster_eco:0.0.44
-        #volumes:
-          #- ..:scheduler
+        volumes:
+          - ../generatedCode/implnet-eco/output/:/usr/src/app/output
         environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
