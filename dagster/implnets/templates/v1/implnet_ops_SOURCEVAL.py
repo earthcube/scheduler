@@ -175,7 +175,7 @@ def gleanerio(mode, source):
         ARCHIVE_PATH = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH')
        # CMD = f"gleaner --cfg/gleaner/gleanerconfig.yaml -source {source} --rude"
         CMD = ["--cfg", "/gleaner/gleanerconfig.yaml","-source", source, "--rude"]
-        NAME = "gleaner01_" + source
+        NAME = f"gleaner01_{source}_{str(mode)}"
         WorkingDir = "/gleaner/"
         #Entrypoint = ["/gleaner/gleaner", "--cfg", "/gleaner/gleanerconfig.yaml", "-source", source, "--rude"]
         # LOGFILE = 'log_gleaner.txt'  # only used for local log file writing
@@ -184,7 +184,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prune", "--prefix", "summoned/" + source]
-        NAME = f"nabu01_{source}_prune"
+        NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -193,7 +193,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prefix", "--prefix", "prov/" + source]
-        NAME = f"nabu01_{source}_prov"
+        NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -202,7 +202,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "prefix", "--prefix", "orgs"]
-        NAME = f"nabu01_{source}_orgs"
+        NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -211,7 +211,7 @@ def gleanerio(mode, source):
         ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
         ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
         CMD = ["--cfg", "/nabu/nabuconfig.yaml", "release", "--prefix", "summoned/" + source]
-        NAME = f"nabu01_{source}_release"
+        NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -436,7 +436,7 @@ def gleanerio(mode, source):
         log.info(f"{r.status} ")
         get_dagster_logger().info(f"Container Archive Retrieved: {str(r.status)}")
        # s3loader(r.read().decode('latin-1'), NAME)
-        s3loader(r.read(), f"{source}_runlogs")
+        s3loader(r.read(), f"{source}_{str(mode)}_runlogs")
     finally:
         if (not DEBUG) :
             if (cid):
