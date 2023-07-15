@@ -10,6 +10,7 @@ Postgres_Container-- defined by --> compose_project
 Dagit_UI_Container-- defined by --> compose_project
 Dagster_Container  -- defined by --> compose_project
 Headless_Container -- defined by --> compose_project
+configs_volume_Container -- defined by --> compose_project
 compose_project -- deployed to --> docker_portainer
 
 Gleaner_container -- image manual add --> docker_portainer
@@ -30,6 +31,9 @@ GleanerConfig.tfz -- Archive to --> Gleaner_container
 NabuConfig.tgz -- Stored in s3 --> s3
 GleanerConfig.tfz -- Stored in s3 --> s3
 
+configs_volume_Container -- populates volume --> dagster-project
+dagster-project -- has --> gleanerConfig.yaml
+dagster-project -- has --> nabuConfig.yaml
 ```
 
 ## Deploy
