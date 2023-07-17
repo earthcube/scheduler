@@ -19,6 +19,7 @@ do
    esac
 done
 
+
 if [ ! $envfile ]
   then
      envfile=".env"
@@ -28,6 +29,8 @@ fi
 if [ -f $envfile ]
   then
     echo "using " $envfile
+    export $(cat .env | xargs)
+
   else
     echo "missing environment file. pass flag, or copy and edit file"
     echo "cp envFile.env .env"
@@ -41,30 +44,31 @@ fi
 ## or an error will be thrown
 #echo "This message is OK **Error response from daemon: network with name traefik_proxy already exists.** "
 if  `docker network inspect ${GLEANER_HEADLESS_NETWORK} | grep -q "local"` ; then
-   echo ${GLEANER_HEADLESS_NETWORK} netowrk exists as local
+   echo ${GLEANER_HEADLESS_NETWORK} netowrk exists as swarm
 else
    echo Above Error \" No such network: \" is OK.
    echo creating network
-   if `docker network create -d bridge --attachable ${GLEANER_HEADLESS_NETWORK}`; then
-     echo 'Created LOCAL  bridge network  ${GLEANER_HEADLESS_NETWORK}'
-     echo '   ${GLEANER_HEADLESS_NETWORK} not compatible with a production instance '
+   if `docker network create -d overlay --attachable ${GLEANER_HEADLESS_NETWORK}`; then
+     echo 'Created network ${GLEANER_HEADLESS_NETWORK}'
    else
-    echo "ERROR: *** Failed to create network. "
+    echo "ERROR: *** Failed to create network. Non-local setup needs to be a swarm "
     exit 1
   fi
 fi
 
+
 #echo NOTE: Verify that the traefik_proxy network  SCOPE is swarm
 
-docker volume create ${GLEANER_CONFIG_VOLUME}
+docker volume create ${GLEANER_CONFIG_VOLUME:-dagster_gleaner_configs}
 
 
 echo run as detached: $detached
 
+
 # uses swarm :
 if [ "$detached" = true  ]
   then
-    docker compose -p base --env-file $envfile  -f compose_project_local.yaml  up  -d
+    docker compose -p dagster  --env-file $envfile  -f compose_local.yaml  up  -d
   else
-    docker compose -p base --env-file $envfile  -f compose_project_local.yaml  up
+    docker compose -p dagster --env-file $envfile  -f compose_local.yaml  up
 fi
