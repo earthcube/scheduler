@@ -72,6 +72,7 @@ fi
 
 docker volume create ${GLEANER_CONFIG_VOLUME:-dagster_gleaner_configs}
 
+echo DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.
 
 echo run as detached: $detached
 
@@ -83,3 +84,5 @@ if [ "$detached" = true  ]
   else
     docker compose -p dagster --env-file $envfile  -f compose_local.yaml  up
 fi
+
+echo DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.
