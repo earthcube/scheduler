@@ -18,9 +18,7 @@ do
       ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
    esac
 done
-RED='\033[0;31m'
-Yellow='\033[0;33m'
-NC='\033[0m'
+
 
 if [ ! $envfile ]
   then
@@ -31,10 +29,10 @@ fi
 if [ -f $envfile ]
   then
     echo "using " $envfile
-    export $(sed  '/^[ \t]*#/d' $envfile |  sed '/^$/d' | xargs)
+    export $(cat .env | xargs)
 
   else
-    echo -e "${RED} missing environment file. pass flag, or copy and edit file${NC}"
+    echo "missing environment file. pass flag, or copy and edit file"
     echo "cp envFile.env .env"
     echo "OR"
     echo "cp {yourenv}.env .env"
@@ -45,24 +43,24 @@ fi
 ## need to docker (network|volume) ls | grep (traefik_proxy|traefik_proxy) before these calll
 ## or an error will be thrown
 #echo "This message is OK **Error response from daemon: network with name traefik_proxy already exists.** "
-if [  "$(docker network ls  | grep ${GLEANERIO_DOCKER_HEADLESS_NETWORK})" ] ; then
-   echo ${GLEANERIO_DOCKER_HEADLESS_NETWORK} netowrk exists;
+if [  "$(docker network ls  | grep -${GLEANER_HEADLESS_NETWORK})" ] ; then
+   echo ${GLEANER_HEADLESS_NETWORK} netowrk exists;
 else
    echo creating network
-   if [ "$(docker info | grep Swarm | sed 's/Swarm: //g' | tr -d ' ')" == "inactive"  ]; then
+   if [ "$(docker info | grep Swarm | sed 's/Swarm: //g')" == "inactive" ]; then
         echo Not Swarm
-        if `docker network create -d bridge --attachable ${GLEANERIO_DOCKER_HEADLESS_NETWORK}`; then
-           echo 'Created network ${GLEANERIO_DOCKER_HEADLESS_NETWORK}'
+        if `docker network create -d bridge --attachable ${GLEANER_HEADLESS_NETWORK}`; then
+           echo 'Created network ${GLEANER_HEADLESS_NETWORK}'
         else
-           echo -e "${RED}ERROR: *** Failed to create local network. ${NC}"
+           echo "ERROR: *** Failed to create local network. "
             exit 1
         fi
    else
         echo Is Swarm
-        if `docker network create -d overlay --attachable ${GLEANERIO_DOCKER_HEADLESS_NETWORK}`; then
-          echo 'Created network ${GLEANERIO_DOCKER_HEADLESS_NETWORK}'
+        if `docker network create -d overlay --attachable ${GLEANER_HEADLESS_NETWORK}`; then
+          echo 'Created network ${GLEANER_HEADLESS_NETWORK}'
         else
-            echo -e "${RED}ERROR: *** Failed to create swarm network.   ${NC}"
+            echo "ERROR: *** Failed to create swarm network.  "
             exit 1
         fi
    fi
@@ -72,26 +70,19 @@ fi
 
 #echo NOTE: Verify that the traefik_proxy network  SCOPE is swarm
 
-RED='\033[0;31m'
-Yellow='\033[0;33m'
-NC='\033[0m'
-echo -e ${Yellow}DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.${NC}
+docker volume create ${GLEANER_CONFIG_VOLUME:-dagster_gleaner_configs}
+
+echo DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.
 
 echo run as detached: $detached
 
-if [ -f compose_local_${PROJECT}_override.yaml ]
-  then
-    override_file="-f compose_local_${PROJECT}_override.yaml"
-  else
-    override_file=""
-fi
+
 # uses swarm :
 if [ "$detached" = true  ]
   then
-    docker compose -p dagster  --env-file $envfile  -f compose_local.yaml  $override_file up  -d
+    docker compose -p dagster  --env-file $envfile  -f compose_local.yaml  up  -d
   else
-    docker compose -p dagster --env-file $envfile  -f compose_local.yaml  $override_file up
+    docker compose -p dagster --env-file $envfile  -f compose_local.yaml  up
 fi
-echo -e ${Yellow}DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.${NC}
-echo -e ${Yellow}If gleaner@project_grpc shows in UI as not working, most likely, REGNERATE THE CODE.${NC}
 
+echo DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.
