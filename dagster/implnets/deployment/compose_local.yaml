@@ -23,9 +23,7 @@ configs:
   nabu:
     name: ${GLEANER_NABU_DOCKER_CONFIG:-nabu}
     file: ../configs/${PROJECT:-eco}/nabuconfig.yaml
-# DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
-# USE:
-# ./docker_localstart.sh
+
 services:
     dagster-dagit:
         platform: linux/x86_64
@@ -36,8 +34,7 @@ services:
         image: dagster-${PROJECT:-eco}:latest4
         volumes: &vol
           - ../dagster.yaml:/usr/src/app/dagster.yaml
-          # copy the project to the project
-          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project
+          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/output
         environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
@@ -62,6 +59,22 @@ services:
             - GLEANER_CONFIG_VOLUME=${GLEANER_CONFIG_VOLUME}
             - GLEANERIO_NABU_CONFIG_PATH=${GLEANER_GLEANER_DOCKER_CONFIG:-/configs/gleaner/nabuconfig.yaml}
             - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANER_NABU_DOCKER_CONFIG:-/configs/gleaner/gleanerconfig.yaml}
+#            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
+#            - GLEANER_MINIO_SECRET=/run/secrets/MINIO_ROOT_SECRET_KEY
+            - GLEANER_BASE=${GLEANER_BASE}
+            - GLEANER_OBJECTS=${GLEANER_OBJECTS}
+            - GLEANER_MEILI=${GLEANER_MEILI}
+            - GLEANER_GRAPH=${GLEANER_GRAPH}
+            - GLEANER_GRAPH_CONF=${GLEANER_GRAPH_CONF}
+            - GLEANER_TRAEFIK=${GLEANER_TRAEFIK}
+            - GLEANER_DOMAIN=${GLEANER_DOMAIN}
+            - GLEANER_OSS_DOMAIN=${GLEANER_OSS_DOMAIN}
+            - GLEANER_GRAPH_DOMAIN=${GLEANER_GRAPH_DOMAIN}
+            - GLEANER_WEB_DOMAIN=${GLEANER_WEB_DOMAIN}
+            - GLEANER_WEB2_DOMAIN=${GLEANER_WEB2_DOMAIN}
+            - GLEANER_INDEX_DOMAIN=${GLEANER_INDEX_DOMAIN}
+            - GLEANER_ADMIN_DOMAIN=${GLEANER_ADMIN_DOMAIN}
+
         ports:
             - 3000:3000
         networks:
@@ -95,7 +108,7 @@ services:
           dockerfile: build/Dockerfile_local
         image: dagster-${PROJECT:-eco}:latest
         environment: *env
-        command: "dagster-daemon run -w ./project/workspace.yaml"
+        command: "dagster-daemon run -w ./output/workspace.yaml"
         volumes: *vol
         depends_on:
             - dagster-postgres

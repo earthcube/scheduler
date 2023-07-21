@@ -593,49 +593,49 @@ def gleanerio(context, mode, source):
     return 0
 
 @op
-def SOURCEVAL_gleaner(context):
-    returned_value = gleanerio(context, ("gleaner"), "SOURCEVAL")
+def unidata_gleaner(context):
+    returned_value = gleanerio(context, ("gleaner"), "unidata")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner notes are  {r} ")
     return r
 
 @op
-def SOURCEVAL_nabu_prune(context, msg: str):
-    returned_value = gleanerio(context,("nabu"), "SOURCEVAL")
+def unidata_nabu_prune(context, msg: str):
+    returned_value = gleanerio(context,("nabu"), "unidata")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_nabuprov(context, msg: str):
-    returned_value = gleanerio(context,("prov"), "SOURCEVAL")
+def unidata_nabuprov(context, msg: str):
+    returned_value = gleanerio(context,("prov"), "unidata")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_nabuorg(context, msg: str):
-    returned_value = gleanerio(context,("orgs"), "SOURCEVAL")
+def unidata_nabuorg(context, msg: str):
+    returned_value = gleanerio(context,("orgs"), "unidata")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_naburelease(context, msg: str):
-    returned_value = gleanerio(context,("release"), "SOURCEVAL")
+def unidata_naburelease(context, msg: str):
+    returned_value = gleanerio(context,("release"), "unidata")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 @op
-def SOURCEVAL_uploadrelease(context, msg: str):
-    returned_value = postRelease("SOURCEVAL")
+def unidata_uploadrelease(context, msg: str):
+    returned_value = postRelease("unidata")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 
 @op
-def SOURCEVAL_missingreport_s3(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def unidata_missingreport_s3(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="unidata")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "unidata"
     graphendpoint = None
     milled = False
     summon = True
@@ -645,12 +645,12 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
 @op
-def SOURCEVAL_missingreport_graph(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def unidata_missingreport_graph(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="unidata")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "unidata"
 
     graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -664,12 +664,12 @@ def SOURCEVAL_missingreport_graph(context, msg: str):
 
     return msg + r
 @op
-def SOURCEVAL_graph_reports(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def unidata_graph_reports(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="unidata")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "unidata"
 
     graphendpoint = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -684,13 +684,13 @@ def SOURCEVAL_graph_reports(context, msg: str):
     return msg + r
 
 #Can we simplify and use just a method. Then import these methods?
-# def missingreport_s3(context, msg: str, source="SOURCEVAL"):
+# def missingreport_s3(context, msg: str, source="unidata"):
 #
 #     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
 #     source_url = source.get('url')
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET
-#     source_name="SOURCEVAL"
+#     source_name="unidata"
 #
 #     graphendpoint = None
 #     milled = False
@@ -699,16 +699,16 @@ def SOURCEVAL_graph_reports(context, msg: str):
 #     r = str('returned value:{}'.format(returned_value))
 #     return msg + r
 @graph
-def harvest_SOURCEVAL():
-    harvest = SOURCEVAL_gleaner()
+def harvest_unidata():
+    harvest = unidata_gleaner()
 
-    report1 =SOURCEVAL_missingreport_s3(harvest)
-    #report1 = missingreport_s3(harvest, source="SOURCEVAL")
-    load1 = SOURCEVAL_nabu_prune(harvest)
-    load2 = SOURCEVAL_nabuprov(load1)
-    load3 = SOURCEVAL_nabuorg(load2)
-    load4 = SOURCEVAL_naburelease(load3)
-    load5 = SOURCEVAL_uploadrelease(load4)
-    report2=SOURCEVAL_missingreport_graph(load5)
-    report3=SOURCEVAL_graph_reports(report2)
+    report1 =unidata_missingreport_s3(harvest)
+    #report1 = missingreport_s3(harvest, source="unidata")
+    load1 = unidata_nabu_prune(harvest)
+    load2 = unidata_nabuprov(load1)
+    load3 = unidata_nabuorg(load2)
+    load4 = unidata_naburelease(load3)
+    load5 = unidata_uploadrelease(load4)
+    report2=unidata_missingreport_graph(load5)
+    report3=unidata_graph_reports(report2)
 

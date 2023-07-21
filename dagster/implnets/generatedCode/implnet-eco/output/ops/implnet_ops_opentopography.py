@@ -593,49 +593,49 @@ def gleanerio(context, mode, source):
     return 0
 
 @op
-def SOURCEVAL_gleaner(context):
-    returned_value = gleanerio(context, ("gleaner"), "SOURCEVAL")
+def opentopography_gleaner(context):
+    returned_value = gleanerio(context, ("gleaner"), "opentopography")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner notes are  {r} ")
     return r
 
 @op
-def SOURCEVAL_nabu_prune(context, msg: str):
-    returned_value = gleanerio(context,("nabu"), "SOURCEVAL")
+def opentopography_nabu_prune(context, msg: str):
+    returned_value = gleanerio(context,("nabu"), "opentopography")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_nabuprov(context, msg: str):
-    returned_value = gleanerio(context,("prov"), "SOURCEVAL")
+def opentopography_nabuprov(context, msg: str):
+    returned_value = gleanerio(context,("prov"), "opentopography")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_nabuorg(context, msg: str):
-    returned_value = gleanerio(context,("orgs"), "SOURCEVAL")
+def opentopography_nabuorg(context, msg: str):
+    returned_value = gleanerio(context,("orgs"), "opentopography")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_naburelease(context, msg: str):
-    returned_value = gleanerio(context,("release"), "SOURCEVAL")
+def opentopography_naburelease(context, msg: str):
+    returned_value = gleanerio(context,("release"), "opentopography")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 @op
-def SOURCEVAL_uploadrelease(context, msg: str):
-    returned_value = postRelease("SOURCEVAL")
+def opentopography_uploadrelease(context, msg: str):
+    returned_value = postRelease("opentopography")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 
 @op
-def SOURCEVAL_missingreport_s3(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def opentopography_missingreport_s3(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="opentopography")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "opentopography"
     graphendpoint = None
     milled = False
     summon = True
@@ -645,12 +645,12 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
 @op
-def SOURCEVAL_missingreport_graph(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def opentopography_missingreport_graph(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="opentopography")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "opentopography"
 
     graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -664,12 +664,12 @@ def SOURCEVAL_missingreport_graph(context, msg: str):
 
     return msg + r
 @op
-def SOURCEVAL_graph_reports(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def opentopography_graph_reports(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="opentopography")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "opentopography"
 
     graphendpoint = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -684,13 +684,13 @@ def SOURCEVAL_graph_reports(context, msg: str):
     return msg + r
 
 #Can we simplify and use just a method. Then import these methods?
-# def missingreport_s3(context, msg: str, source="SOURCEVAL"):
+# def missingreport_s3(context, msg: str, source="opentopography"):
 #
 #     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
 #     source_url = source.get('url')
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET
-#     source_name="SOURCEVAL"
+#     source_name="opentopography"
 #
 #     graphendpoint = None
 #     milled = False
@@ -699,16 +699,16 @@ def SOURCEVAL_graph_reports(context, msg: str):
 #     r = str('returned value:{}'.format(returned_value))
 #     return msg + r
 @graph
-def harvest_SOURCEVAL():
-    harvest = SOURCEVAL_gleaner()
+def harvest_opentopography():
+    harvest = opentopography_gleaner()
 
-    report1 =SOURCEVAL_missingreport_s3(harvest)
-    #report1 = missingreport_s3(harvest, source="SOURCEVAL")
-    load1 = SOURCEVAL_nabu_prune(harvest)
-    load2 = SOURCEVAL_nabuprov(load1)
-    load3 = SOURCEVAL_nabuorg(load2)
-    load4 = SOURCEVAL_naburelease(load3)
-    load5 = SOURCEVAL_uploadrelease(load4)
-    report2=SOURCEVAL_missingreport_graph(load5)
-    report3=SOURCEVAL_graph_reports(report2)
+    report1 =opentopography_missingreport_s3(harvest)
+    #report1 = missingreport_s3(harvest, source="opentopography")
+    load1 = opentopography_nabu_prune(harvest)
+    load2 = opentopography_nabuprov(load1)
+    load3 = opentopography_nabuorg(load2)
+    load4 = opentopography_naburelease(load3)
+    load5 = opentopography_uploadrelease(load4)
+    report2=opentopography_missingreport_graph(load5)
+    report3=opentopography_graph_reports(report2)
 

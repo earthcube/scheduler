@@ -593,49 +593,49 @@ def gleanerio(context, mode, source):
     return 0
 
 @op
-def SOURCEVAL_gleaner(context):
-    returned_value = gleanerio(context, ("gleaner"), "SOURCEVAL")
+def lipdverse_gleaner(context):
+    returned_value = gleanerio(context, ("gleaner"), "lipdverse")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner notes are  {r} ")
     return r
 
 @op
-def SOURCEVAL_nabu_prune(context, msg: str):
-    returned_value = gleanerio(context,("nabu"), "SOURCEVAL")
+def lipdverse_nabu_prune(context, msg: str):
+    returned_value = gleanerio(context,("nabu"), "lipdverse")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_nabuprov(context, msg: str):
-    returned_value = gleanerio(context,("prov"), "SOURCEVAL")
+def lipdverse_nabuprov(context, msg: str):
+    returned_value = gleanerio(context,("prov"), "lipdverse")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_nabuorg(context, msg: str):
-    returned_value = gleanerio(context,("orgs"), "SOURCEVAL")
+def lipdverse_nabuorg(context, msg: str):
+    returned_value = gleanerio(context,("orgs"), "lipdverse")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def SOURCEVAL_naburelease(context, msg: str):
-    returned_value = gleanerio(context,("release"), "SOURCEVAL")
+def lipdverse_naburelease(context, msg: str):
+    returned_value = gleanerio(context,("release"), "lipdverse")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 @op
-def SOURCEVAL_uploadrelease(context, msg: str):
-    returned_value = postRelease("SOURCEVAL")
+def lipdverse_uploadrelease(context, msg: str):
+    returned_value = postRelease("lipdverse")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 
 @op
-def SOURCEVAL_missingreport_s3(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def lipdverse_missingreport_s3(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="lipdverse")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "lipdverse"
     graphendpoint = None
     milled = False
     summon = True
@@ -645,12 +645,12 @@ def SOURCEVAL_missingreport_s3(context, msg: str):
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
 @op
-def SOURCEVAL_missingreport_graph(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def lipdverse_missingreport_graph(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="lipdverse")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "lipdverse"
 
     graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -664,12 +664,12 @@ def SOURCEVAL_missingreport_graph(context, msg: str):
 
     return msg + r
 @op
-def SOURCEVAL_graph_reports(context, msg: str):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+def lipdverse_graph_reports(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="lipdverse")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
+    source_name = "lipdverse"
 
     graphendpoint = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -684,13 +684,13 @@ def SOURCEVAL_graph_reports(context, msg: str):
     return msg + r
 
 #Can we simplify and use just a method. Then import these methods?
-# def missingreport_s3(context, msg: str, source="SOURCEVAL"):
+# def missingreport_s3(context, msg: str, source="lipdverse"):
 #
 #     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
 #     source_url = source.get('url')
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET
-#     source_name="SOURCEVAL"
+#     source_name="lipdverse"
 #
 #     graphendpoint = None
 #     milled = False
@@ -699,16 +699,16 @@ def SOURCEVAL_graph_reports(context, msg: str):
 #     r = str('returned value:{}'.format(returned_value))
 #     return msg + r
 @graph
-def harvest_SOURCEVAL():
-    harvest = SOURCEVAL_gleaner()
+def harvest_lipdverse():
+    harvest = lipdverse_gleaner()
 
-    report1 =SOURCEVAL_missingreport_s3(harvest)
-    #report1 = missingreport_s3(harvest, source="SOURCEVAL")
-    load1 = SOURCEVAL_nabu_prune(harvest)
-    load2 = SOURCEVAL_nabuprov(load1)
-    load3 = SOURCEVAL_nabuorg(load2)
-    load4 = SOURCEVAL_naburelease(load3)
-    load5 = SOURCEVAL_uploadrelease(load4)
-    report2=SOURCEVAL_missingreport_graph(load5)
-    report3=SOURCEVAL_graph_reports(report2)
+    report1 =lipdverse_missingreport_s3(harvest)
+    #report1 = missingreport_s3(harvest, source="lipdverse")
+    load1 = lipdverse_nabu_prune(harvest)
+    load2 = lipdverse_nabuprov(load1)
+    load3 = lipdverse_nabuorg(load2)
+    load4 = lipdverse_naburelease(load3)
+    load5 = lipdverse_uploadrelease(load4)
+    report2=lipdverse_missingreport_graph(load5)
+    report3=lipdverse_graph_reports(report2)
 
