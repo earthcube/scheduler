@@ -225,16 +225,7 @@ def _create_container(
         environment=env_vars,
         **container_context.container_kwargs,
     )
-    # return client.create_container(
-    #     image,
-    #     name=_get_container_name(op_context.run_id, op_context.op.name, op_context.retry_number),
-    #     detach=True,
-    #     network=container_context.networks[0] if len(container_context.networks) else None,
-    #     entrypoint=entrypoint,
-    #     command=command,
-    #     environment=env_vars,
-    #     **container_context.container_kwargs,
-    # )
+
 def gleanerio(context, mode, source):
     ## ------------   Create
 
@@ -382,7 +373,6 @@ def gleanerio(context, mode, source):
                                                           },
 
 
- #                 "headers": {'X-API-Key': APIKEY},
             },
         )
         container_context = run_container_context.merge(op_container_context)
@@ -407,73 +397,13 @@ def gleanerio(context, mode, source):
 
         cid = container.id # legacy til the start get's fixed
 
-        # url = URL + 'containers/create'
-        # params = {
-        #     "name": NAME
-        #
-        # }
-        #
-        # query_string = urllib.parse.urlencode(params)
-        # url = url + "?" + query_string
-        #
-        # get_dagster_logger().info(f"URL: {str(url)}")
-        # get_dagster_logger().info(f"container config: {str(json.dumps(data))}")
-        # req = request.Request(url, str.encode(json.dumps(data) ))
-        # req.add_header('X-API-Key', APIKEY)
-        # req.add_header('content-type', 'application/json')
-        # req.add_header('accept', 'application/json')
-        # try:
-        #     r = request.urlopen(req)
-        #     c = r.read()
-        #     d = json.loads(c)
-        #     cid = d['Id']
-        #     print(r.status)
-        #     get_dagster_logger().info(f"Create: {str(r.status)}")
-        # except HTTPError or requests.HTTPError as err:
-        #     if (err.code == 409):
-        #         print("failed to create container: container exists; use docker container ls -a : ", err)
-        #         get_dagster_logger().info(f"Create Failed: exsting container:  container exists; use docker container ls -a : {str(err)}")
-        #     elif (err.code == 404):
-        #         print("failed to create container: missing GLEANER_CONTAINER_IMAGE: load into portainer/docker : ", err)
-        #         get_dagster_logger().info(f"Create Failed: bad GLEANER_CONTAINER_IMAGE: load into portainer/docker : reason {str(err)}")
-        #     else:
-        #         print("failed to create container:  unknown reason: ", err)
-        #         get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
-        #     raise err
-        # except Exception as err:
-        #     print("failed to create container:  unknown reason: ", err)
-        #     get_dagster_logger().info(f"Create Failed: unknown reason {str(err)}")
-        #     raise err
-        # print(f"containerid:{cid}")
+
 
         ## ------------  Archive to load, which is how to send in the config (from where?)
 
-        # url = URL + 'containers/' + cid + '/archive'
-        # params = {
-        #     'path': ARCHIVE_PATH
-        # }
-        # query_string = urllib.parse.urlencode(params)
-        # url = url + "?" + query_string
-        #
-        # get_dagster_logger().info(f"Container archive url: {url}")
-        #
-        # # DATA = read_file_bytestream(ARCHIVE_FILE)
-        # DATA = s3reader(ARCHIVE_FILE)
-        #
-        # req = request.Request(url, data=DATA, method="PUT")
-        # req.add_header('X-API-Key', APIKEY)
-        # req.add_header('content-type', 'application/x-compressed')
-        # req.add_header('accept', 'application/json')
-        # r = request.urlopen(req)
-        #
-        # print(r.status)
-        # get_dagster_logger().info(f"Container Archive added: {str(r.status)}")
+
         DATA = s3reader(ARCHIVE_FILE)
         container.put_archive(ARCHIVE_PATH,DATA )
-        # c = r.read()
-        # print(c)
-        # d = json.loads(c)
-        # print(d)
 
 
         ## ------------  Start
@@ -501,46 +431,20 @@ def gleanerio(context, mode, source):
         # container.start()
         # client.api.start(container=container.id)
         ## start is not working
+
         for line in container.logs(stdout=True, stderr=True, stream=True, follow=True):
             get_dagster_logger().debug(line)  # noqa: T201
 
-        exit_status = container.wait()["StatusCode"]
-        get_dagster_logger().info(f"exit:  {exit_status}")
-
-
-        #
         # ## ------------  Wait expect 200
-        #
-        # url = URL + 'containers/' + cid + '/wait'
-        # req = request.Request(url, data=EMPTY_DATA, method="POST")
-        # req.add_header('X-API-Key', APIKEY)
-        # req.add_header('content-type', 'application/json')
-        # req.add_header('accept', 'application/json')
-        # r = request.urlopen(req)
-        # print(r.status)
-        # get_dagster_logger().info(f"Container Wait: {str(r.status)}")
+        exit_status = container.wait()["StatusCode"]
+        get_dagster_logger().info(f"Container Wait Exit status:  {exit_status}")
+
+
+
 
         ## ------------  Copy logs  expect 200
 
-        # url = URL + 'containers/' + cid + '/logs'
-        # params = {
-        #     'stdout': 'true',
-        #     'stderr': 'false'
-        # }
-        # query_string = urllib.parse.urlencode(params)
-        #
-        # url = url + "?" + query_string
-        # req = request.Request(url, method="GET")
-        # req.add_header('X-API-Key', APIKEY)
-        # req.add_header('accept', 'application/json')
-        # r = request.urlopen(req)
-        # print(r.status)
-        # c = r.read().decode('latin-1')
 
-        # write to file
-        # f = open(LOGFILE, 'w')
-        # f.write(str(c))
-        # f.close()
         c = container.logs(stdout=True, stderr=True, stream=False, follow=True).decode('latin-1')
 
         # write to s3
@@ -552,27 +456,39 @@ def gleanerio(context, mode, source):
         get_dagster_logger().info(f"container Logs to s3: {str(r.status)}")
 
 ## get log files
+        url = URL + 'containers/' + cid + '/archive'
+        params = {
+            'path': f"{WorkingDir}/logs"
+        }
+        query_string = urllib.parse.urlencode(params)
+        url = url + "?" + query_string
 
-        ## ------------  Remove   expect 204
-        # url = URL + 'containers/' + cid + '/archive'
-        # params = {
-        #     'path': f"{WorkingDir}/logs"
-        # }
-        # query_string = urllib.parse.urlencode(params)
-        # url = url + "?" + query_string
-        #
-        # # print(url)
-        # req = request.Request(url,  method="GET")
-        # req.add_header('X-API-Key', APIKEY)
-        # req.add_header('content-type', 'application/x-compressed')
-        # req.add_header('accept', 'application/json')
-        # r = request.urlopen(req)
+        # print(url)
+        req = request.Request(url, method="GET")
+        req.add_header('X-API-Key', APIKEY)
+        req.add_header('content-type', 'application/x-compressed')
+        req.add_header('accept', 'application/json')
+        r = request.urlopen(req)
 
         log.info(f"{r.status} ")
         get_dagster_logger().info(f"Container Archive Retrieved: {str(r.status)}")
-        r, stat =  container.get_archive(f"{WorkingDir}/logs")
-       # s3loader(r.read().decode('latin-1'), NAME)
-        s3loader(str(r).encode(), f"{source}_runlogs")
+        # s3loader(r.read().decode('latin-1'), NAME)
+        s3loader(r.read(), f"{source}_{mode}_runlogs")
+    # Future, need to extraxct files, and upload
+    # pw_tar = tarfile.TarFile(fileobj=StringIO(d.decode('utf-8')))
+    #    pw_tar.extractall("extract_to/")
+
+    # looks like get_archive also has issues. Returns nothing,
+       #  strm, stat =  container.get_archive(f"{WorkingDir}/logs/")
+       #  get_dagster_logger().info(f"container Logs to s3: {str(stat)}")
+       #
+       #  i =0
+       #  for d in strm:
+       #      r = d.decode('utf-8')
+       # # s3loader(r.read().decode('latin-1'), NAME)
+       #      s3loader(r.encode(), f"{source}_{i}_runlogs")
+       #      i+=1
+
     finally:
         if (not DEBUG) :
             if (cid):
