@@ -34,7 +34,7 @@ from dagster_docker.container_context import DockerContainerContext
 from dagster_docker.docker_run_launcher import DockerRunLauncher
 from dagster_docker.utils import DOCKER_CONFIG_SCHEMA, validate_docker_image
 
-DEBUG=os.environ.get('DEBUG')
+DEBUG=(os.getenv('DEBUG', 'False').lower()  == 'true')
 # volume and netowrk need to be the names in docker, and not the names of the object in docker compose
 GLEANER_CONFIG_VOLUME=os.environ.get('GLEANER_CONFIG_VOLUME', "dagster_gleaner_configs")
 # Vars and Envs
