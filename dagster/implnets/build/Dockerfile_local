@@ -3,7 +3,8 @@ FROM python:3.10-slim
 # for local, code is compiled. to generatedCode/implnet-PROJECT
 
 ARG implnet=eco
-RUN mkdir -p /usr/src/app/output
+RUN mkdir -p /usr/src/app/project
+RUN mkdir -p /usr/src/app/gleanerio
 
 COPY ./requirements.txt .
 

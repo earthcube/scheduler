@@ -36,7 +36,8 @@ services:
         image: dagster-${PROJECT:-eco}:latest4
         volumes: &vol
           - ../dagster.yaml:/usr/src/app/dagster.yaml
-          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/output
+          # copy the project to the project
+          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project
         environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
@@ -94,7 +95,7 @@ services:
           dockerfile: build/Dockerfile_local
         image: dagster-${PROJECT:-eco}:latest
         environment: *env
-        command: "dagster-daemon run -w ./output/workspace.yaml"
+        command: "dagster-daemon run -w ./project/workspace.yaml"
         volumes: *vol
         depends_on:
             - dagster-postgres
