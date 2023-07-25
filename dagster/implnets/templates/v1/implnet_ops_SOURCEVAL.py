@@ -625,11 +625,14 @@ def harvest_SOURCEVAL():
 
     report1 =SOURCEVAL_missingreport_s3(harvest)
     #report1 = missingreport_s3(harvest, source="SOURCEVAL")
-    load1 = SOURCEVAL_nabu_prune(harvest)
-    load2 = SOURCEVAL_nabuprov(load1)
-    load3 = SOURCEVAL_nabuorg(load2)
-    load4 = SOURCEVAL_naburelease(load3)
-    load5 = SOURCEVAL_uploadrelease(load4)
+    load1 = SOURCEVAL_naburelease(harvest)
+    load2 = SOURCEVAL_uploadrelease(load1)
+
+    load3 = SOURCEVAL_nabu_prune(load2)
+    load4 = SOURCEVAL_nabuprov(load3)
+    load5 = SOURCEVAL_nabuorg(load4)
+
+# run after load
     report2=SOURCEVAL_missingreport_graph(load5)
     report3=SOURCEVAL_graph_reports(report2)
 

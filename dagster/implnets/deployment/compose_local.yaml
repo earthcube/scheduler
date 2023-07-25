@@ -64,8 +64,8 @@ services:
             - GLEANER_GRAPH_URL=${GLEANER_GRAPH_URL}
             - GLEANER_GRAPH_NAMESPACE=${GLEANER_GRAPH_NAMESPACE}
             - GLEANER_CONFIG_VOLUME=${GLEANER_CONFIG_VOLUME}
-            - GLEANERIO_NABU_CONFIG_PATH=${GLEANER_GLEANER_DOCKER_CONFIG:-/configs/gleaner/nabuconfig.yaml}
-            - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANER_NABU_DOCKER_CONFIG:-/configs/gleaner/gleanerconfig.yaml}
+            - GLEANERIO_NABU_CONFIG_PATH=${GLEANERIO_NABU_CONFIG_PATH:-/configs/gleaner/nabuconfig.yaml}
+            - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
 
         ports:
             - 3000:3000
