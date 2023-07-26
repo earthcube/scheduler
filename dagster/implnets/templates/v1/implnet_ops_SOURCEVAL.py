@@ -1,26 +1,21 @@
 import distutils
 
-from dagster import op, graph, get_dagster_logger
-import subprocess
+from dagster import job, op, graph, get_dagster_logger
 import os, json, io
 import urllib
 from urllib import request
 from urllib.error import HTTPError
 from dagster import job, op, get_dagster_logger
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
+
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
-from ec.reporting.report import missingReport, generateGraphReportsRepo, reportTypes
+from ec.reporting.report import missingReport, generateGraphReportsRepo, reportTypes, generateIdentifierRepo
 from ec.datastore import s3
-from ec.graph.manageGraph import ManageBlazegraph as mg
-
 import requests
 import logging as log
-
 from urllib.error import HTTPError
-from ec.reporting.report import missingReport
-from ec.datastore import s3
 
 from typing import Any, Mapping, Optional, Sequence
 
@@ -604,6 +599,20 @@ def SOURCEVAL_graph_reports(context, msg: str):
 
     return msg + r
 
+@op
+def SOURCEVAL_identifier_stats(context, msg: str):
+    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    bucket = GLEANER_MINIO_BUCKET
+    source_name = "SOURCEVAL"
+
+    returned_value = generateIdentifierRepo(source_name, s3Minio)
+    #r = str('identifier stats returned value:{}'.format(returned_value))
+    report = returned_value.to_csv(index=False)
+    s3Minio.putReportFile(bucket, source_name, "identifier_stats.csv", report)
+    return msg
+
+
 #Can we simplify and use just a method. Then import these methods?
 # def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 #
@@ -623,7 +632,9 @@ def SOURCEVAL_graph_reports(context, msg: str):
 def harvest_SOURCEVAL():
     harvest = SOURCEVAL_gleaner()
 
+
     report1 =SOURCEVAL_missingreport_s3(harvest)
+    report4 = SOURCEVAL_identifier_stats(report1)
     #report1 = missingreport_s3(harvest, source="SOURCEVAL")
     load1 = SOURCEVAL_naburelease(harvest)
     load2 = SOURCEVAL_uploadrelease(load1)
@@ -635,4 +646,7 @@ def harvest_SOURCEVAL():
 # run after load
     report2=SOURCEVAL_missingreport_graph(load5)
     report3=SOURCEVAL_graph_reports(report2)
+
+    
+
 
