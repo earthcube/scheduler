@@ -56,15 +56,11 @@ You will need to deploy dagster contiainers to portainer, for a docker swarm
 
 this runs a local compose
 
-2) cd dagster/implnets/deployment
-1) copy envFile.env to .env and edit variables
-6) pull images for nabu and gleaner
-   ```GLEANERIO_GLEANER_IMAGE=nsfearthcube/gleaner:latest``` and 
-   ```GLEANERIO_NABU_IMAGE=nsfearthcube/nabu:latest```
-6) as noted in (Compose, Environment and Docker API Assets), deploy the configuration to s3.
-7) run `dagster_localrun.sh`
-8) if the local docker build should mount a volume for the generatedCode/implnet-${PROJECT}, you should be able to do 
-local development (TBD)
+1) cd dagster/implnets 
+2) ```make eco-clean```and ```make eco-generate```
+3) cd dagster/implnets/deployment 
+4) run dagster_setup_docker.sh 
+5) run dagster_localrun.sh
 
 ## Implementation network builder
 
