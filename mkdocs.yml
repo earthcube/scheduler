@@ -39,4 +39,5 @@ nav:
     - Dagster: README.md
     - Quick: quick.md
     - Add Containers:  add_containers.md
+    - Scheduler Deployment: eco_deploy.md
 
