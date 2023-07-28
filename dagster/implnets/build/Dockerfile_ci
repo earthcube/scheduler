@@ -5,7 +5,8 @@ FROM python:3.11-slim
 # docker buildandpush pulls the repo, so we need to put the code at a different location
 # this fails becaus the dagster/implnets files are not in the docker
 ARG implnet=eco
-RUN mkdir -p /usr/src/app/
+RUN mkdir -p /usr/src/app/project
+RUN mkdir -p /usr/src/app/workflows
 
 RUN pip install --upgrade pip
 ## this is a base for the project. Build this 'layer' first
@@ -22,14 +23,14 @@ WORKDIR scheduler
 
 
 RUN pip install -r requirements.txt
-RUN python pygen.py -cf ./gleanerconfig.yaml -od /usr/src/app/  -td ./templates/v1   -d 7
+RUN python pygen.py -cf ./gleanerconfig.yaml -od /usr/src/app/project  -td ./templates/v1   -d 7
 
 
-
+COPY ./workflows/ /usr/src/app/workflows
 
 # Change working directory
 WORKDIR /usr/src/app
 ENV DAGSTER_HOME=/usr/src/app
 
 
-CMD ["dagit", "-w", "workspace.yaml", "-h", "0.0.0.0", "-p", "3000"]
+CMD ["dagit", "-w", "./project/workspace.yaml", "-h", "0.0.0.0", "-p", "3000"]

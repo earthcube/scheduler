@@ -86,7 +86,7 @@ def s3reader(object):
     get_dagster_logger().info(f"S3 PORT   : {str(os.environ.get('GLEANER_MINIO_PORT'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_KEY'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_SECRET'))}")
-    get_dagster_logger().info(f"S3 BUCKET : {str(os.environ.get('GLEANER_MINIO_BUCKET'))}")
+    get_dagster_logger().info(f"S3 BUCKET : {str(GLEANER_MINIO_BUCKET)}")
     get_dagster_logger().info(f"S3 object : {str(object)}")
 
     client = Minio(
@@ -97,7 +97,7 @@ def s3reader(object):
         secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
     )
     try:
-        data = client.get_object(os.environ.get('GLEANER_MINIO_BUCKET'), object)
+        data = client.get_object(GLEANER_MINIO_BUCKET, object)
         return data
     except S3Error as err:
         get_dagster_logger().info(f"S3 read error : {str(err)}")
@@ -139,7 +139,7 @@ def s3loader(data, name):
     #length = f.write(bytes(json_str, 'utf-8'))
     length = f.write(data)
     f.seek(0)
-    client.put_object(os.environ.get('GLEANER_MINIO_BUCKET'),
+    client.put_object(GLEANER_MINIO_BUCKET,
                       objPrefix,
                       f, #io.BytesIO(data),
                       length, #len(data),
@@ -155,7 +155,7 @@ def postRelease(source):
         proto = "https"
     port = os.environ.get('GLEANER_MINIO_PORT')
     address = os.environ.get('GLEANER_MINIO_ADDRESS')
-    bucket = os.environ.get('GLEANER_MINIO_BUCKET')
+    bucket = GLEANER_MINIO_BUCKET
     path = "graphs/latest"
     release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
     url = f"{_graphEndpoint()}?uri={release_url}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
@@ -437,7 +437,7 @@ def gleanerio(context, mode, source):
         # ## ------------  Wait expect 200
         exit_status = container.wait()["StatusCode"]
         get_dagster_logger().info(f"Container Wait Exit status:  {exit_status}")
-
+        # WE PULL THE LOGS, then will throw an error
 
 
 
@@ -490,6 +490,10 @@ def gleanerio(context, mode, source):
 
        # s3loader(r.read().decode('latin-1'), NAME)
         s3loader(r.read(), f"{source}_{str(mode)}_runlogs")
+
+        #
+        if exit_status != 0:
+            raise Exception(f"Gleaner/Nabu container returned exit code {exit_status}")
     finally:
         if (not DEBUG) :
             if (cid):
@@ -510,44 +514,44 @@ def gleanerio(context, mode, source):
     return 0
 
 @op
-def unavco_gleaner(context):
+def unavco_gleaner(context)-> str:
     returned_value = gleanerio(context, ("gleaner"), "unavco")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner notes are  {r} ")
     return r
 
 @op
-def unavco_nabu_prune(context, msg: str):
+def unavco_nabu_prune(context, msg: str)-> str:
     returned_value = gleanerio(context,("nabu"), "unavco")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def unavco_nabuprov(context, msg: str):
+def unavco_nabuprov(context, msg: str)-> str:
     returned_value = gleanerio(context,("prov"), "unavco")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def unavco_nabuorg(context, msg: str):
+def unavco_nabuorg(context, msg: str)-> str:
     returned_value = gleanerio(context,("orgs"), "unavco")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 @op
-def unavco_naburelease(context, msg: str):
+def unavco_naburelease(context, msg: str) -> str:
     returned_value = gleanerio(context,("release"), "unavco")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 @op
-def unavco_uploadrelease(context, msg: str):
+def unavco_uploadrelease(context, msg: str) -> str:
     returned_value = postRelease("unavco")
     r = str('returned value:{}'.format(returned_value))
     return msg + r
 
 
 @op
-def unavco_missingreport_s3(context, msg: str):
+def unavco_missingreport_s3(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="unavco")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -562,7 +566,7 @@ def unavco_missingreport_s3(context, msg: str):
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     return msg + r
 @op
-def unavco_missingreport_graph(context, msg: str):
+def unavco_missingreport_graph(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="unavco")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -581,7 +585,7 @@ def unavco_missingreport_graph(context, msg: str):
 
     return msg + r
 @op
-def unavco_graph_reports(context, msg: str):
+def unavco_graph_reports(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="unavco")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -601,7 +605,7 @@ def unavco_graph_reports(context, msg: str):
     return msg + r
 
 @op
-def unavco_identifier_stats(context, msg: str):
+def unavco_identifier_stats(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="unavco")
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -614,7 +618,8 @@ def unavco_identifier_stats(context, msg: str):
     s3Minio.putReportFile(bucket, source_name, "identifier_stats.json", report)
     return msg + r
 
-def unavco_bucket_urls(context, msg: str):
+@op()
+def unavco_bucket_urls(context, msg: str) -> str:
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "unavco"
@@ -648,7 +653,7 @@ def harvest_unavco():
     report_ms3 = unavco_missingreport_s3(harvest)
     report_idstat = unavco_identifier_stats(report_ms3)
     # for some reason, this causes a msg parameter missing
-   # report_bucketurl = unavco_bucket_urls(report_idstat)
+    report_bucketurl = unavco_bucket_urls(report_idstat)
 
     #report1 = missingreport_s3(harvest, source="unavco")
     load_release = unavco_naburelease(harvest)

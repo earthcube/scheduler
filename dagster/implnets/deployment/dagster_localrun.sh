@@ -76,13 +76,18 @@ echo DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.
 
 echo run as detached: $detached
 
-
+if [ -f compose_${PROJECT}_override.yaml ]
+  then
+    override_file="-f compose_${PROJECT}_override.yaml"
+  else
+    override_file=""
+fi
 # uses swarm :
 if [ "$detached" = true  ]
   then
-    docker compose -p dagster  --env-file $envfile  -f compose_local.yaml  up  -d
+    docker compose -p dagster  --env-file $envfile  -f compose_local.yaml  $override_file up  -d
   else
-    docker compose -p dagster --env-file $envfile  -f compose_local.yaml  up
+    docker compose -p dagster --env-file $envfile  -f compose_local.yaml  $override_file up
 fi
 
 echo DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.

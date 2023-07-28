@@ -1,0 +1,55 @@
+version: "3.9"
+
+# networks: production uses traefik_proxy, buth
+#  this is local testing
+
+
+# DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
+# USE:
+# ./docker_localstart.sh
+services:
+    dagster-dagit:
+        volumes: &vol
+          - ../dagster.yaml:/usr/src/app/dagster.yaml
+          - ../workspace_${PROJECT:-basic}.yaml:/usr/src/app/workspace.yaml
+          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project
+          - ../workflows/:/usr/src/app/workflows
+        environment: &env
+            - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+            - PORTAINER_URL=${PORTAINER_URL}
+            - PORTAINER_KEY=${PORTAINER_KEY}
+            - GLEANERIO_GLEANER_IMAGE=${GLEANERIO_GLEANER_IMAGE}
+            - GLEANERIO_GLEANER_ARCHIVE_OBJECT=${GLEANERIO_GLEANER_ARCHIVE_OBJECT}
+            - GLEANERIO_GLEANER_ARCHIVE_PATH=${GLEANERIO_GLEANER_ARCHIVE_PATH}
+            - GLEANERIO_NABU_IMAGE=${GLEANERIO_NABU_IMAGE}
+            - GLEANERIO_NABU_ARCHIVE_OBJECT=${GLEANERIO_NABU_ARCHIVE_OBJECT}
+            - GLEANERIO_NABU_ARCHIVE_PATH=${GLEANERIO_NABU_ARCHIVE_PATH}
+            - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
+            - GLEANER_MINIO_ADDRESS=${GLEANER_MINIO_ADDRESS}
+            - GLEANER_MINIO_PORT=${GLEANER_MINIO_PORT}
+            - GLEANER_MINIO_USE_SSL=${GLEANER_MINIO_USE_SSL}
+            - GLEANER_MINIO_BUCKET=${GLEANER_MINIO_BUCKET}
+            - GLEANER_MINIO_ACCESS_KEY=${GLEANER_MINIO_ACCESS_KEY}
+            - GLEANER_MINIO_SECRET_KEY=${GLEANER_MINIO_SECRET_KEY}
+            - GLEANER_HEADLESS_ENDPOINT=${GLEANER_HEADLESS_ENDPOINT}
+            - GLEANER_HEADLESS_NETWORK=${GLEANER_HEADLESS_NETWORK}
+            - GLEANER_GRAPH_URL=${GLEANER_GRAPH_URL}
+            - GLEANER_GRAPH_NAMESPACE=${GLEANER_GRAPH_NAMESPACE}
+            - GLEANER_CONFIG_VOLUME=${GLEANER_CONFIG_VOLUME}
+            - GLEANERIO_NABU_CONFIG_PATH=${GLEANERIO_NABU_CONFIG_PATH:-/configs/gleaner/nabuconfig.yaml}
+            - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
+            - ECRR_MINIO_BUCKET="ECRR"
+            - ECRR_GRAPH_NAMESPACE="ECRR"
+
+
+    dagster-daemon:
+
+        image: dagster-gleanerio-local:latest
+        environment: *env
+        command: "dagster-daemon run -w ./workflows/ecrr/workspace.yaml -w ./project/workspace.yaml "
+        volumes: *vol
+        depends_on:
+            - dagster-postgres
+        networks:
+            - traefik_proxy
+
