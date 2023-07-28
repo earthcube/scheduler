@@ -1,10 +1,11 @@
 import distutils
 
-from dagster import job, op, graph,In, Nothing, get_dagster_logger
+from dagster import job, op, graph, get_dagster_logger
 import os, json, io
 import urllib
 from urllib import request
 from urllib.error import HTTPError
+from dagster import job, op, get_dagster_logger
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 import json
 
@@ -51,8 +52,7 @@ GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
 GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
 GLEANERIO_GLEANER_CONFIG_PATH= os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml")
 GLEANERIO_NABU_CONFIG_PATH= os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml")
-GLEANERIO_GLEANER_IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest')
-GLEANERIO_NABU_IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE', 'nsfearthcube/nabu:latest')
+
 def _graphEndpoint():
     url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
     return url
@@ -86,7 +86,7 @@ def s3reader(object):
     get_dagster_logger().info(f"S3 PORT   : {str(os.environ.get('GLEANER_MINIO_PORT'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_KEY'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_SECRET'))}")
-    get_dagster_logger().info(f"S3 BUCKET : {str(os.environ.get('GLEANER_MINIO_BUCKET'))}")
+    get_dagster_logger().info(f"S3 BUCKET : {str(GLEANER_MINIO_BUCKET)}")
     get_dagster_logger().info(f"S3 object : {str(object)}")
 
     client = Minio(
@@ -97,7 +97,7 @@ def s3reader(object):
         secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
     )
     try:
-        data = client.get_object(os.environ.get('GLEANER_MINIO_BUCKET'), object)
+        data = client.get_object(GLEANER_MINIO_BUCKET, object)
         return data
     except S3Error as err:
         get_dagster_logger().info(f"S3 read error : {str(err)}")
@@ -139,7 +139,7 @@ def s3loader(data, name):
     #length = f.write(bytes(json_str, 'utf-8'))
     length = f.write(data)
     f.seek(0)
-    client.put_object(os.environ.get('GLEANER_MINIO_BUCKET'),
+    client.put_object(GLEANER_MINIO_BUCKET,
                       objPrefix,
                       f, #io.BytesIO(data),
                       length, #len(data),
@@ -155,7 +155,7 @@ def postRelease(source):
         proto = "https"
     port = os.environ.get('GLEANER_MINIO_PORT')
     address = os.environ.get('GLEANER_MINIO_ADDRESS')
-    bucket = os.environ.get('GLEANER_MINIO_BUCKET')
+    bucket = GLEANER_MINIO_BUCKET
     path = "graphs/latest"
     release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
     url = f"{_graphEndpoint()}?uri={release_url}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
@@ -227,7 +227,7 @@ def _create_container(
 
 def gleanerio(context, mode, source):
     ## ------------   Create
-    returnCode = 0
+
     get_dagster_logger().info(f"Gleanerio mode: {str(mode)}")
 
     if str(mode) == "gleaner":
@@ -277,9 +277,7 @@ def gleanerio(context, mode, source):
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     else:
-
-        returnCode = 1
-        return returnCode
+        return 1
 
     # from docker0dagster
     run_container_context = DockerContainerContext.create_for_run(
@@ -433,32 +431,20 @@ def gleanerio(context, mode, source):
         # client.api.start(container=container.id)
         ## start is not working
 
-        # do not let a possible issue with container logs  stop log upload.
-        ## I thinkthis happens when a container exits immediately.
-        try:
-            for line in container.logs(stdout=True, stderr=True, stream=True, follow=True):
-                get_dagster_logger().debug(line)  # noqa: T201
-        except docker.errors.APIError as ex:
-            get_dagster_logger().info(f"watch container logs failed Docker API ISSUE: ", ex)
-        except Exception as ex:
-            get_dagster_logger().info(f"watch container logs failed other issue: ", ex)
-
+        for line in container.logs(stdout=True, stderr=True, stream=True, follow=True):
+            get_dagster_logger().debug(line)  # noqa: T201
 
         # ## ------------  Wait expect 200
-        # we want to get the logs, no matter what, so do not exit, yet.
-        ## or should logs be moved into finally?
-        ### in which case they need to be methods that don't send back errors.
         exit_status = container.wait()["StatusCode"]
         get_dagster_logger().info(f"Container Wait Exit status:  {exit_status}")
-        returnCode = exit_status
-
+        # WE PULL THE LOGS, then will throw an error
 
 
 
         ## ------------  Copy logs  expect 200
 
 
-        c = container.logs(stdout=True, stderr=True, stream=False, follow=False).decode('latin-1')
+        c = container.logs(stdout=True, stderr=True, stream=False, follow=True).decode('latin-1')
 
         # write to s3
 
@@ -503,89 +489,69 @@ def gleanerio(context, mode, source):
        #      i+=1
 
        # s3loader(r.read().decode('latin-1'), NAME)
+        s3loader(r.read(), f"{source}_{str(mode)}_runlogs")
 
+        #
+        if exit_status != 0:
+            raise Exception(f"Gleaner/Nabu container returned exit code {exit_status}")
     finally:
         if (not DEBUG) :
-            # if (cid):
-            #     url = URL + 'containers/' + cid
-            #     req = request.Request(url, method="DELETE")
-            #     req.add_header('X-API-Key', APIKEY)
-            #     # req.add_header('content-type', 'application/json')
-            #     req.add_header('accept', 'application/json')
-            #     r = request.urlopen(req)
-            #     print(r.status)
-            #     get_dagster_logger().info(f"Container Remove: {str(r.status)}")
-            # else:
-            #     get_dagster_logger().info(f"Container Not created, so not removed.")
-            if (container):
-                container.remove(force=True)
+            if (cid):
+                url = URL + 'containers/' + cid
+                req = request.Request(url, method="DELETE")
+                req.add_header('X-API-Key', APIKEY)
+                # req.add_header('content-type', 'application/json')
+                req.add_header('accept', 'application/json')
+                r = request.urlopen(req)
+                print(r.status)
                 get_dagster_logger().info(f"Container Remove: {str(r.status)}")
             else:
                 get_dagster_logger().info(f"Container Not created, so not removed.")
         else:
             get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
 
-    if (returnCode != 0):
-        get_dagster_logger().info(f"Gleaner/Nabu container non-zero exit code. See logs in S3")
-        raise Exception("Gleaner/Nabu container non-zero exit code. See logs in S3")
-    return returnCode
+
+    return 0
 
 @op
-def ucar_getImage(context):
-    run_container_context = DockerContainerContext.create_for_run(
-        context.dagster_run,
-        context.instance.run_launcher
-        if isinstance(context.instance.run_launcher, DockerRunLauncher)
-        else None,
-    )
-    get_dagster_logger().info(f"call docker _get_client: ")
-    client = _get_client(run_container_context)
-    client.images.pull(GLEANERIO_GLEANER_IMAGE)
-    client.images.pull(GLEANERIO_NABU_IMAGE)
-@op(ins={"start": In(Nothing)})
-def ucar_gleaner(context):
+def ucar_gleaner(context)-> str:
     returned_value = gleanerio(context, ("gleaner"), "ucar")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"Gleaner returned  {r} ")
-    return
+    get_dagster_logger().info(f"Gleaner notes are  {r} ")
+    return r
 
-@op(ins={"start": In(Nothing)})
-def ucar_nabu_prune(context):
+@op
+def ucar_nabu_prune(context, msg: str)-> str:
     returned_value = gleanerio(context,("nabu"), "ucar")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"nabu prune returned  {r} ")
-    return
+    return msg + r
 
-@op(ins={"start": In(Nothing)})
-def ucar_nabuprov(context):
+@op
+def ucar_nabuprov(context, msg: str)-> str:
     returned_value = gleanerio(context,("prov"), "ucar")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"nabu prov returned  {r} ")
-    return
+    return msg + r
 
-@op(ins={"start": In(Nothing)})
-def ucar_nabuorg(context):
+@op
+def ucar_nabuorg(context, msg: str)-> str:
     returned_value = gleanerio(context,("orgs"), "ucar")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"nabu org load returned  {r} ")
-    return
+    return msg + r
 
-@op(ins={"start": In(Nothing)})
-def ucar_naburelease(context):
+@op
+def ucar_naburelease(context, msg: str) -> str:
     returned_value = gleanerio(context,("release"), "ucar")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"nabu release returned  {r} ")
-    return
-@op(ins={"start": In(Nothing)})
-def ucar_uploadrelease(context):
+    return msg + r
+@op
+def ucar_uploadrelease(context, msg: str) -> str:
     returned_value = postRelease("ucar")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"upload release returned  {r} ")
-    return
+    return msg + r
 
 
-@op(ins={"start": In(Nothing)})
-def ucar_missingreport_s3(context):
+@op
+def ucar_missingreport_s3(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="ucar")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -598,10 +564,9 @@ def ucar_missingreport_s3(context):
     r = str('missing repoort returned value:{}'.format(returned_value))
     report = json.dumps(returned_value, indent=2)
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
-    get_dagster_logger().info(f"missing s3 report  returned  {r} ")
-    return
-@op(ins={"start": In(Nothing)})
-def ucar_missingreport_graph(context):
+    return msg + r
+@op
+def ucar_missingreport_graph(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="ucar")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -617,10 +582,10 @@ def ucar_missingreport_graph(context):
     report = json.dumps(returned_value, indent=2)
 
     s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
-    get_dagster_logger().info(f"missing graph  report  returned  {r} ")
-    return
-@op(ins={"start": In(Nothing)})
-def ucar_graph_reports(context) :
+
+    return msg + r
+@op
+def ucar_graph_reports(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="ucar")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -636,11 +601,11 @@ def ucar_graph_reports(context) :
     #report = json.dumps(returned_value, indent=2) # value already json.dumps
     report = returned_value
     s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
-    get_dagster_logger().info(f"graph report  returned  {r} ")
-    return
 
-@op(ins={"start": In(Nothing)})
-def ucar_identifier_stats(context):
+    return msg + r
+
+@op
+def ucar_identifier_stats(context, msg: str) -> str:
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="ucar")
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -651,11 +616,10 @@ def ucar_identifier_stats(context):
     #r = str('identifier stats returned value:{}'.format(returned_value))
     report = returned_value.to_json()
     s3Minio.putReportFile(bucket, source_name, "identifier_stats.json", report)
-    get_dagster_logger().info(f"identifer stats report  returned  {r} ")
-    return
+    return msg + r
 
-@op(ins={"start": In(Nothing)})
-def ucar_bucket_urls(context):
+@op()
+def ucar_bucket_urls(context, msg: str) -> str:
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "ucar"
@@ -664,8 +628,7 @@ def ucar_bucket_urls(context):
     r = str('returned value:{}'.format(res))
     bucketurls = json.dumps(res, indent=2)
     s3Minio.putReportFile(GLEANER_MINIO_BUCKET, source_name, "bucketutil_urls.json", bucketurls)
-    get_dagster_logger().info(f"bucker urls report  returned  {r} ")
-    return
+    return msg + r
 
 
 #Can we simplify and use just a method. Then import these methods?
@@ -685,28 +648,24 @@ def ucar_bucket_urls(context):
 #     return msg + r
 @graph
 def harvest_ucar():
-    containers = ucar_getImage()
-    harvest = ucar_gleaner(start=containers)
+    harvest = ucar_gleaner()
 
-# defingin nothing dependencies
-    # https://docs.dagster.io/concepts/ops-jobs-graphs/graphs#defining-nothing-dependencies
-
-    report_ms3 = ucar_missingreport_s3(start=harvest)
-    report_idstat = ucar_identifier_stats(start=report_ms3)
+    report_ms3 = ucar_missingreport_s3(harvest)
+    report_idstat = ucar_identifier_stats(report_ms3)
     # for some reason, this causes a msg parameter missing
-    report_bucketurl = ucar_bucket_urls(start=report_idstat)
+    report_bucketurl = ucar_bucket_urls(report_idstat)
 
     #report1 = missingreport_s3(harvest, source="ucar")
-    load_release = ucar_naburelease(start=harvest)
-    load_uploadrelease = ucar_uploadrelease(start=load_release)
+    load_release = ucar_naburelease(harvest)
+    load_uploadrelease = ucar_uploadrelease(load_release)
 
-    load_prune = ucar_nabu_prune(start=load_uploadrelease)
-    load_prov = ucar_nabuprov(start=load_prune)
-    load_org = ucar_nabuorg(start=load_prov)
+    load_prune = ucar_nabu_prune(load_uploadrelease)
+    load_prov = ucar_nabuprov(load_prune)
+    load_org = ucar_nabuorg(load_prov)
 
 # run after load
-    report_msgraph=ucar_missingreport_graph(start=load_org)
-    report_graph=ucar_graph_reports(start=report_msgraph)
+    report_msgraph=ucar_missingreport_graph(load_org)
+    report_graph=ucar_graph_reports(report_msgraph)
 
 
 

@@ -1,0 +1,5 @@
+load_from:
+      - python_file:
+          relative_path: "projects/repositories/repository.py"
+          location_name: project
+          working_directory: "./projects/"

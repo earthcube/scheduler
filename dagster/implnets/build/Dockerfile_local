@@ -3,7 +3,8 @@ FROM python:3.11-slim
 # for local, code is compiled. to generatedCode/implnet-PROJECT
 
 ARG implnet=eco
-RUN mkdir -p /usr/src/app/output
+RUN mkdir -p /usr/src/app/project
+RUN mkdir -p /usr/src/app/workflows
 
 COPY ./requirements.txt .
 
@@ -24,4 +25,4 @@ WORKDIR /usr/src/app
 ENV DAGSTER_HOME=/usr/src/app
 
 
-CMD ["dagit", "-w", "./output/workspace.yaml", "-h", "0.0.0.0", "-p", "3000"]
+CMD ["dagit", "-w", "./project/workspace.yaml", "-h", "0.0.0.0", "-p", "3000"]

@@ -97,7 +97,7 @@ def s3reader(object):
         secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
     )
     try:
-        data = client.get_object(os.environ.get('GLEANER_MINIO_BUCKET'), object)
+        data = client.get_object(GLEANER_MINIO_BUCKET, object)
         return data
     except S3Error as err:
         get_dagster_logger().info(f"S3 read error : {str(err)}")
@@ -139,7 +139,7 @@ def s3loader(data, name):
     #length = f.write(bytes(json_str, 'utf-8'))
     length = f.write(data)
     f.seek(0)
-    client.put_object(os.environ.get('GLEANER_MINIO_BUCKET'),
+    client.put_object(GLEANER_MINIO_BUCKET,
                       objPrefix,
                       f, #io.BytesIO(data),
                       length, #len(data),
@@ -155,7 +155,7 @@ def postRelease(source):
         proto = "https"
     port = os.environ.get('GLEANER_MINIO_PORT')
     address = os.environ.get('GLEANER_MINIO_ADDRESS')
-    bucket = os.environ.get('GLEANER_MINIO_BUCKET')
+    bucket = GLEANER_MINIO_BUCKET
     path = "graphs/latest"
     release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
     url = f"{_graphEndpoint()}?uri={release_url}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
@@ -450,6 +450,7 @@ def gleanerio(context, mode, source):
         ### in which case they need to be methods that don't send back errors.
         exit_status = container.wait()["StatusCode"]
         get_dagster_logger().info(f"Container Wait Exit status:  {exit_status}")
+        # WE PULL THE LOGS, then will throw an error
         returnCode = exit_status
 
 
@@ -504,6 +505,8 @@ def gleanerio(context, mode, source):
 
        # s3loader(r.read().decode('latin-1'), NAME)
 
+        if exit_status != 0:
+            raise Exception(f"Gleaner/Nabu container returned exit code {exit_status}")
     finally:
         if (not DEBUG) :
             # if (cid):
