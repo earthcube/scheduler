@@ -47,8 +47,8 @@ You will need to deploy dagster contiainers to portainer, for a docker swarm
 4. pull images for nabu and gleaner
    ```GLEANERIO_GLEANER_IMAGE=nsfearthcube/gleaner:latest``` and 
    ```GLEANERIO_NABU_IMAGE=nsfearthcube/nabu:latest```
-5. as noted as noted in (Compose, Environment and Docker API Assets), deploy the configuration to s3.
-6.  create network and volumes needed `[dagster_setup_docker.sh](..%2Fdagster%2Fimplnets%2Fdeployment%2Fdagster_setup_docker.sh)`
+5. as noted as noted in (Compose, Environment and Docker API Assets), deploy the configuration to s3. 
+6. create network and volumes needed `dagster_setup_docker.sh`
 7. create a stack, from compose_project.yaml, with the env variables you set
 
 
