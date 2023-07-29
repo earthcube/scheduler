@@ -40,7 +40,7 @@ services:
         #image: dagster-${PROJECT:-eco}:latest
         image: dagster-gleanerio-local:latest
         volumes: &vol
-          - ../dagster.yaml:/usr/src/app/dagster.yaml
+          - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
           - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project
         environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python

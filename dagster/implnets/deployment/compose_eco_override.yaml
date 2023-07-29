@@ -10,8 +10,8 @@ version: "3.9"
 services:
     dagster-dagit:
         volumes: &vol
-          - ../dagster.yaml:/usr/src/app/dagster.yaml
-          - ../workspace_${PROJECT:-basic}.yaml:/usr/src/app/workspace.yaml
+          - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
+          - ./workspace_${PROJECT:-basic}.yaml:/usr/src/app/workspace.yaml
           - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project
           - ../workflows/:/usr/src/app/workflows
         environment: &env
@@ -40,13 +40,13 @@ services:
             - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
             - ECRR_MINIO_BUCKET="ECRR"
             - ECRR_GRAPH_NAMESPACE="ECRR"
-
+        command: 'dagster-webserver  -w workspace.yaml  -h "0.0.0.0" -p 3000'
 
     dagster-daemon:
 
         image: dagster-gleanerio-local:latest
         environment: *env
-        command: "dagster-daemon run -w ./workflows/ecrr/workspace.yaml -w ./project/workspace.yaml "
+        command: "dagster-daemon run -w workspace.yaml  "
         volumes: *vol
         depends_on:
             - dagster-postgres
