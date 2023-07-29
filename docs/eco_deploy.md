@@ -80,9 +80,7 @@ The containers are now built by a github action, and stored in the
 4. watch [actions](https://github.com/earthcube/scheduler/actions)
 
 ### LOCAL DEVELOPMENT
-Local development will requ
-1. Make sure your gleanerconfig.yaml file is in the configs/NETWORK directory where
-   NETWORK is your implmentation network like eco, iow, etc. 
+1. Make sure your gleanerconfig.yaml file is in the configs/NETWORK directory where NETWORK is your implmentation network like eco, iow, etc. 
 2. Check the VERSION file and make sure it has a value you want in it to be tagged to the containers.
 3. ```make eco-clean```  will remove any existing generated code from the ./generatedCode/implnet-NETWORK directory
 4. ```make eco-generate``` will build the code new.  Set the -d N in the makefile to a value N that is the number
@@ -93,8 +91,6 @@ Local development will requ
 5. ```make eco-build``` builds the Docker images following the build file ./build/Docker file.  Note this uses the 
    command line argument ```--build-arg implnet=eco``` to set the implementation NETWORK so that the correct build code 
    from _generatedCode/NETWORK_ is copied over
-
-
 
 
 ## Compose, Environment and Docker API Assets
