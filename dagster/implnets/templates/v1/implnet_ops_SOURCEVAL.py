@@ -5,7 +5,8 @@ import os, json, io
 import urllib
 from urllib import request
 from urllib.error import HTTPError
-from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
+
+from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpointUpdateNamespace
 import json
 
 from minio import Minio
@@ -13,6 +14,8 @@ from minio.error import S3Error
 from datetime import datetime
 from ec.reporting.report import missingReport, generateGraphReportsRepo, reportTypes, generateIdentifierRepo
 from ec.datastore import s3
+from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
+from ec.graph.manageGraph import ManageBlazegraph as mg
 import requests
 import logging as log
 from urllib.error import HTTPError
@@ -49,6 +52,10 @@ GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT', "http://
 # using GLEANER, even though this is a nabu property... same prefix seems easier
 GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
 GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
+
+SUMMARY_GRAPH_ENDPOINT = os.environ.get('SUMMARY_GRAPH_ENDPOINT')
+SUMMARY_GRAPH_NAMESPACE = os.environ.get('SUMMARY_GRAPH_NAMESPACE')
+
 GLEANERIO_GLEANER_CONFIG_PATH= os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml")
 GLEANERIO_NABU_CONFIG_PATH= os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml")
 GLEANERIO_GLEANER_IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest')
@@ -667,6 +674,33 @@ def SOURCEVAL_bucket_urls(context):
     get_dagster_logger().info(f"bucker urls report  returned  {r} ")
     return
 
+@op()
+def SOURCEVAL_summarize(context, msg: str) -> str:
+    source_name = "SOURCEVAL"
+    endpoint = SUMMARY_GRAPH_ENDPOINT
+    summary_namespace = SUMMARY_GRAPH_NAMESPACE
+    sumnsgraph = mg(mg.graphFromEndpoint(endpoint), summary_namespace)
+    summarydf = get_summary4repoSubset(endpoint, source_name)
+
+    nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
+
+    summaryttl = g.serialize(format='longturtle')
+
+    inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
+
+    # TO DO: upload to minio
+    if not inserted:
+        filename = os.path.join("output", f"{source_name}.ttl")
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+        with open(filename, 'w') as f:
+            f.write(summaryttl)
+        return 1
+    r = str('returned value:{}'.format(summaryttl))
+
+    return msg, r
+
+
 
 #Can we simplify and use just a method. Then import these methods?
 # def missingreport_s3(context, msg: str, source="SOURCEVAL"):
@@ -704,9 +738,15 @@ def harvest_SOURCEVAL():
     load_prov = SOURCEVAL_nabuprov(start=load_prune)
     load_org = SOURCEVAL_nabuorg(start=load_prov)
 
+    summarize = SOURCEVAL_summarize(load_org)
+
 # run after load
+    report_msgraph = SOURCEVAL_missingreport_graph(summarize)
+    report_graph = SOURCEVAL_graph_reports(report_msgraph)
     report_msgraph=SOURCEVAL_missingreport_graph(start=load_org)
     report_graph=SOURCEVAL_graph_reports(start=report_msgraph)
+
+
 
 
 

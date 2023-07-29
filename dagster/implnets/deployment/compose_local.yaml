@@ -60,6 +60,9 @@ services:
             - GLEANER_HEADLESS_NETWORK=${GLEANER_HEADLESS_NETWORK}
             - GLEANER_GRAPH_URL=${GLEANER_GRAPH_URL}
             - GLEANER_GRAPH_NAMESPACE=${GLEANER_GRAPH_NAMESPACE}
+            - SUMMARY_GRAPH_ENDPOINT=${SUMMARY_GRAPH_ENDPOINT}
+            - SUMMARY_GRAPH_NAMESPACE=${SUMMARY_GRAPH_NAMESPACE}
+            - GLEANER_CONFIG_VOLUME=${GLEANER_CONFIG_VOLUME}
             - GLEANERIO_NABU_CONFIG_PATH=${GLEANERIO_NABU_CONFIG_PATH:-/configs/gleaner/nabuconfig.yaml}
             - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
 
@@ -160,6 +163,4 @@ services:
         - traefik_proxy
         - headless
         # in code, use names defined in network above
-
-
 
