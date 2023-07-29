@@ -6,3 +6,6 @@ load_from:
       - python_file:
           relative_path: "workflows/ecrr/repositories/repository.py"
           working_directory: "./workflows/ecrr/"
+      # module starting out with the definitions api
+      - python_module: "workflows.weekly.weekly"
+
