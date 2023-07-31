@@ -496,17 +496,23 @@ def gleanerio(context, mode, source):
             raise Exception(f"Gleaner/Nabu container returned exit code {exit_status}")
     finally:
         if (not DEBUG) :
-            if (cid):
-                url = URL + 'containers/' + cid
-                req = request.Request(url, method="DELETE")
-                req.add_header('X-API-Key', APIKEY)
-                # req.add_header('content-type', 'application/json')
-                req.add_header('accept', 'application/json')
-                r = request.urlopen(req)
-                print(r.status)
+            # if (cid):
+            #     url = URL + 'containers/' + cid
+            #     req = request.Request(url, method="DELETE")
+            #     req.add_header('X-API-Key', APIKEY)
+            #     # req.add_header('content-type', 'application/json')
+            #     req.add_header('accept', 'application/json')
+            #     r = request.urlopen(req)
+            #     print(r.status)
+            #     get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+            # else:
+            #     get_dagster_logger().info(f"Container Not created, so not removed.")
+            if (container):
+                container.remove(force=True)
                 get_dagster_logger().info(f"Container Remove: {str(r.status)}")
             else:
                 get_dagster_logger().info(f"Container Not created, so not removed.")
+
         else:
             get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
 

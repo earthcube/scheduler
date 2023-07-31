@@ -11,8 +11,8 @@ services:
     dagster-dagit:
         volumes: &vol
           - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
-          - ./workspace_${PROJECT:-basic}.yaml:/usr/src/app/workspace.yaml
-          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project
+          - ../configs/${PROJECT:-eco}/workspace.yaml:/usr/src/app/workspace.yaml
+          - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project/${PROJECT:-eco}
           - ../workflows/:/usr/src/app/workflows
         environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
