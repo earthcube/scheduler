@@ -46,4 +46,4 @@ disable="""
     wrong-import-order
     """
 [tool.dagster]
-module_name = "workflows.weekly.weekly"
+module_name = "workflows.tasks.tasks"
