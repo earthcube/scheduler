@@ -37,6 +37,9 @@ configs:
   nabu:
     name: ${GLEANER_NABU_DOCKER_CONFIG:-nabu}
     external: true
+  workspace:
+    name: ${GLEANER_WORKSPACE_DOCKER_CONFIG:-workspace}
+    external: true
 
 secrets:
   MINIO_ROOT_ACCESS_KEY:
@@ -46,7 +49,14 @@ secrets:
 services:
     dagster-dagit:
         image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
-
+        command: 'dagster-webserver  -w ${GLEANERIO_WORKSPACE_CONFIG_PATH:}  -h "0.0.0.0" -p 3000'
+        configs:
+          - source: workspace
+            target: /usr/src/app/workspace.yaml
+            # uid: "103"
+            # gid: "103"
+            mode:
+              0444
         secrets:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
@@ -104,7 +114,12 @@ services:
               - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.addvaryheader=true"
     dagster-daemon:
         image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
-
+        configs:
+              - source: workspace
+                target: /usr/src/app/workspace.yaml
+               # uid: "103"
+               # gid: "103"
+                mode: 0444
 
 
         secrets:
@@ -112,7 +127,7 @@ services:
           - MINIO_ROOT_SECRET_KEY
         environment: *env
 
-        command: "dagster-daemon run"
+        command: "dagster-daemon run -w ./project/${PROJECT:-eco}/workspace.yaml"
         depends_on:
             - dagster-postgres
         networks:

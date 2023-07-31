@@ -525,6 +525,7 @@ def gleanerio(context, mode, source):
                 get_dagster_logger().info(f"Container Remove: {str(r.status)}")
             else:
                 get_dagster_logger().info(f"Container Not created, so not removed.")
+
         else:
             get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
 
