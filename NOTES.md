@@ -1,5 +1,9 @@
 # Notes
 
+## Development
+
+You can try local develeopment, It will use the 
+start with an 
 
 
 ## Some articles to review
