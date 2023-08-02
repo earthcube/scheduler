@@ -42,7 +42,7 @@ APIKEY = os.environ.get('PORTAINER_KEY')
 
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
-GLEANER_MINIO_USE_SSL = os.environ.get('GLEANER_MINIO_USE_SSL')
+GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL')))
 GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANER_MINIO_SECRET_KEY')
 GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
@@ -54,7 +54,7 @@ GLEANERIO_GLEANER_CONFIG_PATH= os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "
 GLEANERIO_NABU_CONFIG_PATH= os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml")
 
 def _graphEndpoint():
-    url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
+    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
     return url
 
 def _pythonMinioUrl(url):
@@ -80,7 +80,7 @@ def load_data(file_or_url):
 
 
 def s3reader(object):
-    server =  _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS')) + ":" + os.environ.get('GLEANER_MINIO_PORT')
+    server =  _pythonMinioUrl(GLEANER_MINIO_ADDRESS) + ":" + GLEANER_MINIO_PORT
     get_dagster_logger().info(f"S3 URL    : {str(os.environ.get('GLEANER_MINIO_ADDRESS'))}")
     get_dagster_logger().info(f"S3 PYTHON SERVER : {server}")
     get_dagster_logger().info(f"S3 PORT   : {str(os.environ.get('GLEANER_MINIO_PORT'))}")
@@ -92,9 +92,9 @@ def s3reader(object):
     client = Minio(
         server,
         # secure=True,
-        secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL'))),
-        access_key=os.environ.get('GLEANER_MINIO_ACCESS_KEY'),
-        secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
+        secure = GLEANER_MINIO_USE_SSL,
+        access_key=GLEANER_MINIO_ACCESS_KEY,
+        secret_key=GLEANER_MINIO_SECRET_KEY,
     )
     try:
         data = client.get_object(GLEANER_MINIO_BUCKET, object)
@@ -366,10 +366,10 @@ def gleanerio(context, mode, source):
             env_vars=enva,
             networks=[GLEANER_HEADLESS_NETWORK],
             container_kwargs={"working_dir": data["WorkingDir"],
-                              "volumes": {
-                                                          f"{GLEANER_CONFIG_VOLUME}":
-                                                              {'bind': '/configs', 'mode': 'rw'}
-                                                          },
+                              # "volumes": {
+                              #                             f"{GLEANER_CONFIG_VOLUME}":
+                              #                                 {'bind': '/configs', 'mode': 'rw'}
+                              #                             },
 
 
             },
