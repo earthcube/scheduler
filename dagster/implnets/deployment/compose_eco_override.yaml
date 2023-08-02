@@ -56,7 +56,9 @@ services:
             - dagster-code-tasks
         networks:
             - traefik_proxy
-
+            -
+## GRPC servers are not just serving the code
+# they need to compile it, so same image for all dagster-*
     dagster-code-tasks:
 
         platform: linux/x86_64
