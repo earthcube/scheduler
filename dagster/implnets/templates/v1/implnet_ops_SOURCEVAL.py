@@ -51,7 +51,8 @@ GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
 GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
 GLEANERIO_GLEANER_CONFIG_PATH= os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml")
 GLEANERIO_NABU_CONFIG_PATH= os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml")
-
+GLEANERIO_GLEANER_IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest')
+GLEANERIO_NABU_IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE', 'nsfearthcube/nabu:latest')
 def _graphEndpoint():
     url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
     return url
@@ -512,9 +513,20 @@ def gleanerio(context, mode, source):
 
 
     return 0
-
 @op
-def SOURCEVAL_gleaner(context)-> str:
+def SOURCEVAL_getImage(context):
+    run_container_context = DockerContainerContext.create_for_run(
+        context.dagster_run,
+        context.instance.run_launcher
+        if isinstance(context.instance.run_launcher, DockerRunLauncher)
+        else None,
+    )
+    get_dagster_logger().info(f"call docker _get_client: ")
+    client = _get_client(run_container_context)
+    client.images.pull(GLEANERIO_GLEANER_IMAGE)
+    client.images.pull(GLEANERIO_NABU_IMAGE)
+@op(ins={"start": In(Nothing)})
+def SOURCEVAL_gleaner(context):
     returned_value = gleanerio(context, ("gleaner"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner returned  {r} ")
@@ -656,7 +668,8 @@ def SOURCEVAL_bucket_urls(context):
 #     return msg + r
 @graph
 def harvest_SOURCEVAL():
-    harvest = SOURCEVAL_gleaner()
+    containers = SOURCEVAL_getImage()
+    harvest = SOURCEVAL_gleaner(start=containers)
 
 # defingin nothing dependencies
     # https://docs.dagster.io/concepts/ops-jobs-graphs/graphs#defining-nothing-dependencies
