@@ -39,20 +39,26 @@ URL = os.environ.get('PORTAINER_URL')
 APIKEY = os.environ.get('PORTAINER_KEY')
 
 
-GLEANER_MINIO_ADDRESS = os.environ.get('GLEANER_MINIO_ADDRESS')
-GLEANER_MINIO_PORT = os.environ.get('GLEANER_MINIO_PORT')
+GLEANER_MINIO_ADDRESS = str(os.environ.get('GLEANER_MINIO_ADDRESS'))
+GLEANER_MINIO_PORT = str(os.environ.get('GLEANER_MINIO_PORT'))
 GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL')))
-GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANER_MINIO_SECRET_KEY')
-GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANER_MINIO_ACCESS_KEY')
-GLEANER_MINIO_BUCKET = os.environ.get('GLEANER_MINIO_BUCKET')
-GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT', "http://headless:9222")
+GLEANER_MINIO_SECRET_KEY = str(os.environ.get('GLEANER_MINIO_SECRET_KEY'))
+GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANER_MINIO_ACCESS_KEY'))
+GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANER_MINIO_BUCKET'))
+GLEANER_HEADLESS_ENDPOINT = str(os.environ.get('GLEANER_HEADLESS_ENDPOINT', "http://headless:9222"))
 # using GLEANER, even though this is a nabu property... same prefix seems easier
-GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
-GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
-GLEANERIO_GLEANER_CONFIG_PATH= os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml")
-GLEANERIO_NABU_CONFIG_PATH= os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml")
-GLEANERIO_GLEANER_IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest')
-GLEANERIO_NABU_IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE', 'nsfearthcube/nabu:latest')
+GLEANER_GRAPH_URL = str(os.environ.get('GLEANER_GRAPH_URL'))
+GLEANER_GRAPH_NAMESPACE = str(os.environ.get('GLEANER_GRAPH_NAMESPACE'))
+GLEANERIO_GLEANER_CONFIG_PATH= str(os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml"))
+GLEANERIO_NABU_CONFIG_PATH= str(os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml"))
+GLEANERIO_GLEANER_IMAGE =str( os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest'))
+GLEANERIO_NABU_IMAGE = str(os.environ.get('GLEANERIO_NABU_IMAGE', 'nsfearthcube/nabu:latest'))
+GLEANERIO_LOG_PREFIX = str(os.environ.get('GLEANERIO_LOG_PREFIX', ''))
+GLEANERIO_GLEANER_ARCHIVE_OBJECT = str(os.environ.get('GLEANERIO_GLEANER_ARCHIVE_OBJECT', 'scheduler/configs/GleanerCfg.tgz'))
+GLEANERIO_GLEANER_ARCHIVE_PATH = str(os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH', '/gleaner/'))
+GLEANERIO_NABU_ARCHIVE_OBJECT=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT', 'scheduler/configs/NabuCfg.tgz'))
+GLEANERIO_NABU_ARCHIVE_PATH=str(os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH', '/nabu/'))
+
 def _graphEndpoint():
     url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
     return url
@@ -81,13 +87,13 @@ def load_data(file_or_url):
 
 def s3reader(object):
     server =  _pythonMinioUrl(GLEANER_MINIO_ADDRESS) + ":" + GLEANER_MINIO_PORT
-    get_dagster_logger().info(f"S3 URL    : {str(os.environ.get('GLEANER_MINIO_ADDRESS'))}")
+    get_dagster_logger().info(f"S3 URL    : {GLEANER_MINIO_ADDRESS}")
     get_dagster_logger().info(f"S3 PYTHON SERVER : {server}")
-    get_dagster_logger().info(f"S3 PORT   : {str(os.environ.get('GLEANER_MINIO_PORT'))}")
+    get_dagster_logger().info(f"S3 PORT   : {GLEANER_MINIO_PORT}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_KEY'))}")
     # get_dagster_logger().info(f"S3 read started : {str(os.environ.get('GLEANER_MINIO_SECRET'))}")
-    get_dagster_logger().info(f"S3 BUCKET : {str(os.environ.get('GLEANER_MINIO_BUCKET'))}")
-    get_dagster_logger().info(f"S3 object : {str(object)}")
+    get_dagster_logger().info(f"S3 BUCKET : {GLEANER_MINIO_BUCKET}")
+    get_dagster_logger().debug(f"S3 object : {str(object)}")
 
     client = Minio(
         server,
@@ -104,23 +110,23 @@ def s3reader(object):
 
 
 def s3loader(data, name):
-    secure= bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL')))
-    if (os.environ.get('GLEANER_MINIO_PORT') and os.environ.get('GLEANER_MINIO_PORT') == 80
+    secure= GLEANER_MINIO_USE_SSL
+    if (GLEANER_MINIO_PORT and GLEANER_MINIO_PORT == "80"
              and secure == False):
-        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))
-    elif (os.environ.get('GLEANER_MINIO_PORT') and os.environ.get('GLEANER_MINIO_PORT') == 443
+        server = _pythonMinioUrl(GLEANER_MINIO_ADDRESS)
+    elif (GLEANER_MINIO_PORT and GLEANER_MINIO_PORT == "443"
                 and secure == True):
-        server = _pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))
+        server = _pythonMinioUrl(GLEANER_MINIO_ADDRESS)
     else:
         # it's not on a normal port
-        server = f"{_pythonMinioUrl(os.environ.get('GLEANER_MINIO_ADDRESS'))}:{os.environ.get('GLEANER_MINIO_PORT')}"
+        server = f"{_pythonMinioUrl(GLEANER_MINIO_ADDRESS)}:{GLEANER_MINIO_PORT}"
 
     client = Minio(
         server,
         secure=secure,
         #secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL'))),
-        access_key=os.environ.get('GLEANER_MINIO_ACCESS_KEY'),
-        secret_key=os.environ.get('GLEANER_MINIO_SECRET_KEY'),
+        access_key=GLEANER_MINIO_ACCESS_KEY,
+        secret_key=GLEANER_MINIO_SECRET_KEY,
     )
 
     # Make 'X' bucket if not exist.
@@ -134,7 +140,7 @@ def s3loader(data, name):
     date_string = now.strftime("%Y_%m_%d_%H_%M_%S")
 
     logname = name + '_{}.log'.format(date_string)
-    objPrefix = os.environ.get('GLEANERIO_LOG_PREFIX') + logname
+    objPrefix = GLEANERIO_LOG_PREFIX + logname
     f = io.BytesIO()
     #length = f.write(bytes(json_str, 'utf-8'))
     length = f.write(data)
@@ -151,10 +157,10 @@ def postRelease(source):
     #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
     proto = "http"
 
-    if os.environ.get('GLEANER_MINIO_USE_SSL'):
+    if GLEANER_MINIO_USE_SSL:
         proto = "https"
-    port = os.environ.get('GLEANER_MINIO_PORT')
-    address = os.environ.get('GLEANER_MINIO_ADDRESS')
+    port = GLEANER_MINIO_PORT
+    address = GLEANER_MINIO_ADDRESS
     bucket = GLEANER_MINIO_BUCKET
     path = "graphs/latest"
     release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
@@ -231,9 +237,9 @@ def gleanerio(context, mode, source):
     get_dagster_logger().info(f"Gleanerio mode: {str(mode)}")
 
     if str(mode) == "gleaner":
-        IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE')
-        ARCHIVE_FILE = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_OBJECT')
-        ARCHIVE_PATH = os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH')
+        IMAGE =GLEANERIO_GLEANER_IMAGE
+        ARCHIVE_FILE = GLEANERIO_GLEANER_ARCHIVE_OBJECT
+        ARCHIVE_PATH = GLEANERIO_GLEANER_ARCHIVE_PATH
        # CMD = f"gleaner --cfg/gleaner/gleanerconfig.yaml -source {source} --rude"
         CMD = ["--cfg", GLEANERIO_GLEANER_CONFIG_PATH,"-source", source, "--rude"]
         NAME = f"gleaner01_{source}_{str(mode)}"
@@ -241,36 +247,36 @@ def gleanerio(context, mode, source):
         #Entrypoint = ["/gleaner/gleaner", "--cfg", "/gleaner/gleanerconfig.yaml", "-source", source, "--rude"]
         # LOGFILE = 'log_gleaner.txt'  # only used for local log file writing
     elif (str(mode) == "nabu"):
-        IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
-        ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
-        ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
+        IMAGE = GLEANERIO_NABU_IMAGE
+        ARCHIVE_FILE = GLEANERIO_NABU_ARCHIVE_OBJECT
+        ARCHIVE_PATH = GLEANERIO_NABU_ARCHIVE_PATH
         CMD = ["--cfg", GLEANERIO_NABU_CONFIG_PATH, "prune", "--prefix", "summoned/" + source]
         NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     elif (str(mode) == "prov"):
-        IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
-        ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
-        ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
+        IMAGE = GLEANERIO_NABU_IMAGE
+        ARCHIVE_FILE = GLEANERIO_NABU_ARCHIVE_OBJECT
+        ARCHIVE_PATH = GLEANERIO_NABU_ARCHIVE_PATH
         CMD = ["--cfg",  GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "prov/" + source]
         NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     elif (str(mode) == "orgs"):
-        IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
-        ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
-        ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
+        IMAGE = GLEANERIO_NABU_IMAGE
+        ARCHIVE_FILE = GLEANERIO_NABU_ARCHIVE_OBJECT
+        ARCHIVE_PATH = GLEANERIO_NABU_ARCHIVE_PATH
         CMD = ["--cfg",  GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "orgs"]
         NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     elif (str(mode) == "release"):
-        IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE')
-        ARCHIVE_FILE = os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT')
-        ARCHIVE_PATH = os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH')
+        IMAGE = GLEANERIO_NABU_IMAGE
+        ARCHIVE_FILE = GLEANERIO_NABU_ARCHIVE_OBJECT
+        ARCHIVE_PATH = GLEANERIO_NABU_ARCHIVE_PATH
         CMD = ["--cfg",  GLEANERIO_NABU_CONFIG_PATH, "release", "--prefix", "summoned/" + source]
         NAME = f"nabu01_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
@@ -522,12 +528,12 @@ def gleanerio(context, mode, source):
             #     get_dagster_logger().info(f"Container Not created, so not removed.")
             if (container):
                 container.remove(force=True)
-                get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+                get_dagster_logger().info(f"Container Remove: {container.name}")
             else:
                 get_dagster_logger().info(f"Container Not created, so not removed.")
 
         else:
-            get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
+            get_dagster_logger().info(f"Container {container.name} NOT Removed : DEBUG ENABLED")
 
     if (returnCode != 0):
         get_dagster_logger().info(f"Gleaner/Nabu container non-zero exit code. See logs in S3")
