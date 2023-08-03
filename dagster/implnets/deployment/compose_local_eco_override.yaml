@@ -10,8 +10,8 @@ version: "3.9"
 services:
     dagster-dagit:
         volumes: &vol
-          - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
           - ../configs/${PROJECT:-eco}/workspace.yaml:/usr/src/app/workspace.yaml
+          - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
           - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project/${PROJECT:-eco}
           - ../workflows/:/usr/src/app/workflows
         environment: &env
@@ -42,8 +42,10 @@ services:
             - ECRR_GRAPH_NAMESPACE="ECRR"
         command: 'dagster-webserver  -w workspace.yaml  -h "0.0.0.0" -p 3000'
         depends_on: &deps
-            -   dagster-code-project
+            - dagster-postgres
+            - dagster-code-project
             - dagster-code-tasks
+            - dagster-code-eco-ecrr
     dagster-daemon:
 
         image: dagster-gleanerio-local:latest
@@ -54,44 +56,13 @@ services:
             - dagster-postgres
             - dagster-code-project
             - dagster-code-tasks
+            - dagster-code-eco-ecrr
         networks:
             - traefik_proxy
 
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
-    dagster-code-tasks:
-
-        platform: linux/x86_64
-        build:
-          #context: .
-          context: ..
-          dockerfile: build/Dockerfile_local
-          args:
-            implnet: ${PROJECT:-eco}
-        # you should be able to change the source locally, without a full rebuild.
-       #image: dagster-${PROJECT:-eco}:latest
-        image: dagster-gleanerio-local:latest
-
-        environment: *env
-        command:
-        - "dagster"
-        - "api"
-        - "grpc"
-        - "-h"
-        - "0.0.0.0"
-        - "-p"
-        - "4000"
-        - "-m"
-        - "workflows.tasks.tasks"
-        - "-d"
-        - "/usr/src/app/"
-
-        volumes: *vol
-        depends_on:
-            - dagster-postgres
-        networks:
-            - traefik_proxy
-    dagster-code-project:
+    dagster-code-eco-ecrr:
 
         platform: linux/x86_64
         build:
@@ -114,12 +85,13 @@ services:
         - "-p"
         - "4000"
         - "--python-file"
-        - "/usr/src/app/project/eco/repositories/repository.py"
+        - "/usr/src/app/workflows/ecrr/repositories/repository.py"
         - "-d"
-        - "/usr/src/app/project/eco/"
+        - "/usr/src/app/workflows/ecrr/"
 
         volumes: *vol
         depends_on:
             - dagster-postgres
         networks:
             - traefik_proxy
+

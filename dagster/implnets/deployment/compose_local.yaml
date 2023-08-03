@@ -51,6 +51,7 @@ services:
         volumes: &vol
           - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
           - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project/${PROJECT:-eco}
+          - ../workflows/:/usr/src/app/workflows
         environment: &env
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - PORTAINER_URL=${PORTAINER_URL}
@@ -82,6 +83,8 @@ services:
           - traefik_proxy
         depends_on:
             - dagster-postgres
+            - dagster-code-project
+            - dagster-code-tasks
         labels:
               - "traefik.enable=true"
               - "traefik.http.routers.sched.entrypoints=http"
@@ -124,6 +127,8 @@ services:
         volumes: *vol
         depends_on:
             - dagster-postgres
+            - dagster-code-project
+            - dagster-code-tasks
         networks:
             - traefik_proxy
     dagster-postgres:
@@ -181,27 +186,67 @@ services:
         - headless
         # in code, use names defined in network above
 
-    configs_volume:
-      # image: chromedp/headless-shell:stable
-      # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
-      image: busybox
-      #    build:
-  #      context: .
-  #      shm_size: "2gb"
-      restart: "no"
-      volumes:
-        - dagster-project:/configs
-      #command: ["/bin/busybox", "httpd", "-f", "-p", "8080"]
-      configs:
-            - source: gleaner
-              target: /configs/gleaner/gleanerconfig.yaml
-             # uid: "103"
-             # gid: "103"
-              mode: 0444
-            - source: nabu
-              target: /configs/nabu/nabuconfig.yaml
-             # uid: "103"
-             # gid: "103"
-              mode: 0444
-        # in code, use names defined in network above
+    dagster-code-tasks:
 
+        platform: linux/x86_64
+        build:
+          #context: .
+          context: ..
+          dockerfile: build/Dockerfile_local
+          args:
+            implnet: ${PROJECT:-eco}
+        # you should be able to change the source locally, without a full rebuild.
+       #image: dagster-${PROJECT:-eco}:latest
+        image: dagster-gleanerio-local:latest
+
+        environment: *env
+        command:
+        - "dagster"
+        - "api"
+        - "grpc"
+        - "-h"
+        - "0.0.0.0"
+        - "-p"
+        - "4000"
+        - "-m"
+        - "workflows.tasks.tasks"
+        - "-d"
+        - "/usr/src/app/"
+
+        volumes: *vol
+        depends_on:
+            - dagster-postgres
+        networks:
+            - traefik_proxy
+    dagster-code-project:
+
+        platform: linux/x86_64
+        build:
+          #context: .
+          context: ..
+          dockerfile: build/Dockerfile_local
+          args:
+            implnet: ${PROJECT:-eco}
+        # you should be able to change the source locally, without a full rebuild.
+       #image: dagster-${PROJECT:-eco}:latest
+        image: dagster-gleanerio-local:latest
+
+        environment: *env
+        command:
+        - "dagster"
+        - "api"
+        - "grpc"
+        - "-h"
+        - "0.0.0.0"
+        - "-p"
+        - "4000"
+        - "--python-file"
+        - "/usr/src/app/project/eco/repositories/repository.py"
+        - "-d"
+        - "/usr/src/app/project/eco/"
+
+        volumes: *vol
+        depends_on:
+            - dagster-postgres
+        networks:
+            - traefik_proxy

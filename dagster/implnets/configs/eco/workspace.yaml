@@ -3,9 +3,9 @@ load_from:
 #          relative_path: "project/eco/repositories/repository.py"
 #          location_name: project
 #          working_directory: "./project/eco/"
-      - python_file:
-          relative_path: "workflows/ecrr/repositories/repository.py"
-          working_directory: "./workflows/ecrr/"
+#      - python_file:
+#          relative_path: "workflows/ecrr/repositories/repository.py"
+#          working_directory: "./workflows/ecrr/"
       # module starting out with the definitions api
      # - python_module: "workflows.tasks.tasks"
 
@@ -17,3 +17,7 @@ load_from:
             host: dagster-code-project
             port: 4000
             location_name: "project_grpc"
+      - grpc_server:
+            host: dagster-code-eco-ecrr
+            port: 4000
+            location_name: "project_ecrr"
