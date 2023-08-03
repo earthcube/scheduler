@@ -5,6 +5,12 @@ Two types:
 1) Container based. This uses docker and locally deployed containers
 2) dagster dev   - Dagster runs the UI in development mode
 
+!!!! note 
+    NOTE, the Dagster and the Code containers need to be the same.
+    For local development images are named ` dagster-gleanerio-local:latest`
+    and built in the compose_local.yaml
+    for production, they are named `docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}`
+    eg in dockerhub.com as nsfearthcube/dagster-eco:latest
 
 
 ## TESTING CONTAINERS
@@ -24,10 +30,10 @@ cp envFile.env .env
 If you look in dagster_localrun.sh you can see that the 
 $PROJECT variable is use to define what files to use, and define
 
-If you look in compose_eco_override.yaml you can see that
+If you look in compose_local_eco_override.yaml you can see that
 additional mounts are added to the containers.
 
-These can be customize in this file for local development.
+These can be customized in the  `compose_local_PROJECT_override.yaml` for local development.
 
 ### customizing the configs
 for local development three configs
@@ -37,7 +43,22 @@ for local development three configs
 * workspace.yaml -- dagster
 
 
+### MOVING TO PRODUCTION
 
+(NOTE NEED SOME MAKEFILES FOR THIS.)
+
+For production, you need to create a merged file.
+you need to create a compose_project_PROJECT_override.yaml
+After copying fragment from `compose_local_PROJECT_override.yaml`
+CHANGE THE IMAGE TO `docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}`
+
+Then you will merge the files
+
+`docker compose -f compose_project.yaml -f compose_project_PROJECT_override.yaml config `
+
+this should show you  a merged file.
+
+`docker compose -f compose_project.yaml -f compose_project_PROJECT_override.yaml config  > compose_project_PROJECT.yaml `
 
 ## DAGSTER DEV
 
