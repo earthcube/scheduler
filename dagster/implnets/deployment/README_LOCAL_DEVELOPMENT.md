@@ -5,7 +5,7 @@ Two types:
 1) Container based. This uses docker and locally deployed containers
 2) dagster dev   - Dagster runs the UI in development mode
 
-!!!! note 
+!!!  note 
     NOTE, the Dagster and the Code containers need to be the same.
     For local development images are named ` dagster-gleanerio-local:latest`
     and built in the compose_local.yaml
