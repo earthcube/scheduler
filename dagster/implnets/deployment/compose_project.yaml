@@ -120,8 +120,6 @@ services:
                # uid: "103"
                # gid: "103"
                 mode: 0444
-
-
         secrets:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
@@ -186,4 +184,52 @@ services:
         - headless
         # in code, use names defined in network above
 
+    dagster-code-tasks:
+        platform: linux/x86_64
+        # you should be able to change the source locally, without a full rebuild.
+       #image: dagster-${PROJECT:-eco}:latest
+        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
 
+        environment: *env
+        command:
+        - "dagster"
+        - "api"
+        - "grpc"
+        - "-h"
+        - "0.0.0.0"
+        - "-p"
+        - "4000"
+        - "-m"
+        - "workflows.tasks.tasks"
+        - "-d"
+        - "/usr/src/app/"
+
+       # volumes: *vol
+        depends_on:
+            - dagster-postgres
+        networks:
+            - traefik_proxy
+    dagster-code-project:
+        platform: linux/x86_64
+        # you should be able to change the source locally, without a full rebuild.
+       #image: dagster-${PROJECT:-eco}:latest
+        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
+        environment: *env
+        command:
+        - "dagster"
+        - "api"
+        - "grpc"
+        - "-h"
+        - "0.0.0.0"
+        - "-p"
+        - "4000"
+        - "--python-file"
+        - "/usr/src/app/project/eco/repositories/repository.py"
+        - "-d"
+        - "/usr/src/app/project/eco/"
+
+   #     volumes: *vol
+        depends_on:
+            - dagster-postgres
+        networks:
+            - traefik_proxy
