@@ -674,8 +674,8 @@ def SOURCEVAL_bucket_urls(context):
     get_dagster_logger().info(f"bucker urls report  returned  {r} ")
     return
 
-@op()
-def SOURCEVAL_summarize(context, msg: str) -> str:
+@op(ins={"start": In(Nothing)})
+def SOURCEVAL_summarize(context) :
     source_name = "SOURCEVAL"
     endpoint = SUMMARY_GRAPH_ENDPOINT
     summary_namespace = SUMMARY_GRAPH_NAMESPACE
@@ -698,7 +698,7 @@ def SOURCEVAL_summarize(context, msg: str) -> str:
         return 1
     r = str('returned value:{}'.format(summaryttl))
 
-    return msg, r
+    return
 
 
 
@@ -738,11 +738,11 @@ def harvest_SOURCEVAL():
     load_prov = SOURCEVAL_nabuprov(start=load_prune)
     load_org = SOURCEVAL_nabuorg(start=load_prov)
 
-    summarize = SOURCEVAL_summarize(load_org)
+    summarize = SOURCEVAL_summarize(start=load_uploadrelease)
 
 # run after load
-    report_msgraph = SOURCEVAL_missingreport_graph(summarize)
-    report_graph = SOURCEVAL_graph_reports(report_msgraph)
+    report_msgraph = SOURCEVAL_missingreport_graph(start=summarize)
+    report_graph = SOURCEVAL_graph_reports(start=report_msgraph)
     report_msgraph=SOURCEVAL_missingreport_graph(start=load_org)
     report_graph=SOURCEVAL_graph_reports(start=report_msgraph)
 
