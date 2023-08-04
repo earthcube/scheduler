@@ -1,5 +1,8 @@
 # Development
 
+If you look in the doc/README.md that description is probably better.
+
+
 Two types:
 
 1) Container based. This uses docker and locally deployed containers
@@ -17,6 +20,34 @@ Two types:
 
 Containers a tested approach. We deploy these container
 to production, so it's a good way to test.
+There are a set of required files:
+
+* env variables file
+* gleaner/nabu configuration files, without any passwords, servers. Those are handled in the env variables
+* docker compose file
+* docker networks and volumes for the compose files
+*  three files uploaded to docker as configs
+    * gleanerconfigs.yaml gleaner/nabu
+    * nabuconfigs.yaml - gleaner/nabu
+    * workspace.yaml -- dagster
+* (opptional/advanced) add a compose_project_PROJECT_override.yaml file with additional containers
+
+## PORTAINER API KEY
+
+note on how to do this.
+''
+
+
+## Start
+For production environments, script, `dagster_setup_docker.sh`  should create the networks, volumes, and 
+upload configuration files
+
+1) setup a project in configs directory, if one des not exist
+    2)   add gleanerconfig.yaml, nabuconfig.yaml, and workspace.yaml (NOTE NEED A TEMPLATE FOR THIS)
+1) copy envFile.env to .env, and edit
+2) run  ./dagster_localrun.sh
+4) go to https://loclahost:3000/
+5) run a small test dataset.
 
 ```
 cd dagster/implnets/deployment
@@ -28,7 +59,7 @@ cp envFile.env .env
 ```
 
 If you look in dagster_localrun.sh you can see that the 
-$PROJECT variable is use to define what files to use, and define
+$PROJECT variable is used to define what files to use, and define, and to setup a separate 'namespace' in traefik labels.
 
 If you look in compose_local_eco_override.yaml you can see that
 additional mounts are added to the containers.
@@ -38,10 +69,13 @@ These can be customized in the  `compose_local_PROJECT_override.yaml` for local 
 ### customizing the configs
 for local development three configs
 
-* gleanerconfigs.yaml gleaner/nabu
-* nabuconfigs.yaml - gleaner/nabu
-* workspace.yaml -- dagster
+* configs/PROJECT/gleanerconfigs.yaml gleaner/nabu
+* configs/PROJECT/nabuconfigs.yaml - gleaner/nabu
+* configs/PROJECT/workspace.yaml -- dagster
 
+### Editing/testing code
+
+if you run pygen, then you need to go to 
 
 ### MOVING TO PRODUCTION
 
