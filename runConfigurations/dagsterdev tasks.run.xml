@@ -19,6 +19,7 @@
       <env name="GLEANER_MINIO_SECRET_KEY" value="worldsbestsecretkey" />
       <env name="GLEANER_MINIO_USE_SSL" value="True" />
     </envs>
+
     <method v="2" />
   </configuration>
 </component>

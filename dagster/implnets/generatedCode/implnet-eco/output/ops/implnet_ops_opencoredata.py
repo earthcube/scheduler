@@ -35,24 +35,24 @@ from docker.types.services import ContainerSpec, TaskTemplate, ConfigReference
 
 DEBUG=(os.getenv('DEBUG', 'False').lower()  == 'true')
 # volume and netowrk need to be the names in docker, and not the names of the object in docker compose
-GLEANER_CONFIG_VOLUME=os.environ.get('GLEANER_CONFIG_VOLUME', "dagster_gleaner_configs")
+GLEANER_CONFIG_VOLUME=os.environ.get('GLEANERIO_CONFIG_VOLUME', "dagster_gleaner_configs")
 # Vars and Envs
-GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANER_HEADLESS_NETWORK', "headless_gleanerio")
+GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_HEADLESS_NETWORK', "headless_gleanerio")
 # env items
 URL = os.environ.get('PORTAINER_URL')
 APIKEY = os.environ.get('PORTAINER_KEY')
 
 
-GLEANER_MINIO_ADDRESS = str(os.environ.get('GLEANER_MINIO_ADDRESS'))
-GLEANER_MINIO_PORT = str(os.environ.get('GLEANER_MINIO_PORT'))
-GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_USE_SSL')))
-GLEANER_MINIO_SECRET_KEY = str(os.environ.get('GLEANER_MINIO_SECRET_KEY'))
-GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANER_MINIO_ACCESS_KEY'))
-GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANER_MINIO_BUCKET'))
-GLEANER_HEADLESS_ENDPOINT = str(os.environ.get('GLEANER_HEADLESS_ENDPOINT', "http://headless:9222"))
+GLEANER_MINIO_ADDRESS = str(os.environ.get('GLEANERIO_MINIO_ADDRESS'))
+GLEANER_MINIO_PORT = str(os.environ.get('GLEANERIO_MINIO_PORT'))
+GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL')))
+GLEANER_MINIO_SECRET_KEY = str(os.environ.get('GLEANERIO_MINIO_SECRET_KEY'))
+GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
+GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
+GLEANER_HEADLESS_ENDPOINT = str(os.environ.get('GLEANERIO_HEADLESS_ENDPOINT', "http://headless:9222"))
 # using GLEANER, even though this is a nabu property... same prefix seems easier
-GLEANER_GRAPH_URL = str(os.environ.get('GLEANER_GRAPH_URL'))
-GLEANER_GRAPH_NAMESPACE = str(os.environ.get('GLEANER_GRAPH_NAMESPACE'))
+GLEANER_GRAPH_URL = str(os.environ.get('GLEANERIO_GRAPH_URL'))
+GLEANER_GRAPH_NAMESPACE = str(os.environ.get('GLEANERIO_GRAPH_NAMESPACE'))
 GLEANERIO_GLEANER_CONFIG_PATH= str(os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml"))
 GLEANERIO_NABU_CONFIG_PATH= str(os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml"))
 GLEANERIO_GLEANER_IMAGE =str( os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest'))
