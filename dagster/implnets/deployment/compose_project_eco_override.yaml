@@ -46,7 +46,6 @@ services:
     dagster-daemon:
         environment: *env
         command: "dagster-daemon run -w workspace.yaml  "
-        volumes: *vol
         depends_on:
             - dagster-postgres
             - dagster-code-project
@@ -60,7 +59,7 @@ services:
         platform: linux/x86_64
         # you should be able to change the source locally, without a full rebuild.
        #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}t
+        image: docker.io/nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_CODE_TAG:-latest}
 
         environment: *env
         command:

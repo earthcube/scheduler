@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Set variables
         run: |
-            REGISTRY_IMAGE=nsfearthcube/dagster
+            REGISTRY_IMAGE=nsfearthcube/dagster-gleanerio
             echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
         working-directory:  /
       - name: Checkout Repo
@@ -128,7 +128,7 @@ jobs:
     steps:
       - name: Set variables
         run: |
-            REGISTRY_IMAGE=nsfearthcube/dagster-${{ matrix.project }}
+            REGISTRY_IMAGE=nsfearthcube/dagster-gleanerio-${{ matrix.project }}
             echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
         working-directory:  /
       - name: Checkout Repo
