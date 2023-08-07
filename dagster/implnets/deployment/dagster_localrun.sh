@@ -47,7 +47,7 @@ if [  "$(docker network ls  | grep ${GLEANERIO_HEADLESS_NETWORK})" ] ; then
    echo ${GLEANERIO_HEADLESS_NETWORK} netowrk exists;
 else
    echo creating network
-   if [ "$(docker info | grep Swarm | sed 's/Swarm: //g')" == " inactive" ]; then
+   if [ "$(docker info | grep Swarm | sed 's/Swarm: //g' | tr -d ' ')" == "inactive"  ]; then
         echo Not Swarm
         if `docker network create -d bridge --attachable ${GLEANERIO_HEADLESS_NETWORK}`; then
            echo 'Created network ${GLEANERIO_HEADLESS_NETWORK}'
