@@ -14,7 +14,7 @@ networks:
     external: true
   headless:
     external: true
-    name: headless_gleanerio
+    name: ${GLEANERIO_HEADLESS_NETWORK:-headless_gleanerio}
   dagster_host:
     driver: overlay
     # using project name is a bit tricky from dagster code, and needs to be external for a
@@ -25,20 +25,16 @@ networks:
 volumes:
   dagster-postgres:
         driver: local
-  dagster-project:
-    external: true
-    #name: dagster-${PROJECT:-eco}
-    name: dagster_gleaner_configs
 # external so it could be shared accross docker swarms
 configs:
   gleaner:
-    name: ${GLEANER_GLEANER_DOCKER_CONFIG:-gleaner}
+    name: ${GLEANERIO_GLEANER_DOCKER_CONFIG:-gleaner}
     external: true
   nabu:
-    name: ${GLEANER_NABU_DOCKER_CONFIG:-nabu}
+    name: ${GLEANERIO_NABU_DOCKER_CONFIG:-nabu}
     external: true
   workspace:
-    name: ${GLEANER_WORKSPACE_DOCKER_CONFIG:-workspace}
+    name: ${GLEANERIO_WORKSPACE_DOCKER_CONFIG:-workspace}
     external: true
 
 secrets:

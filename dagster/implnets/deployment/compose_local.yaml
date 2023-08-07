@@ -7,7 +7,7 @@ networks:
   #  driver: bridge
   headless:
     external: true
-    name: ${GLEANER_HEADLESS_NETWORK:-headless_gleanerio}
+    name: ${GLEANERIO_HEADLESS_NETWORK:-headless_gleanerio}
 volumes:
     dagster-postgres:
         driver: local
@@ -15,7 +15,7 @@ volumes:
 # let yourself use local configuration
 configs:
   gleaner:
-    name: ${GLEANER_GLEANER_DOCKER_CONFIG:-gleaner}
+    name: ${GLEANERIO_GLEANER_DOCKER_CONFIG:-gleaner}
     file: ../configs/${PROJECT:-eco}/gleanerconfig.yaml
   nabu:
     name: ${GLEANER_NABU_DOCKER_CONFIG:-nabu}
