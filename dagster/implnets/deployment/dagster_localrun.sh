@@ -43,22 +43,22 @@ fi
 ## need to docker (network|volume) ls | grep (traefik_proxy|traefik_proxy) before these calll
 ## or an error will be thrown
 #echo "This message is OK **Error response from daemon: network with name traefik_proxy already exists.** "
-if [  "$(docker network ls  | grep -${GLEANER_HEADLESS_NETWORK})" ] ; then
-   echo ${GLEANER_HEADLESS_NETWORK} netowrk exists;
+if [  "$(docker network ls  | grep ${GLEANERIO_HEADLESS_NETWORK})" ] ; then
+   echo ${GLEANERIO_HEADLESS_NETWORK} netowrk exists;
 else
    echo creating network
-   if [ "$(docker info | grep Swarm | sed 's/Swarm: //g')" == "inactive" ]; then
+   if [ "$(docker info | grep Swarm | sed 's/Swarm: //g')" == " inactive" ]; then
         echo Not Swarm
-        if `docker network create -d bridge --attachable ${GLEANER_HEADLESS_NETWORK}`; then
-           echo 'Created network ${GLEANER_HEADLESS_NETWORK}'
+        if `docker network create -d bridge --attachable ${GLEANERIO_HEADLESS_NETWORK}`; then
+           echo 'Created network ${GLEANERIO_HEADLESS_NETWORK}'
         else
            echo "ERROR: *** Failed to create local network. "
             exit 1
         fi
    else
         echo Is Swarm
-        if `docker network create -d overlay --attachable ${GLEANER_HEADLESS_NETWORK}`; then
-          echo 'Created network ${GLEANER_HEADLESS_NETWORK}'
+        if `docker network create -d overlay --attachable ${GLEANERIO_HEADLESS_NETWORK}`; then
+          echo 'Created network ${GLEANERIO_HEADLESS_NETWORK}'
         else
             echo "ERROR: *** Failed to create swarm network.  "
             exit 1
@@ -70,15 +70,15 @@ fi
 
 #echo NOTE: Verify that the traefik_proxy network  SCOPE is swarm
 
-docker volume create ${GLEANER_CONFIG_VOLUME:-dagster_gleaner_configs}
+docker volume create ${GLEANERIO_CONFIG_VOLUME:-dagster_gleaner_configs}
 
 echo DO NOT FORGET TO USE pygen/makefile REGNERATE THE CODE.
 
 echo run as detached: $detached
 
-if [ -f compose_${PROJECT}_override.yaml ]
+if [ -f compose_local_${PROJECT}_override.yaml ]
   then
-    override_file="-f compose_${PROJECT}_override.yaml"
+    override_file="-f compose_local_${PROJECT}_override.yaml"
   else
     override_file=""
 fi
