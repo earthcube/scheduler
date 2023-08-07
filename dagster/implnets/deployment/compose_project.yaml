@@ -44,7 +44,7 @@ secrets:
     external: true
 services:
     dagster-dagit:
-        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
+        image: docker.io/nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
         command: 'dagster-webserver  -w ${GLEANERIO_WORKSPACE_CONFIG_PATH:-/usr/src/app/workspace.yaml}  -h "0.0.0.0" -p 3000'
         configs:
           - source: workspace
@@ -113,7 +113,7 @@ services:
               - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.accesscontrolmaxage=100"
               - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.addvaryheader=true"
     dagster-daemon:
-        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
+        image: docker.io/nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
         configs:
               - source: workspace
                 target: /usr/src/app/workspace.yaml
@@ -188,7 +188,7 @@ services:
         platform: linux/x86_64
         # you should be able to change the source locally, without a full rebuild.
        #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
+        image: docker.io/nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_CODE_TAG:-latest}
 
         environment: *env
         command:
@@ -213,7 +213,7 @@ services:
         platform: linux/x86_64
         # you should be able to change the source locally, without a full rebuild.
        #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}
+        image: docker.io/nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_CODE_TAG:-latest}
         environment: *env
         command:
         - "dagster"

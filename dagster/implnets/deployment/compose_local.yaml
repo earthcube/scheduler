@@ -32,12 +32,12 @@ services:
         build:
           #context: .
           context: ..
-          dockerfile: build/Dockerfile_local
+          dockerfile: build/Dockerfile_dagster
           args:
             implnet: ${PROJECT:-eco}
         # you should be able to change the source locally, without a full rebuild.
         #image: dagster-${PROJECT:-eco}:latest
-        image: dagster-gleanerio-local:latest
+        image: dagster-local:latest
         command: 'dagster-webserver  -w ${GLEANERIO_WORKSPACE_CONFIG_PATH:-/usr/src/app/workspace.yaml}  -h "0.0.0.0" -p 3000'
         configs:
           - source: workspace
@@ -110,12 +110,12 @@ services:
         build:
           #context: .
           context: ..
-          dockerfile: build/Dockerfile_local
+          dockerfile: build/Dockerfile_dagster
           args:
             implnet: ${PROJECT:-eco}
         # you should be able to change the source locally, without a full rebuild.
        #image: dagster-${PROJECT:-eco}:latest
-        image: dagster-gleanerio-local:latest
+        image: dagster-local:latest
         configs:
           - source: workspace
             target: /usr/src/app/workspace.yaml
@@ -193,7 +193,7 @@ services:
         build:
           #context: .
           context: ..
-          dockerfile: build/Dockerfile_local
+          dockerfile: build/Dockerfile_code
           args:
             implnet: ${PROJECT:-eco}
         # you should be able to change the source locally, without a full rebuild.
@@ -225,7 +225,7 @@ services:
         build:
           #context: .
           context: ..
-          dockerfile: build/Dockerfile_local
+          dockerfile: build/Dockerfile_code
           args:
             implnet: ${PROJECT:-eco}
         # you should be able to change the source locally, without a full rebuild.

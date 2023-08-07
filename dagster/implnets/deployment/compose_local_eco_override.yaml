@@ -49,19 +49,10 @@ services:
             - dagster-code-project
             - dagster-code-tasks
             - dagster-code-eco-ecrr
-    dagster-daemon:
 
-        image: dagster-gleanerio-local:latest
-        environment: *env
+    dagster-daemon:
         command: "dagster-daemon run -w workspace.yaml  "
-        volumes: *vol
-        depends_on:
-            - dagster-postgres
-            - dagster-code-project
-            - dagster-code-tasks
-            - dagster-code-eco-ecrr
-        networks:
-            - traefik_proxy
+        depends_on: *deps
 
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
@@ -71,7 +62,7 @@ services:
         build:
           #context: .
           context: ..
-          dockerfile: build/Dockerfile_local
+          dockerfile: build/Dockerfile_code
           args:
             implnet: ${PROJECT:-eco}
         # you should be able to change the source locally, without a full rebuild.
