@@ -43,7 +43,17 @@ services:
             -   dagster-code-project
             - dagster-code-tasks
 
-
+    dagster-daemon:
+        environment: *env
+        command: "dagster-daemon run -w workspace.yaml  "
+        volumes: *vol
+        depends_on:
+            - dagster-postgres
+            - dagster-code-project
+            - dagster-code-tasks
+            - dagster-code-eco-ecrr
+        networks:
+            - traefik_proxy
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
     dagster-code-eco-ecrr:
