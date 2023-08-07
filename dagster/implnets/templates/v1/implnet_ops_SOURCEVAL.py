@@ -1,4 +1,5 @@
 import distutils
+import logging
 
 from dagster import job, op, graph, get_dagster_logger
 import os, json, io
@@ -640,16 +641,20 @@ def SOURCEVAL_summarize(context, msg: str) -> str:
 
     summaryttl = g.serialize(format='longturtle')
 
-    inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
+    try:
+        inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
 
-    # TO DO: upload to minio
-    if not inserted:
-        filename = os.path.join("output", f"{source_name}.ttl")
-        if not os.path.exists(os.path.dirname(filename)):
-            os.makedirs(os.path.dirname(filename))
-        with open(filename, 'w') as f:
-            f.write(summaryttl)
-        return 1
+        # TO DO: upload to minio
+        if not inserted:
+            filename = os.path.join("output", f"{source_name}.ttl")
+            if not os.path.exists(os.path.dirname(filename)):
+                os.makedirs(os.path.dirname(filename))
+            with open(filename, 'w') as f:
+                f.write(summaryttl)
+            return 1
+    except Exception as e:
+        logging.WARN(e)
+        
     r = str('returned value:{}'.format(summaryttl))
 
     return msg, r
