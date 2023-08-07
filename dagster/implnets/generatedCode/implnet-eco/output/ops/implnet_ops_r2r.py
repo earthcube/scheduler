@@ -1,11 +1,10 @@
 import distutils
 
-from dagster import job, op, graph, get_dagster_logger
+from dagster import job, op, graph,In, Nothing, get_dagster_logger
 import os, json, io
 import urllib
 from urllib import request
 from urllib.error import HTTPError
-from dagster import job, op, get_dagster_logger
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 import json
 
@@ -52,7 +51,8 @@ GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
 GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
 GLEANERIO_GLEANER_CONFIG_PATH= os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml")
 GLEANERIO_NABU_CONFIG_PATH= os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml")
-
+GLEANERIO_GLEANER_IMAGE = os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest')
+GLEANERIO_NABU_IMAGE = os.environ.get('GLEANERIO_NABU_IMAGE', 'nsfearthcube/nabu:latest')
 def _graphEndpoint():
     url = f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
     return url
@@ -227,7 +227,7 @@ def _create_container(
 
 def gleanerio(context, mode, source):
     ## ------------   Create
-
+    returnCode = 0
     get_dagster_logger().info(f"Gleanerio mode: {str(mode)}")
 
     if str(mode) == "gleaner":
@@ -277,7 +277,9 @@ def gleanerio(context, mode, source):
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     else:
-        return 1
+
+        returnCode = 1
+        return returnCode
 
     # from docker0dagster
     run_container_context = DockerContainerContext.create_for_run(
@@ -431,12 +433,24 @@ def gleanerio(context, mode, source):
         # client.api.start(container=container.id)
         ## start is not working
 
-        for line in container.logs(stdout=True, stderr=True, stream=True, follow=True):
-            get_dagster_logger().debug(line)  # noqa: T201
+        # do not let a possible issue with container logs  stop log upload.
+        ## I thinkthis happens when a container exits immediately.
+        try:
+            for line in container.logs(stdout=True, stderr=True, stream=True, follow=True):
+                get_dagster_logger().debug(line)  # noqa: T201
+        except docker.errors.APIError as ex:
+            get_dagster_logger().info(f"watch container logs failed Docker API ISSUE: ", ex)
+        except Exception as ex:
+            get_dagster_logger().info(f"watch container logs failed other issue: ", ex)
+
 
         # ## ------------  Wait expect 200
+        # we want to get the logs, no matter what, so do not exit, yet.
+        ## or should logs be moved into finally?
+        ### in which case they need to be methods that don't send back errors.
         exit_status = container.wait()["StatusCode"]
         get_dagster_logger().info(f"Container Wait Exit status:  {exit_status}")
+        returnCode = exit_status
 
 
 
@@ -444,7 +458,7 @@ def gleanerio(context, mode, source):
         ## ------------  Copy logs  expect 200
 
 
-        c = container.logs(stdout=True, stderr=True, stream=False, follow=True).decode('latin-1')
+        c = container.logs(stdout=True, stderr=True, stream=False, follow=False).decode('latin-1')
 
         # write to s3
 
@@ -489,65 +503,89 @@ def gleanerio(context, mode, source):
        #      i+=1
 
        # s3loader(r.read().decode('latin-1'), NAME)
-        s3loader(r.read(), f"{source}_{str(mode)}_runlogs")
+
     finally:
         if (not DEBUG) :
-            if (cid):
-                url = URL + 'containers/' + cid
-                req = request.Request(url, method="DELETE")
-                req.add_header('X-API-Key', APIKEY)
-                # req.add_header('content-type', 'application/json')
-                req.add_header('accept', 'application/json')
-                r = request.urlopen(req)
-                print(r.status)
+            # if (cid):
+            #     url = URL + 'containers/' + cid
+            #     req = request.Request(url, method="DELETE")
+            #     req.add_header('X-API-Key', APIKEY)
+            #     # req.add_header('content-type', 'application/json')
+            #     req.add_header('accept', 'application/json')
+            #     r = request.urlopen(req)
+            #     print(r.status)
+            #     get_dagster_logger().info(f"Container Remove: {str(r.status)}")
+            # else:
+            #     get_dagster_logger().info(f"Container Not created, so not removed.")
+            if (container):
+                container.remove(force=True)
                 get_dagster_logger().info(f"Container Remove: {str(r.status)}")
             else:
                 get_dagster_logger().info(f"Container Not created, so not removed.")
         else:
             get_dagster_logger().info(f"Container NOT Remove: DEBUG ENABLED")
 
-
-    return 0
+    if (returnCode != 0):
+        get_dagster_logger().info(f"Gleaner/Nabu container non-zero exit code. See logs in S3")
+        raise Exception("Gleaner/Nabu container non-zero exit code. See logs in S3")
+    return returnCode
 
 @op
+def r2r_getImage(context):
+    run_container_context = DockerContainerContext.create_for_run(
+        context.dagster_run,
+        context.instance.run_launcher
+        if isinstance(context.instance.run_launcher, DockerRunLauncher)
+        else None,
+    )
+    get_dagster_logger().info(f"call docker _get_client: ")
+    client = _get_client(run_container_context)
+    client.images.pull(GLEANERIO_GLEANER_IMAGE)
+    client.images.pull(GLEANERIO_NABU_IMAGE)
+@op(ins={"start": In(Nothing)})
 def r2r_gleaner(context):
     returned_value = gleanerio(context, ("gleaner"), "r2r")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"Gleaner notes are  {r} ")
-    return r
+    get_dagster_logger().info(f"Gleaner returned  {r} ")
+    return
 
-@op
-def r2r_nabu_prune(context, msg: str):
+@op(ins={"start": In(Nothing)})
+def r2r_nabu_prune(context):
     returned_value = gleanerio(context,("nabu"), "r2r")
     r = str('returned value:{}'.format(returned_value))
-    return msg + r
+    get_dagster_logger().info(f"nabu prune returned  {r} ")
+    return
 
-@op
-def r2r_nabuprov(context, msg: str):
+@op(ins={"start": In(Nothing)})
+def r2r_nabuprov(context):
     returned_value = gleanerio(context,("prov"), "r2r")
     r = str('returned value:{}'.format(returned_value))
-    return msg + r
+    get_dagster_logger().info(f"nabu prov returned  {r} ")
+    return
 
-@op
-def r2r_nabuorg(context, msg: str):
+@op(ins={"start": In(Nothing)})
+def r2r_nabuorg(context):
     returned_value = gleanerio(context,("orgs"), "r2r")
     r = str('returned value:{}'.format(returned_value))
-    return msg + r
+    get_dagster_logger().info(f"nabu org load returned  {r} ")
+    return
 
-@op
-def r2r_naburelease(context, msg: str):
+@op(ins={"start": In(Nothing)})
+def r2r_naburelease(context):
     returned_value = gleanerio(context,("release"), "r2r")
     r = str('returned value:{}'.format(returned_value))
-    return msg + r
-@op
-def r2r_uploadrelease(context, msg: str):
+    get_dagster_logger().info(f"nabu release returned  {r} ")
+    return
+@op(ins={"start": In(Nothing)})
+def r2r_uploadrelease(context):
     returned_value = postRelease("r2r")
     r = str('returned value:{}'.format(returned_value))
-    return msg + r
+    get_dagster_logger().info(f"upload release returned  {r} ")
+    return
 
 
-@op
-def r2r_missingreport_s3(context, msg: str):
+@op(ins={"start": In(Nothing)})
+def r2r_missingreport_s3(context):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -560,9 +598,10 @@ def r2r_missingreport_s3(context, msg: str):
     r = str('missing repoort returned value:{}'.format(returned_value))
     report = json.dumps(returned_value, indent=2)
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
-    return msg + r
-@op
-def r2r_missingreport_graph(context, msg: str):
+    get_dagster_logger().info(f"missing s3 report  returned  {r} ")
+    return
+@op(ins={"start": In(Nothing)})
+def r2r_missingreport_graph(context):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -578,10 +617,10 @@ def r2r_missingreport_graph(context, msg: str):
     report = json.dumps(returned_value, indent=2)
 
     s3Minio.putReportFile(bucket, source_name, "missing_report_graph.json", report)
-
-    return msg + r
-@op
-def r2r_graph_reports(context, msg: str):
+    get_dagster_logger().info(f"missing graph  report  returned  {r} ")
+    return
+@op(ins={"start": In(Nothing)})
+def r2r_graph_reports(context) :
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
@@ -597,11 +636,11 @@ def r2r_graph_reports(context, msg: str):
     #report = json.dumps(returned_value, indent=2) # value already json.dumps
     report = returned_value
     s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
+    get_dagster_logger().info(f"graph report  returned  {r} ")
+    return
 
-    return msg + r
-
-@op
-def r2r_identifier_stats(context, msg: str):
+@op(ins={"start": In(Nothing)})
+def r2r_identifier_stats(context):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -612,9 +651,11 @@ def r2r_identifier_stats(context, msg: str):
     #r = str('identifier stats returned value:{}'.format(returned_value))
     report = returned_value.to_json()
     s3Minio.putReportFile(bucket, source_name, "identifier_stats.json", report)
-    return msg + r
+    get_dagster_logger().info(f"identifer stats report  returned  {r} ")
+    return
 
-def r2r_bucket_urls(context, msg: str):
+@op(ins={"start": In(Nothing)})
+def r2r_bucket_urls(context):
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "r2r"
@@ -623,7 +664,8 @@ def r2r_bucket_urls(context, msg: str):
     r = str('returned value:{}'.format(res))
     bucketurls = json.dumps(res, indent=2)
     s3Minio.putReportFile(GLEANER_MINIO_BUCKET, source_name, "bucketutil_urls.json", bucketurls)
-    return msg + r
+    get_dagster_logger().info(f"bucker urls report  returned  {r} ")
+    return
 
 
 #Can we simplify and use just a method. Then import these methods?
@@ -643,24 +685,28 @@ def r2r_bucket_urls(context, msg: str):
 #     return msg + r
 @graph
 def harvest_r2r():
-    harvest = r2r_gleaner()
+    containers = r2r_getImage()
+    harvest = r2r_gleaner(start=containers)
 
-    report_ms3 = r2r_missingreport_s3(harvest)
-    report_idstat = r2r_identifier_stats(report_ms3)
+# defingin nothing dependencies
+    # https://docs.dagster.io/concepts/ops-jobs-graphs/graphs#defining-nothing-dependencies
+
+    report_ms3 = r2r_missingreport_s3(start=harvest)
+    report_idstat = r2r_identifier_stats(start=report_ms3)
     # for some reason, this causes a msg parameter missing
-   # report_bucketurl = r2r_bucket_urls(report_idstat)
+    report_bucketurl = r2r_bucket_urls(start=report_idstat)
 
     #report1 = missingreport_s3(harvest, source="r2r")
-    load_release = r2r_naburelease(harvest)
-    load_uploadrelease = r2r_uploadrelease(load_release)
+    load_release = r2r_naburelease(start=harvest)
+    load_uploadrelease = r2r_uploadrelease(start=load_release)
 
-    load_prune = r2r_nabu_prune(load_uploadrelease)
-    load_prov = r2r_nabuprov(load_prune)
-    load_org = r2r_nabuorg(load_prov)
+    load_prune = r2r_nabu_prune(start=load_uploadrelease)
+    load_prov = r2r_nabuprov(start=load_prune)
+    load_org = r2r_nabuorg(start=load_prov)
 
 # run after load
-    report_msgraph=r2r_missingreport_graph(load_org)
-    report_graph=r2r_graph_reports(report_msgraph)
+    report_msgraph=r2r_missingreport_graph(start=load_org)
+    report_graph=r2r_graph_reports(start=report_msgraph)
 
 
 
