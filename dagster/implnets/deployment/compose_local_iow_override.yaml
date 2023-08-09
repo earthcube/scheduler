@@ -41,14 +41,14 @@ services:
             - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
             - GLEANERIO_NABU_DOCKER_CONFIG=${GLEANERIO_NABU_DOCKER_CONFIG:-nabu}
             - GLEANERIO_GLEANER_DOCKER_CONFIG=${GLEANERIO_GLEANER_DOCKER_CONFIG:-gleaner}
-            - ECRR_MINIO_BUCKET="ECRR"
-            - ECRR_GRAPH_NAMESPACE="ECRR"
+#            - ECRR_MINIO_BUCKET="ECRR"
+#            - ECRR_GRAPH_NAMESPACE="ECRR"
         command: 'dagster-webserver  -w workspace.yaml  -h "0.0.0.0" -p 3000'
         depends_on: &deps
             - dagster-postgres
             - dagster-code-project
             - dagster-code-tasks
-            - dagster-code-iow-ecrr
+#            - dagster-code-iow-ecrr
 
     dagster-daemon:
         command: "dagster-daemon run -w workspace.yaml  "
@@ -56,36 +56,36 @@ services:
 
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
-    dagster-code-iow-ecrr:
-
-        platform: linux/x86_64
-        build:
-          #context: .
-          context: ..
-          dockerfile: build/Dockerfile_code
-          args:
-            implnet: ${PROJECT:-iow}
-        # you should be able to change the source locally, without a full rebuild.
-       #image: dagster-${PROJECT:-iow}:latest
-        image: dagster-gleanerio-local:latest
-
-        environment: *env
-        command:
-        - "dagster"
-        - "api"
-        - "grpc"
-        - "-h"
-        - "0.0.0.0"
-        - "-p"
-        - "4000"
-        - "--python-file"
-        - "/usr/src/app/workflows/ecrr/repositories/repository.py"
-        - "-d"
-        - "/usr/src/app/workflows/ecrr/"
-
-        volumes: *vol
-        depends_on:
-            - dagster-postgres
-        networks:
-            - traefik_proxy
+#    dagster-code-iow-ecrr:
+#
+#        platform: linux/x86_64
+#        build:
+#          #context: .
+#          context: ..
+#          dockerfile: build/Dockerfile_code
+#          args:
+#            implnet: ${PROJECT:-iow}
+#        # you should be able to change the source locally, without a full rebuild.
+#       #image: dagster-${PROJECT:-iow}:latest
+#        image: dagster-gleanerio-local:latest
+#
+#        environment: *env
+#        command:
+#        - "dagster"
+#        - "api"
+#        - "grpc"
+#        - "-h"
+#        - "0.0.0.0"
+#        - "-p"
+#        - "4000"
+#        - "--python-file"
+#        - "/usr/src/app/workflows/ecrr/repositories/repository.py"
+#        - "-d"
+#        - "/usr/src/app/workflows/ecrr/"
+#
+#        volumes: *vol
+#        depends_on:
+#            - dagster-postgres
+#        networks:
+#            - traefik_proxy
 
