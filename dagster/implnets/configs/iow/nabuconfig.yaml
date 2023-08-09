@@ -4,7 +4,7 @@ minio:
   port:
   accesskey:
   secretkey:
-  ssl: true
+  ssl: false
 context:
     cache: true
     strict: true
@@ -18,6 +18,6 @@ sparql:
 objects:
   domain: us-east-1
   prefix:
-    - demo
+    - summoned/counties0
 
 
