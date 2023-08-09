@@ -64,7 +64,7 @@ iow-clean:
 	cd ./generatedCode/implnet-iow && rm -rf ./output/*
 
 iow-generate:
-	python pygen.py -cf ./configs/iow/gleanerconfig.yaml -od ./generatedCode/implnet-iow/output  -td ./templates/v1   -d 30
+	python pygen.py -cf ./configs/iow/gleanerconfig.yaml -od ./generatedCode/implnet-iow/output  -td ./templates/v1   -d 27
 
 iow-build:
 	podman build  --tag="docker.io/fils/dagster_iow:$(VERSION)"  --build-arg implnet=iow --file=./build/Dockerfile .
