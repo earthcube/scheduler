@@ -34,8 +34,12 @@ from dagster_docker.utils import DOCKER_CONFIG_SCHEMA, validate_docker_image
 from docker.types.services import ContainerSpec, TaskTemplate, ConfigReference
 
 DEBUG=(os.getenv('DEBUG', 'False').lower()  == 'true')
-# volume and netowrk need to be the names in docker, and not the names of the object in docker compose
-GLEANER_CONFIG_VOLUME=os.environ.get('GLEANERIO_CONFIG_VOLUME', "dagster_gleaner_configs")
+# #
+# path to gleaner config in Dagster-daemon is "/scheduler/gleanerconfig.yaml" (config file mounted)
+#  WHEN RUNNING dagster-dev, this needs to be a path to a local file
+##
+DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('DAGSTER_GLEANER_CONFIG_PATH', "/scheduler/gleanerconfig.yaml")
+
 # Vars and Envs
 GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_HEADLESS_NETWORK', "headless_gleanerio")
 # env items
@@ -607,7 +611,7 @@ def r2r_uploadrelease(context):
 
 @op(ins={"start": In(Nothing)})
 def r2r_missingreport_s3(context):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="r2r")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
@@ -623,7 +627,7 @@ def r2r_missingreport_s3(context):
     return
 @op(ins={"start": In(Nothing)})
 def r2r_missingreport_graph(context):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="r2r")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
@@ -642,7 +646,7 @@ def r2r_missingreport_graph(context):
     return
 @op(ins={"start": In(Nothing)})
 def r2r_graph_reports(context) :
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="r2r")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
@@ -662,7 +666,7 @@ def r2r_graph_reports(context) :
 
 @op(ins={"start": In(Nothing)})
 def r2r_identifier_stats(context):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="r2r")
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="r2r")
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "r2r"

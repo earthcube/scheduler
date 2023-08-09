@@ -29,7 +29,7 @@ fi
 if [ -f $envfile ]
   then
     echo "using " $envfile
-    export $(cat .env | xargs)
+    export $(sed  '/^[ \t]*#/d' $envfile |  sed '/^$/d' | xargs)
 
   else
     echo "missing environment file. pass flag, or copy and edit file"
