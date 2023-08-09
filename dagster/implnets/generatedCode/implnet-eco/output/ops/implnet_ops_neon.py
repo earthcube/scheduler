@@ -49,6 +49,12 @@ GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_
 GLEANER_MINIO_SECRET_KEY = str(os.environ.get('GLEANERIO_MINIO_SECRET_KEY'))
 GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
 GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
+
+# set for the earhtcube utiltiies
+MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL,
+               "access_key": GLEANER_MINIO_ACCESS_KEY,
+              "secret_key": GLEANER_MINIO_SECRET_KEY }
+
 GLEANER_HEADLESS_ENDPOINT = str(os.environ.get('GLEANERIO_HEADLESS_ENDPOINT', "http://headless:9222"))
 # using GLEANER, even though this is a nabu property... same prefix seems easier
 GLEANER_GRAPH_URL = str(os.environ.get('GLEANERIO_GRAPH_URL'))
@@ -435,16 +441,16 @@ def gleanerio(context, mode, source):
 
 
 
-
+# this method of watching the logs,
         # do not let a possible issue with container logs  stop log upload.
         ## I thinkthis happens when a container exits immediately.
         try:
             for line in container.logs(stdout=True, stderr=True, stream=True, follow=True):
                 get_dagster_logger().debug(line)  # noqa: T201
         except docker.errors.APIError as ex:
-            get_dagster_logger().info(f"watch container logs failed Docker API ISSUE: ", ex)
+            get_dagster_logger().info(f"This is ok. watch container logs failed Docker API ISSUE: {repr(ex)}")
         except Exception as ex:
-            get_dagster_logger().info(f"watch container logs failed other issue: ", ex)
+            get_dagster_logger().info(f"This is ok. watch container logs failed other issue:{repr(ex)} ")
 
 
         # ## ------------  Wait expect 200
@@ -603,7 +609,7 @@ def neon_uploadrelease(context):
 def neon_missingreport_s3(context):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="neon")
     source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "neon"
     graphendpoint = None
@@ -619,7 +625,7 @@ def neon_missingreport_s3(context):
 def neon_missingreport_graph(context):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="neon")
     source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "neon"
 
@@ -638,7 +644,7 @@ def neon_missingreport_graph(context):
 def neon_graph_reports(context) :
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="neon")
     #source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "neon"
 
@@ -657,7 +663,7 @@ def neon_graph_reports(context) :
 @op(ins={"start": In(Nothing)})
 def neon_identifier_stats(context):
     source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="neon")
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "neon"
 
@@ -671,7 +677,7 @@ def neon_identifier_stats(context):
 
 @op(ins={"start": In(Nothing)})
 def neon_bucket_urls(context):
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "neon"
 
