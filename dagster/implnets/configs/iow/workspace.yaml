@@ -1,4 +1,4 @@
-#load_from:
+load_from:
 #      - python_file:
 #          relative_path: "project/iow/repositories/repository.py"
 #          location_name: project
