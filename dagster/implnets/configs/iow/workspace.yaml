@@ -18,6 +18,6 @@
             port: 4000
             location_name: "project_grpc"
       - grpc_server:
-            host: dagster-code-eco-ecrr
+            host: dagster-code-iow-ecrr
             port: 4000
             location_name: "project_ecrr"
