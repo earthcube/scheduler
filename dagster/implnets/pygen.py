@@ -52,7 +52,7 @@ def gencode(cf, od, td, days) -> str:
                     di = int(days)
                     q = (((i * inc) / 24) % di) // 1
                     r = (i * inc) % 24
-                    new_cron_schedule = "0 {} * * {}".format(r, int(q))
+                    new_cron_schedule = "0 {} {} * *".format(r, int(q))
                     pattern = r'cron_schedule="(.+?)"'
                     # print("index {}::  {}".format(i,new_cron_schedule))
                     for line in fileinput.input(dst, inplace=True):
