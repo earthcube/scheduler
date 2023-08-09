@@ -473,7 +473,7 @@ def gleanerio(context, mode, source):
         get_dagster_logger().info(f"container Logs to s3: ")
 
 ## get log files
-        url = URL + 'containers/' + cid + '/archive'
+        url = URL + '/containers/' + cid + '/archive'
         params = {
             'path': f"{WorkingDir}/logs"
         }
@@ -601,7 +601,7 @@ def SOURCEVAL_uploadrelease(context):
 
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_missingreport_s3(context):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -617,7 +617,7 @@ def SOURCEVAL_missingreport_s3(context):
     return
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_missingreport_graph(context):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -636,7 +636,7 @@ def SOURCEVAL_missingreport_graph(context):
     return
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_graph_reports(context) :
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
@@ -656,7 +656,7 @@ def SOURCEVAL_graph_reports(context) :
 
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_identifier_stats(context):
-    source = getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
@@ -686,7 +686,7 @@ def SOURCEVAL_bucket_urls(context):
 #Can we simplify and use just a method. Then import these methods?
 # def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 #
-#     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
+#     source= getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source)
 #     source_url = source.get('url')
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET
