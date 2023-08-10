@@ -54,8 +54,8 @@ GLEANER_HEADLESS_ENDPOINT = os.environ.get('GLEANER_HEADLESS_ENDPOINT', "http://
 GLEANER_GRAPH_URL = os.environ.get('GLEANER_GRAPH_URL')
 GLEANER_GRAPH_NAMESPACE = os.environ.get('GLEANER_GRAPH_NAMESPACE')
 
-SUMMARY_GRAPH_ENDPOINT = os.environ.get('SUMMARY_GRAPH_ENDPOINT')
-SUMMARY_GRAPH_NAMESPACE = os.environ.get('SUMMARY_GRAPH_NAMESPACE')
+GLEANERIO_SUMMARY_GRAPH_ENDPOINT = os.environ.get('GLEANERIO_SUMMARY_GRAPH_ENDPOINT')
+GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_SUMMARY_GRAPH_NAMESPACE')
 
 GLEANERIO_GLEANER_CONFIG_PATH= os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml")
 GLEANERIO_NABU_CONFIG_PATH= os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml")
@@ -678,8 +678,8 @@ def SOURCEVAL_bucket_urls(context):
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_summarize(context) :
     source_name = "SOURCEVAL"
-    endpoint = SUMMARY_GRAPH_ENDPOINT
-    summary_namespace = SUMMARY_GRAPH_NAMESPACE
+    endpoint = GLEANERIO_SUMMARY_GRAPH_ENDPOINT
+    summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
     sumnsgraph = mg(mg.graphFromEndpoint(endpoint), summary_namespace)
     summarydf = get_summary4repoSubset(endpoint, source_name)
 
