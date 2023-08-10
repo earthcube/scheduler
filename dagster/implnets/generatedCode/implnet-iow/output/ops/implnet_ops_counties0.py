@@ -437,7 +437,7 @@ def gleanerio(context, mode, source):
 
 
         # do not let a possible issue with container logs  stop log upload.
-        ## I thinkthis happens when a container exits immediately.
+        ## I think this happens when a container exits immediately.
         try:
             for line in container.logs(stdout=True, stderr=True, stream=True, follow=True):
                 get_dagster_logger().debug(line)  # noqa: T201
