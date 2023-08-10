@@ -488,7 +488,7 @@ def gleanerio(context, mode, source):
         get_dagster_logger().info(f"container Logs to s3: ")
 
 ## get log files
-        url = URL + 'containers/' + cid + '/archive'
+        url = URL + '/containers/' + cid + '/archive'
         params = {
             'path': f"{WorkingDir}/logs"
         }
