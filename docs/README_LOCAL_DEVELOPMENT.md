@@ -5,16 +5,64 @@ If you look in the doc/README.md that description is probably better.
 
 Two types:
 
-1) Container based. This uses docker and locally deployed containers
 2) dagster dev   - Dagster runs the UI in development mode
+1) Container based. This uses docker and locally deployed containers
 
 !!!  note 
     NOTE, the Dagster and the Code containers need to be the same.
-    For local development images are named ` dagster-gleanerio-local:latest`
+    For local development images are named ` dagster-local:latest` and code containers named dagster-gleanerio-local:latest
     and built in the compose_local.yaml
-    for production, they are named `docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}`
+    for production,
+      * dagster named: nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
+      * code containers  are named `nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_TAG:-latest}`
     eg in dockerhub.com as nsfearthcube/dagster-eco:latest
 
+## DAGSTER DEV
+
+At the top level (dagster/implents) you can run 
+
+`dagster dev`
+
+You need to set the environment based on dagster/implnets/deployment/envFile.env
+
+It should run workflows/tasks/tasks
+
+defined in the pyproject.toml
+
+```
+[tool.dagster]
+module_name = "workflows.tasks.tasks"
+```
+### Setting up in pycharm
+
+you can add runconfigs in pycharm
+![pycharm_dagster_dev_runconfig.png](images%2Fpycharm_dagster_dev_runconfig.png)
+
+You should/need to add the envFile plug in so that env files can be 
+![pycharm_dagster_dev_runconfig.png](images%2Fpycharm_dagster_dev_runconfig.png)
+
+### testing tasks
+
+`cd dagster/implnets/workflows/tasks`
+You need to set the environment based on dagster/implnets/deployment/envFile.env
+
+`export $(sed  '/^[ \t]*#/d' ../../deployment/.env |  sed '/^$/d' | xargs)`
+
+`dagster dev`
+
+will run just the task, and in editable form, i think.
+
+### testing generated code
+
+`cd generatedCode/PROJECT/output/`
+
+`export $(sed  '/^[ \t]*#/d' ../../../deployment/.env |  sed '/^$/d' | xargs)`
+
+`dagster dev`
+
+!!! note
+    YOU CANNOT SET BREAKPOINTS IN TEMPLATES
+    YOU NEED TO cd generatedCode/PROJECT/output/jobs and set them in the job you are testing.
 
 ## TESTING CONTAINERS
 
@@ -81,41 +129,23 @@ if you run pygen, then you need to go to
 
 (NOTE NEED SOME MAKEFILES FOR THIS.)
 
-For production, you need to create a merged file.
 you need to create a compose_project_PROJECT_override.yaml
+
 After copying fragment from `compose_local_PROJECT_override.yaml`
-CHANGE THE IMAGE TO `docker.io/nsfearthcube/dagster-${PROJECT:-eco}:${CONTAINER_TAG:-latest}`
+CHANGE THE IMAGE TO `docker.io/nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_TAG:-latest}`
 
-Then you will merge the files
 
-`docker compose -f compose_project.yaml -f compose_project_PROJECT_override.yaml config `
+For portainer, use additional_file to add this to the stack
+
+
+If you are not using portainer, you need to create a merged config file.
+
+Then you will merge the files. Preview with: 
+
+`docker compose -f compose_project.yaml -f compose_project_PROJECT_override.yaml config  `
 
 this should show you  a merged file.
 
 `docker compose -f compose_project.yaml -f compose_project_PROJECT_override.yaml config  > compose_project_PROJECT.yaml `
 
-## DAGSTER DEV
-
-
-At the top level (dagster/implents) you can run 
-
-`dagster dev`
-
-You need to set the environment based on dagster/implnets/deployment/envFile.env
-
-It should run workflows/tasks/tasks
-
-defined in the pyproject.toml
-
-```
-[tool.dagster]
-module_name = "workflows.tasks.tasks"
-```
-
-### testing tasks
-
-cd dagster/implnets/workflows/tasks
-You need to set the environment based on dagster/implnets/deployment/envFile.env
-
-`dagster dev`
-will run just the task, and in editable form, i think.
+then start docker compose with the merged file.

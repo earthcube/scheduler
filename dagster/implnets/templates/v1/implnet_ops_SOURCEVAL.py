@@ -34,8 +34,12 @@ from dagster_docker.utils import DOCKER_CONFIG_SCHEMA, validate_docker_image
 from docker.types.services import ContainerSpec, TaskTemplate, ConfigReference
 
 DEBUG=(os.getenv('DEBUG', 'False').lower()  == 'true')
-# volume and netowrk need to be the names in docker, and not the names of the object in docker compose
-GLEANER_CONFIG_VOLUME=os.environ.get('GLEANERIO_CONFIG_VOLUME', "dagster_gleaner_configs")
+# #
+# path to gleaner config in Dagster-daemon is "/scheduler/gleanerconfig.yaml" (config file mounted)
+#  WHEN RUNNING dagster-dev, this needs to be a path to a local file
+##
+DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('DAGSTER_GLEANER_CONFIG_PATH', "/scheduler/gleanerconfig.yaml")
+
 # Vars and Envs
 GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_HEADLESS_NETWORK', "headless_gleanerio")
 # env items
@@ -49,6 +53,12 @@ GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_
 GLEANER_MINIO_SECRET_KEY = str(os.environ.get('GLEANERIO_MINIO_SECRET_KEY'))
 GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
 GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
+
+# set for the earhtcube utiltiies
+MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL,
+               "access_key": GLEANER_MINIO_ACCESS_KEY,
+              "secret_key": GLEANER_MINIO_SECRET_KEY }
+
 GLEANER_HEADLESS_ENDPOINT = str(os.environ.get('GLEANERIO_HEADLESS_ENDPOINT', "http://headless:9222"))
 # using GLEANER, even though this is a nabu property... same prefix seems easier
 GLEANER_GRAPH_URL = str(os.environ.get('GLEANERIO_GRAPH_URL'))
@@ -473,7 +483,7 @@ def gleanerio(context, mode, source):
         get_dagster_logger().info(f"container Logs to s3: ")
 
 ## get log files
-        url = URL + '/containers/' + cid + '/archive'
+        url = URL + 'containers/' + cid + '/archive'
         params = {
             'path': f"{WorkingDir}/logs"
         }
@@ -601,9 +611,9 @@ def SOURCEVAL_uploadrelease(context):
 
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_missingreport_s3(context):
-    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
     graphendpoint = None
@@ -617,9 +627,9 @@ def SOURCEVAL_missingreport_s3(context):
     return
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_missingreport_graph(context):
-    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
 
@@ -636,9 +646,9 @@ def SOURCEVAL_missingreport_graph(context):
     return
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_graph_reports(context) :
-    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     #source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
 
@@ -656,8 +666,8 @@ def SOURCEVAL_graph_reports(context) :
 
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_identifier_stats(context):
-    source = getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
 
@@ -671,7 +681,7 @@ def SOURCEVAL_identifier_stats(context):
 
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_bucket_urls(context):
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
 
@@ -686,7 +696,7 @@ def SOURCEVAL_bucket_urls(context):
 #Can we simplify and use just a method. Then import these methods?
 # def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 #
-#     source= getSitemapSourcesFromGleaner(GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source)
+#     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
 #     source_url = source.get('url')
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET

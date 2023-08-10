@@ -18,10 +18,10 @@ configs:
     name: ${GLEANERIO_GLEANER_DOCKER_CONFIG:-gleaner}
     file: ../configs/${PROJECT:-eco}/gleanerconfig.yaml
   nabu:
-    name: ${GLEANER_NABU_DOCKER_CONFIG:-nabu}
+    name: ${GLEANERIO_NABU_DOCKER_CONFIG:-nabu}
     file: ../configs/${PROJECT:-eco}/nabuconfig.yaml
   workspace:
-    name: ${GLEANER_WORKSPACE_DOCKER_CONFIG:-workspace}
+    name: ${GLEANERIO_WORKSPACE_DOCKER_CONFIG:-workspace}
     file: ../configs/${PROJECT:-eco}/workspace.yaml
 # DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
 # USE:
@@ -39,13 +39,23 @@ services:
         #image: dagster-${PROJECT:-eco}:latest
         image: dagster-local:latest
         command: 'dagster-webserver  -w ${GLEANERIO_WORKSPACE_CONFIG_PATH:-/usr/src/app/workspace.yaml}  -h "0.0.0.0" -p 3000'
-        configs:
+        configs: &configs
           - source: workspace
             target: /usr/src/app/workspace.yaml
             # uid: "103"
             # gid: "103"
             mode:
               0444
+          - source: gleaner
+            target: /scheduler/gleanerconfig.yaml
+            mode:
+              0444
+          - source: nabu
+            target: /scheduler/nabuconfig.yaml
+            # uid: "103"
+            # gid: "103"
+            mode:
+              044
         volumes: &vol
           - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
           - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project/${PROJECT:-eco}
@@ -116,13 +126,7 @@ services:
         # you should be able to change the source locally, without a full rebuild.
        #image: dagster-${PROJECT:-eco}:latest
         image: dagster-local:latest
-        configs:
-          - source: workspace
-            target: /usr/src/app/workspace.yaml
-            # uid: "103"
-            # gid: "103"
-            mode:
-              0444
+        configs: *configs
         environment: *env
         command: "dagster-daemon run -w ${GLEANERIO_WORKSPACE_CONFIG_PATH:-/usr/src/app/workspace.yaml}"
         volumes: *vol
