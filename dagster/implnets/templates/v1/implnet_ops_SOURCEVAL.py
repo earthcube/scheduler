@@ -55,9 +55,11 @@ GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
 GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
 
 # set for the earhtcube utiltiies
-MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL,
-               "access_key": GLEANER_MINIO_ACCESS_KEY,
-              "secret_key": GLEANER_MINIO_SECRET_KEY }
+MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
+
+              ,"access_key": GLEANER_MINIO_ACCESS_KEY
+              ,"secret_key": GLEANER_MINIO_SECRET_KEY
+               }
 
 GLEANER_HEADLESS_ENDPOINT = str(os.environ.get('GLEANERIO_HEADLESS_ENDPOINT', "http://headless:9222"))
 # using GLEANER, even though this is a nabu property... same prefix seems easier

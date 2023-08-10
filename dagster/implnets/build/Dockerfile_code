@@ -1,5 +1,7 @@
 FROM python:3.11-slim
 
+# we may want to get an unreleased version of code, so this is needed
+RUN apt-get update && apt-get install -y git
 # Read the ARG implnet to set who to build for.
 
 # docker buildandpush pulls the repo, so we need to put the code at a different location
