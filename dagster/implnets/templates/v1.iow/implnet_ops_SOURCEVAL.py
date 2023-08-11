@@ -326,7 +326,7 @@ def gleanerio(context, mode, source):
     elif (str(mode) == "object"):
         IMAGE = GLEANERIO_NABU_IMAGE
         rg = str(" graphs/latest/{}_release.nq").format(source)
-        ARGS = ["--cfg",  GLEANERIO_NABU_CONFIG_PATH, "object", "--prefix", rg]
+        ARGS = ["--cfg",  GLEANERIO_NABU_CONFIG_PATH, "object", rg]
         NAME = f"sch_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
