@@ -1,5 +1,6 @@
 import distutils
 import logging
+import time
 
 from dagster import job, op, graph,In, Nothing, get_dagster_logger
 import os, json, io
@@ -7,6 +8,7 @@ import urllib
 from urllib import request
 from urllib.error import HTTPError
 
+from docker.types import RestartPolicy, ServiceMode
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpointUpdateNamespace
 import json
 
@@ -706,14 +708,17 @@ def lipdverse_summarize(context) :
     source_name = "lipdverse"
     endpoint = GLEANERIO_SUMMARY_GRAPH_ENDPOINT
     summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
-    sumnsgraph = mg(mg.graphFromEndpoint(endpoint), summary_namespace)
-    summarydf = get_summary4repoSubset(endpoint, source_name)
-
-    nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
-
-    summaryttl = g.serialize(format='longturtle')
 
     try:
+        sumnsgraph = mg(mg.graphFromEndpoint(endpoint), summary_namespace)
+        summaryendpoint = endpointUpdateNamespace(endpoint, summary_namespace)
+
+        summarydf = get_summary4repoSubset(endpoint, source_name)
+
+        nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
+
+        summaryttl = g.serialize(format='longturtle')
+
         inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
 
         # TO DO: upload to minio
