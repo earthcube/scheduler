@@ -721,14 +721,8 @@ def SOURCEVAL_summarize(context) :
 
         inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
 
-        # TO DO: upload to minio
         if not inserted:
-            filename = os.path.join("output", f"{source_name}.ttl")
-            if not os.path.exists(os.path.dirname(filename)):
-                os.makedirs(os.path.dirname(filename))
-            with open(filename, 'w') as f:
-                f.write(summaryttl)
-            return 1
+            raise Exception("Loading to graph failed.")
     except Exception as e:
         logging.WARN(e)
         
