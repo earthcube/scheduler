@@ -325,7 +325,7 @@ def gleanerio(context, mode, source):
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     elif (str(mode) == "object"):
         IMAGE = GLEANERIO_NABU_IMAGE
-        rg = str(" graphs/latest/{}_release.nq").format(source)
+        rg = str("/graphs/latest/{}_release.nq").format(source)
         ARGS = ["--cfg",  GLEANERIO_NABU_CONFIG_PATH, "object", rg]
         NAME = f"sch_{source}_{str(mode)}"
         WorkingDir = "/nabu/"
