@@ -567,7 +567,7 @@ def gleanerio(context, mode, source):
     return returnCode
 
 @op
-def ecrr_submitted_getImage(context):
+def resource_registry_getImage(context):
     run_container_context = DockerContainerContext.create_for_run(
         context.dagster_run,
         context.instance.run_launcher
@@ -579,54 +579,54 @@ def ecrr_submitted_getImage(context):
     client.images.pull(GLEANERIO_GLEANER_IMAGE)
     client.images.pull(GLEANERIO_NABU_IMAGE)
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_gleaner(context):
-    returned_value = gleanerio(context, ("gleaner"), "ecrr_submitted")
+def resource_registry_gleaner(context):
+    returned_value = gleanerio(context, ("gleaner"), "resource_registry")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_nabu_prune(context):
-    returned_value = gleanerio(context,("prune"), "ecrr_submitted")
+def resource_registry_nabu_prune(context):
+    returned_value = gleanerio(context,("prune"), "resource_registry")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu prune returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_nabuprov(context):
-    returned_value = gleanerio(context,("prov"), "ecrr_submitted")
+def resource_registry_nabuprov(context):
+    returned_value = gleanerio(context,("prov"), "resource_registry")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu prov returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_nabuorg(context):
-    returned_value = gleanerio(context,("orgs"), "ecrr_submitted")
+def resource_registry_nabuorg(context):
+    returned_value = gleanerio(context,("orgs"), "resource_registry")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu org load returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_naburelease(context):
-    returned_value = gleanerio(context,("release"), "ecrr_submitted")
+def resource_registry_naburelease(context):
+    returned_value = gleanerio(context,("release"), "resource_registry")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu release returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_uploadrelease(context):
-    returned_value = postRelease("ecrr_submitted")
+def resource_registry_uploadrelease(context):
+    returned_value = postRelease("resource_registry")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"upload release returned  {r} ")
     return
 
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_missingreport_s3(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_submitted")
+def resource_registry_missingreport_s3(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="resource_registry")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_submitted"
+    source_name = "resource_registry"
     graphendpoint = None
     milled = False
     summon = True
@@ -637,12 +637,12 @@ def ecrr_submitted_missingreport_s3(context):
     get_dagster_logger().info(f"missing s3 report  returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_missingreport_graph(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_submitted")
+def resource_registry_missingreport_graph(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="resource_registry")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_submitted"
+    source_name = "resource_registry"
 
     graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -656,12 +656,12 @@ def ecrr_submitted_missingreport_graph(context):
     get_dagster_logger().info(f"missing graph  report  returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_graph_reports(context) :
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_submitted")
+def resource_registry_graph_reports(context) :
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="resource_registry")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_submitted"
+    source_name = "resource_registry"
 
     graphendpoint = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -676,11 +676,11 @@ def ecrr_submitted_graph_reports(context) :
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_identifier_stats(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_submitted")
+def resource_registry_identifier_stats(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="resource_registry")
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_submitted"
+    source_name = "resource_registry"
 
     returned_value = generateIdentifierRepo(source_name, bucket, s3Minio)
     r = str('returned value:{}'.format(returned_value))
@@ -691,10 +691,10 @@ def ecrr_submitted_identifier_stats(context):
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_bucket_urls(context):
+def resource_registry_bucket_urls(context):
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_submitted"
+    source_name = "resource_registry"
 
     res = s3Minio.listSummonedUrls(bucket, source_name)
     r = str('returned value:{}'.format(res))
@@ -704,10 +704,10 @@ def ecrr_submitted_bucket_urls(context):
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_submitted_summarize(context) :
+def balto_summarize(context) :
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_submitted"
+    source_name = "balto"
     endpoint = GLEANERIO_SUMMARY_GRAPH_ENDPOINT
     summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
 
@@ -732,13 +732,13 @@ def ecrr_submitted_summarize(context) :
 
 
 #Can we simplify and use just a method. Then import these methods?
-# def missingreport_s3(context, msg: str, source="ecrr_submitted"):
+# def missingreport_s3(context, msg: str, source="resource_registry"):
 #
 #     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
 #     source_url = source.get('url')
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET
-#     source_name="ecrr_submitted"
+#     source_name="resource_registry"
 #
 #     graphendpoint = None
 #     milled = False
@@ -747,33 +747,31 @@ def ecrr_submitted_summarize(context) :
 #     r = str('returned value:{}'.format(returned_value))
 #     return msg + r
 @graph
-def harvest_ecrr_submitted():
-    containers = ecrr_submitted_getImage()
-    harvest = ecrr_submitted_gleaner(start=containers)
+def harvest_resource_registry():
+    containers = resource_registry_getImage()
+    harvest = resource_registry_gleaner(start=containers)
 
 # defingin nothing dependencies
     # https://docs.dagster.io/concepts/ops-jobs-graphs/graphs#defining-nothing-dependencies
 
-    report_ms3 = ecrr_submitted_missingreport_s3(start=harvest)
-    report_idstat = ecrr_submitted_identifier_stats(start=report_ms3)
+    report_ms3 = resource_registry_missingreport_s3(start=harvest)
+    report_idstat = resource_registry_identifier_stats(start=report_ms3)
     # for some reason, this causes a msg parameter missing
-    report_bucketurl = ecrr_submitted_bucket_urls(start=report_idstat)
+    report_bucketurl = resource_registry_bucket_urls(start=report_idstat)
 
-    #report1 = missingreport_s3(harvest, source="ecrr_submitted")
-    load_release = ecrr_submitted_naburelease(start=harvest)
-    load_uploadrelease = ecrr_submitted_uploadrelease(start=load_release)
+    #report1 = missingreport_s3(harvest, source="resource_registry")
+    load_release = resource_registry_naburelease(start=harvest)
+    load_uploadrelease = resource_registry_uploadrelease(start=load_release)
 
-    load_prune = ecrr_submitted_nabu_prune(start=load_uploadrelease)
-    load_prov = ecrr_submitted_nabuprov(start=load_prune)
-    load_org = ecrr_submitted_nabuorg(start=load_prov)
+    load_prune = resource_registry_nabu_prune(start=load_uploadrelease)
+    load_prov = resource_registry_nabuprov(start=load_prune)
+    load_org = resource_registry_nabuorg(start=load_prov)
 
-    summarize = ecrr_submitted_summarize(start=load_uploadrelease)
+    summarize = balto_summarize(start=load_uploadrelease)
 
 # run after load
-    report_msgraph = ecrr_submitted_missingreport_graph(start=summarize)
-    report_graph = ecrr_submitted_graph_reports(start=report_msgraph)
-    report_msgraph=ecrr_submitted_missingreport_graph(start=load_org)
-    report_graph=ecrr_submitted_graph_reports(start=report_msgraph)
+    report_msgraph=resource_registry_missingreport_graph(start=load_org)
+    report_graph=resource_registry_graph_reports(start=report_msgraph)
 
 
 

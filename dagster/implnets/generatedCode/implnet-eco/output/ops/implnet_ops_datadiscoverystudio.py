@@ -567,7 +567,7 @@ def gleanerio(context, mode, source):
     return returnCode
 
 @op
-def xdomes_getImage(context):
+def datadiscoverystudio_getImage(context):
     run_container_context = DockerContainerContext.create_for_run(
         context.dagster_run,
         context.instance.run_launcher
@@ -579,54 +579,54 @@ def xdomes_getImage(context):
     client.images.pull(GLEANERIO_GLEANER_IMAGE)
     client.images.pull(GLEANERIO_NABU_IMAGE)
 @op(ins={"start": In(Nothing)})
-def xdomes_gleaner(context):
-    returned_value = gleanerio(context, ("gleaner"), "xdomes")
+def datadiscoverystudio_gleaner(context):
+    returned_value = gleanerio(context, ("gleaner"), "datadiscoverystudio")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def xdomes_nabu_prune(context):
-    returned_value = gleanerio(context,("prune"), "xdomes")
+def datadiscoverystudio_nabu_prune(context):
+    returned_value = gleanerio(context,("prune"), "datadiscoverystudio")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu prune returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def xdomes_nabuprov(context):
-    returned_value = gleanerio(context,("prov"), "xdomes")
+def datadiscoverystudio_nabuprov(context):
+    returned_value = gleanerio(context,("prov"), "datadiscoverystudio")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu prov returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def xdomes_nabuorg(context):
-    returned_value = gleanerio(context,("orgs"), "xdomes")
+def datadiscoverystudio_nabuorg(context):
+    returned_value = gleanerio(context,("orgs"), "datadiscoverystudio")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu org load returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def xdomes_naburelease(context):
-    returned_value = gleanerio(context,("release"), "xdomes")
+def datadiscoverystudio_naburelease(context):
+    returned_value = gleanerio(context,("release"), "datadiscoverystudio")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu release returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def xdomes_uploadrelease(context):
-    returned_value = postRelease("xdomes")
+def datadiscoverystudio_uploadrelease(context):
+    returned_value = postRelease("datadiscoverystudio")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"upload release returned  {r} ")
     return
 
 
 @op(ins={"start": In(Nothing)})
-def xdomes_missingreport_s3(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="xdomes")
+def datadiscoverystudio_missingreport_s3(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="datadiscoverystudio")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "xdomes"
+    source_name = "datadiscoverystudio"
     graphendpoint = None
     milled = False
     summon = True
@@ -637,12 +637,12 @@ def xdomes_missingreport_s3(context):
     get_dagster_logger().info(f"missing s3 report  returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def xdomes_missingreport_graph(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="xdomes")
+def datadiscoverystudio_missingreport_graph(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="datadiscoverystudio")
     source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "xdomes"
+    source_name = "datadiscoverystudio"
 
     graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -656,12 +656,12 @@ def xdomes_missingreport_graph(context):
     get_dagster_logger().info(f"missing graph  report  returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def xdomes_graph_reports(context) :
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="xdomes")
+def datadiscoverystudio_graph_reports(context) :
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="datadiscoverystudio")
     #source_url = source.get('url')
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "xdomes"
+    source_name = "datadiscoverystudio"
 
     graphendpoint = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -676,11 +676,11 @@ def xdomes_graph_reports(context) :
     return
 
 @op(ins={"start": In(Nothing)})
-def xdomes_identifier_stats(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="xdomes")
+def datadiscoverystudio_identifier_stats(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="datadiscoverystudio")
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "xdomes"
+    source_name = "datadiscoverystudio"
 
     returned_value = generateIdentifierRepo(source_name, bucket, s3Minio)
     r = str('returned value:{}'.format(returned_value))
@@ -691,10 +691,10 @@ def xdomes_identifier_stats(context):
     return
 
 @op(ins={"start": In(Nothing)})
-def xdomes_bucket_urls(context):
+def datadiscoverystudio_bucket_urls(context):
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "xdomes"
+    source_name = "datadiscoverystudio"
 
     res = s3Minio.listSummonedUrls(bucket, source_name)
     r = str('returned value:{}'.format(res))
@@ -704,10 +704,10 @@ def xdomes_bucket_urls(context):
     return
 
 @op(ins={"start": In(Nothing)})
-def xdomes_summarize(context) :
+def ecrr_submitted_summarize(context) :
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "xdomes"
+    source_name = "ecrr_submitted"
     endpoint = GLEANERIO_SUMMARY_GRAPH_ENDPOINT
     summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
 
@@ -732,13 +732,13 @@ def xdomes_summarize(context) :
 
 
 #Can we simplify and use just a method. Then import these methods?
-# def missingreport_s3(context, msg: str, source="xdomes"):
+# def missingreport_s3(context, msg: str, source="datadiscoverystudio"):
 #
 #     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
 #     source_url = source.get('url')
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET
-#     source_name="xdomes"
+#     source_name="datadiscoverystudio"
 #
 #     graphendpoint = None
 #     milled = False
@@ -747,33 +747,31 @@ def xdomes_summarize(context) :
 #     r = str('returned value:{}'.format(returned_value))
 #     return msg + r
 @graph
-def harvest_xdomes():
-    containers = xdomes_getImage()
-    harvest = xdomes_gleaner(start=containers)
+def harvest_datadiscoverystudio():
+    containers = datadiscoverystudio_getImage()
+    harvest = datadiscoverystudio_gleaner(start=containers)
 
 # defingin nothing dependencies
     # https://docs.dagster.io/concepts/ops-jobs-graphs/graphs#defining-nothing-dependencies
 
-    report_ms3 = xdomes_missingreport_s3(start=harvest)
-    report_idstat = xdomes_identifier_stats(start=report_ms3)
+    report_ms3 = datadiscoverystudio_missingreport_s3(start=harvest)
+    report_idstat = datadiscoverystudio_identifier_stats(start=report_ms3)
     # for some reason, this causes a msg parameter missing
-    report_bucketurl = xdomes_bucket_urls(start=report_idstat)
+    report_bucketurl = datadiscoverystudio_bucket_urls(start=report_idstat)
 
-    #report1 = missingreport_s3(harvest, source="xdomes")
-    load_release = xdomes_naburelease(start=harvest)
-    load_uploadrelease = xdomes_uploadrelease(start=load_release)
+    #report1 = missingreport_s3(harvest, source="datadiscoverystudio")
+    load_release = datadiscoverystudio_naburelease(start=harvest)
+    load_uploadrelease = datadiscoverystudio_uploadrelease(start=load_release)
 
-    load_prune = xdomes_nabu_prune(start=load_uploadrelease)
-    load_prov = xdomes_nabuprov(start=load_prune)
-    load_org = xdomes_nabuorg(start=load_prov)
+    load_prune = datadiscoverystudio_nabu_prune(start=load_uploadrelease)
+    load_prov = datadiscoverystudio_nabuprov(start=load_prune)
+    load_org = datadiscoverystudio_nabuorg(start=load_prov)
 
-    summarize = xdomes_summarize(start=load_uploadrelease)
+    summarize = ecrr_submitted_summarize(start=load_uploadrelease)
 
 # run after load
-    report_msgraph = xdomes_missingreport_graph(start=summarize)
-    report_graph = xdomes_graph_reports(start=report_msgraph)
-    report_msgraph=xdomes_missingreport_graph(start=load_org)
-    report_graph=xdomes_graph_reports(start=report_msgraph)
+    report_msgraph=datadiscoverystudio_missingreport_graph(start=load_org)
+    report_graph=datadiscoverystudio_graph_reports(start=report_msgraph)
 
 
 
