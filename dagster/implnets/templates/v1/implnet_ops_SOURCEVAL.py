@@ -705,6 +705,8 @@ def SOURCEVAL_bucket_urls(context):
 
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_summarize(context) :
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
+    bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
     endpoint = GLEANERIO_SUMMARY_GRAPH_ENDPOINT
     summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
@@ -712,18 +714,15 @@ def SOURCEVAL_summarize(context) :
     try:
         sumnsgraph = mg(mg.graphFromEndpoint(endpoint), summary_namespace)
         summaryendpoint = endpointUpdateNamespace(endpoint, summary_namespace)
-
         summarydf = get_summary4repoSubset(endpoint, source_name)
-
         nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
-
         summaryttl = g.serialize(format='longturtle')
-
         inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
-
         if not inserted:
             raise Exception("Loading to graph failed.")
     except Exception as e:
+        filename = f"summarydf_{source_name}.csv"
+        s3Minio.putReportFile(bucket, source_name, filename, summarydf.to_csv())
         logging.WARN(e)
         
     r = str('returned value:{}'.format(summaryttl))
