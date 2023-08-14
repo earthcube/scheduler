@@ -705,6 +705,8 @@ def geocodes_demo_datasets_bucket_urls(context):
 
 @op(ins={"start": In(Nothing)})
 def geocodes_demo_datasets_summarize(context) :
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
+    bucket = GLEANER_MINIO_BUCKET
     source_name = "geocodes_demo_datasets"
     endpoint = GLEANERIO_SUMMARY_GRAPH_ENDPOINT
     summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
@@ -712,24 +714,15 @@ def geocodes_demo_datasets_summarize(context) :
     try:
         sumnsgraph = mg(mg.graphFromEndpoint(endpoint), summary_namespace)
         summaryendpoint = endpointUpdateNamespace(endpoint, summary_namespace)
-
         summarydf = get_summary4repoSubset(endpoint, source_name)
-
         nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
-
         summaryttl = g.serialize(format='longturtle')
-
         inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
-
-        # TO DO: upload to minio
         if not inserted:
-            filename = os.path.join("output", f"{source_name}.ttl")
-            if not os.path.exists(os.path.dirname(filename)):
-                os.makedirs(os.path.dirname(filename))
-            with open(filename, 'w') as f:
-                f.write(summaryttl)
-            return 1
+            raise Exception("Loading to graph failed.")
     except Exception as e:
+        filename = f"summarydf_{source_name}.csv"
+        s3Minio.putReportFile(bucket, source_name, filename, summarydf.to_csv())
         logging.WARN(e)
         
     r = str('returned value:{}'.format(summaryttl))
