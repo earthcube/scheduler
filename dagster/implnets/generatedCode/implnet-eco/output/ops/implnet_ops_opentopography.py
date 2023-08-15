@@ -175,7 +175,7 @@ def s3loader(data, name):
                       content_type="text/plain"
                          )
     get_dagster_logger().info(f"Log uploaded: {str(objPrefix)}")
-def postRelease(source):
+def post_to_graph(source, extension="nq"):
     # revision of EC utilities, will have a insertFromURL
     #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
     proto = "http"
@@ -186,21 +186,43 @@ def postRelease(source):
     address = GLEANER_MINIO_ADDRESS
     bucket = GLEANER_MINIO_BUCKET
     path = "graphs/latest"
-    release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
-    url = f"{_graphEndpoint()}?uri={release_url}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.{extension}"
+    # BLAZEGRAPH SPECIFIC
+    # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
+    # r = requests.post(url)
+    # log.debug(f' status:{r.status_code}')  # status:404
+    # get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
+    # if r.status_code == 200:
+    #     # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+    #     if 'data modified="0"' in r.text:
+    #         get_dagster_logger().info(f'graph: no data inserted ')
+    #         raise Exception("No Data Added: " + r.text)
+    #     return True
+    # else:
+    #     get_dagster_logger().info(f'graph: error')
+    #     raise Exception(f' graph: insert failed: status:{r.status_code}')
+
+    ### GENERIC LOAD FROM
+    url = f"{_graphEndpoint()}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
     get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-    r = requests.post(url)
+    loadfrom = {'update': f'LOAD <{release_url}>'}
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    r = requests.post(url, headers=headers, data=loadfrom )
     log.debug(f' status:{r.status_code}')  # status:404
-    get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
+    get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
     if r.status_code == 200:
+        get_dagster_logger().info(f'graph load response: {str(r.text)} ')
         # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
-        if 'data modified="0"' in r.text:
+        if 'mutationCount=0' in r.text:
             get_dagster_logger().info(f'graph: no data inserted ')
-            raise Exception("No Data Added: " + r.text)
+            #raise Exception("No Data Added: " + r.text)
         return True
     else:
-        get_dagster_logger().info(f'graph: error')
-        raise Exception(f' graph: insert failed: status:{r.status_code}')
+        get_dagster_logger().info(f'graph: error {str(r.text)}')
+        raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
 
 def _get_client(docker_container_context: DockerContainerContext):
     headers = {'X-API-Key': APIKEY}
@@ -614,7 +636,7 @@ def opentopography_naburelease(context):
     return
 @op(ins={"start": In(Nothing)})
 def opentopography_uploadrelease(context):
-    returned_value = postRelease("opentopography")
+    returned_value = post_to_graph("opentopography", extension="nq")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"upload release returned  {r} ")
     return
