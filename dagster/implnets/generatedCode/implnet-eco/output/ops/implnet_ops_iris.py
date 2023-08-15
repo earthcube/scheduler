@@ -79,13 +79,17 @@ GLEANERIO_NABU_ARCHIVE_OBJECT=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT'
 GLEANERIO_NABU_ARCHIVE_PATH=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH', '/nabu/'))
 GLEANERIO_GLEANER_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_GLEANER_DOCKER_CONFIG', 'gleaner'))
 GLEANERIO_NABU_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_NABU_DOCKER_CONFIG', 'nabu'))
-GLEANERIO_SUMMARY_GRAPH_ENDPOINT = os.environ.get('GLEANERIO_SUMMARY_GRAPH_ENDPOINT')
-GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_SUMMARY_GRAPH_NAMESPACE')
+#GLEANERIO_SUMMARY_GRAPH_ENDPOINT = os.environ.get('GLEANERIO_SUMMARY_GRAPH_ENDPOINT')
+GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_SUMMARY_GRAPH_NAMESPACE',f"{GLEANER_GRAPH_NAMESPACE}_summary" )
 
+SUMMARY_PATH = 'graphs/summary'
+RELEASE_PATH = 'graphs/latest'
 def _graphEndpoint():
+    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
+    return url
+def _graphSummaryEndpoint():
     url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
     return url
-
 def _pythonMinioUrl(url):
 
     if (url.endswith(".amazonaws.com")):
@@ -175,7 +179,7 @@ def s3loader(data, name):
                       content_type="text/plain"
                          )
     get_dagster_logger().info(f"Log uploaded: {str(objPrefix)}")
-def post_to_graph(source, extension="nq"):
+def post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=_graphEndpoint()):
     # revision of EC utilities, will have a insertFromURL
     #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
     proto = "http"
@@ -185,7 +189,6 @@ def post_to_graph(source, extension="nq"):
     port = GLEANER_MINIO_PORT
     address = GLEANER_MINIO_ADDRESS
     bucket = GLEANER_MINIO_BUCKET
-    path = "graphs/latest"
     release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.{extension}"
     # BLAZEGRAPH SPECIFIC
     # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
@@ -204,7 +207,7 @@ def post_to_graph(source, extension="nq"):
     #     raise Exception(f' graph: insert failed: status:{r.status_code}')
 
     ### GENERIC LOAD FROM
-    url = f"{_graphEndpoint()}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    url = f"{graphendpoint}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
     get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
     loadfrom = {'update': f'LOAD <{release_url}>'}
     headers = {
@@ -725,13 +728,18 @@ def iris_bucket_urls(context):
     get_dagster_logger().info(f"bucker urls report  returned  {r} ")
     return
 
+class S3ObjectInfo:
+    bucket_name=""
+    object_name=""
+
 @op(ins={"start": In(Nothing)})
 def iris_summarize(context) :
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "iris"
-    endpoint = GLEANERIO_SUMMARY_GRAPH_ENDPOINT
+    endpoint = _graphSummaryEndpoint()
     summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
+
 
     try:
         sumnsgraph = mg(mg.graphFromEndpoint(endpoint), summary_namespace)
@@ -739,19 +747,32 @@ def iris_summarize(context) :
         summarydf = get_summary4repoSubset(endpoint, source_name)
         nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
         summaryttl = g.serialize(format='longturtle')
-        inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
-        if not inserted:
-            raise Exception("Loading to graph failed.")
+        # Lets always write out file to s3, and insert as a separate process
+        # we might be able to make this an asset..., but would need to be acessible by http
+        # if not stored in s3
+        objectname = f"{SUMMARY_PATH}/{source_name}_release.nt" # needs to match that is expected by post
+        s3ObjectInfo= S3ObjectInfo()
+        s3ObjectInfo.bucket_name=bucket
+        s3ObjectInfo.object_name=objectname
+
+        s3Minio.putTextFileToStore(summaryttl, s3ObjectInfo )
+        #inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
+        #if not inserted:
+        #    raise Exception("Loading to graph failed.")
     except Exception as e:
-        filename = f"summarydf_{source_name}.csv"
-        s3Minio.putReportFile(bucket, source_name, filename, summarydf.to_csv())
-        logging.WARN(e)
-        
-    r = str('returned value:{}'.format(summaryttl))
+        # use dagster logger
+        get_dagster_logger().error(f"Summary. Issue creating graph  {str(e)} ")
+        raise Exception(f"Loading Summary graph failed. {str(e)}")
+        return 1
 
     return
 
-
+@op(ins={"start": In(Nothing)})
+def iris_upload_summarize(context):
+    returned_value = post_to_graph("iris",path=SUMMARY_PATH, extension="nt", graphendpoint=_graphSummaryEndpoint())
+    r = str('returned value:{}'.format(returned_value))
+    get_dagster_logger().info(f"upload summary returned  {r} ")
+    return
 
 #Can we simplify and use just a method. Then import these methods?
 # def missingreport_s3(context, msg: str, source="iris"):
@@ -790,6 +811,7 @@ def harvest_iris():
     load_org = iris_nabuorg(start=load_prov)
 
     summarize = iris_summarize(start=load_uploadrelease)
+    upload_summarize = iris_upload_summarize(start=summarize)
 
 # run after load
     report_msgraph = iris_missingreport_graph(start=summarize)
