@@ -85,10 +85,10 @@ GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_SUMMARY_GRAPH_NAME
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
 def _graphEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
+    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
     return url
 def _graphSummaryEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
+    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
     return url
 def _pythonMinioUrl(url):
 
@@ -816,8 +816,7 @@ def harvest_bcodmo():
 # run after load
     report_msgraph = bcodmo_missingreport_graph(start=summarize)
     report_graph = bcodmo_graph_reports(start=report_msgraph)
-    report_msgraph=bcodmo_missingreport_graph(start=load_org)
-    report_graph=bcodmo_graph_reports(start=report_msgraph)
+
 
 
 
