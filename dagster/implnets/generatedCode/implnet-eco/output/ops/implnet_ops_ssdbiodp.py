@@ -737,7 +737,7 @@ def ssdbiodp_summarize(context) :
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "ssdbiodp"
-    endpoint = _graphSummaryEndpoint()
+    endpoint = _graphEndpoint() # getting data, not uploading data
     summary_namespace = GLEANERIO_SUMMARY_GRAPH_NAMESPACE
 
 
