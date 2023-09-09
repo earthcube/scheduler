@@ -62,7 +62,7 @@ sources:
     - sourcetype: sitemap
       name: ecrr_examples
       logo: https://www.earthcube.org/sites/default/files/doc-repository/logo_earthcube_full_horizontal.png
-      url: https://raw.githubusercontent.com/earthcube/ecrro/gh-pages/Examples/sitemap.xml
+      url: https://earthcube.github.io/ecrro/Examples/sitemap.xml
       headless: false
       pid: ""
       propername: Earthcube Resource Registry Examples
