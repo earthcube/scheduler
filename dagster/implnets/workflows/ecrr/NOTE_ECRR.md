@@ -31,3 +31,7 @@ pass some string to the first nabu step
 * 
 `cd workflows/ecrr/ecrr
 python -m dagster dev `
+
+To run a job:
+`cd workflows/ecrr/ecrr
+python -m dagster job execute -f jobs/implnet_jobs_ecrr_examples.py  -j implnet_job_ecrr_examples`
