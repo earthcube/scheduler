@@ -53,39 +53,69 @@ from pydantic import Field
 #
 # SUMMARY_PATH = 'graphs/summary'
 # RELEASE_PATH = 'graphs/latest'
-def _graphEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
-    return url
-def _graphSummaryEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
-    return url
 
 
-class GleanerioResource(ConfigurableResource):
-    DAGSTER_GLEANER_CONFIG_PATH: str =  Field(
-         description="DAGSTER_GLEANER_CONFIG_PATH for Project.")
-    GLEANER_HEADLESS_NETWORK: str =  Field(
-         description="GLEANER_HEADLESS_NETWORK.")
-    GLEANERIO_GLEANER_CONFIG_PATH: str =  Field(
-         description="GLEANERIO_GLEANER_CONFIG_PATH.")
-    GLEANERIO_GLEANER_IMAGE: str =  Field(
-         description="GLEANERIO_GLEANER_IMAGE.")
-    GLEANERIO_NABU_CONFIG_PATH: str =  Field(
-         description="GLEANERIO_NABU_CONFIG_PATH.")
-    GLEANERIO_NABU_IMAGE: str =  Field(
-         description="GLEANERIO_NABU_IMAGE.")
-    GLEANERIO_LOG_PREFIX: str =  Field(
-         description="GLEANERIO_LOG_PREFIX.")
-    GLEANERIO_GLEANER_DOCKER_CONFIG: str =  Field(
-         description="GLEANERIO_GLEANER_DOCKER_CONFIG.")
-    GLEANERIO_NABU_DOCKER_CONFIG: str =  Field(
-         description="GLEANERIO_NABU_DOCKER_CONFIG.")
+class GraphResource(ConfigurableResource):
+    GLEANER_GRAPH_URL: str =  Field(
+         description="GLEANER_GRAPH_URL.")
+    GLEANER_GRAPH_NAMESPACE: str =  Field(
+         description="GLEANER_GRAPH_NAMESPACE.")
 
-    # Let's try to use dasgeter aws as the minio configuration
+    SUMMARY_PATH = 'graphs/summary'
+    RELEASE_PATH = 'graphs/latest'
+
     def GraphEndpoint(self):
         url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
         return url
-    def GraphSummaryEndpoint(self):
-        url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
-        return url
+
+    def post_to_graph(self, source, path=RELEASE_PATH, extension="nq", graphendpoint=_graphEndpoint()):
+        # revision of EC utilities, will have a insertFromURL
+        #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
+        proto = "http"
+
+        if GLEANER_MINIO_USE_SSL:
+            proto = "https"
+        port = GLEANER_MINIO_PORT
+        address = _pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT)
+        bucket = GLEANER_MINIO_BUCKET
+        release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
+        # BLAZEGRAPH SPECIFIC
+        # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+        # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
+        # r = requests.post(url)
+        # log.debug(f' status:{r.status_code}')  # status:404
+        # get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
+        # if r.status_code == 200:
+        #     # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+        #     if 'data modified="0"' in r.text:
+        #         get_dagster_logger().info(f'graph: no data inserted ')
+        #         raise Exception("No Data Added: " + r.text)
+        #     return True
+        # else:
+        #     get_dagster_logger().info(f'graph: error')
+        #     raise Exception(f' graph: insert failed: status:{r.status_code}')
+
+        ### GENERIC LOAD FROM
+        url = f"{graphendpoint}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+        get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
+        loadfrom = {'update': f'LOAD <{release_url}>'}
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        r = requests.post(url, headers=headers, data=loadfrom )
+        log.debug(f' status:{r.status_code}')  # status:404
+        get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
+        if r.status_code == 200:
+            get_dagster_logger().info(f'graph load response: {str(r.text)} ')
+            # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+            if 'mutationCount=0' in r.text:
+                get_dagster_logger().info(f'graph: no data inserted ')
+                #raise Exception("No Data Added: " + r.text)
+            return True
+        else:
+            get_dagster_logger().info(f'graph: error {str(r.text)}')
+            raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
+
+class BlazegraphResource(GraphResource):
+    pass
 
