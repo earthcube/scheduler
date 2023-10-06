@@ -11,6 +11,7 @@ minio==7.1.13
 docker>=6.1.0
 dagstermill
 notebook
+pydash
 
 earthcube-utilities>=0.1.18
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@b671efb#subdirectory=earthcube_utilities
