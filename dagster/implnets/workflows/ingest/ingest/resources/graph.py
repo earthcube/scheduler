@@ -3,14 +3,10 @@ from typing import Any, Dict
 
 import pydash
 from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
-
-#from dagster import Field
+from pyairtable import Api, Table
 from pydantic import Field
 import requests
-
-from .gleanerS3 import gleanerS3Resource
 #Let's try to use dasgeter aws as the minio configuration
-from ..utils import PythonMinioAddress
 
 # class AirtableConfig(Config):
 # DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('DAGSTER_GLEANER_CONFIG_PATH', "/scheduler/gleanerconfig.yaml")
@@ -64,27 +60,35 @@ class GraphResource(ConfigurableResource):
          description="GLEANERIO_GRAPH_URL.")
     GLEANERIO_GRAPH_NAMESPACE: str =  Field(
          description="GLEANERIO_GRAPH_NAMESPACE.")
-    gs3: gleanerS3Resource
 
-# need multiple namespaces. let's do this.
-    def GraphEndpoint(self, namespace):
-        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
+    SUMMARY_PATH: str =  Field(
+         description="GLEANERIO_GRAPH_URL.", default_value='graphs/summary')
+    RELEASE_PATH : str =  Field(
+         description="GLEANERIO_GRAPH_URL.", default_value='graphs/latest')
+
+    def GraphEndpoint(self):
+        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{self.GLEANERIO_GRAPH_NAMESPACE}/sparql"
         return url
 
+    def PythonMinioAddress(url, port=None):
 
-    def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None):
-        if graphendpoint is None:
-            graphendpoint = self.GraphEndpoint()
+        if (url.endswith(".amazonaws.com")):
+            PYTHON_MINIO_URL = "s3.amazonaws.com"
+        else:
+            PYTHON_MINIO_URL = url
+        if port is not None:
+            PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
+        return PYTHON_MINIO_URL
+    def post_to_graph(self, source, path=RELEASE_PATH, extension="nq", graphendpoint=GraphEndpoint()):
         # revision of EC utilities, will have a insertFromURL
         #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
         proto = "http"
-# this need to get file from s3.
 
-        if self.gs3.GLEANERIO_MINIO_USE_SSL:
+        if self.GLEANERIO_MINIO_USE_SSL:
             proto = "https"
-        port = self.gs3.GLEANERIO_MINIO_PORT
-        address = PythonMinioAddress(self.gs3.GLEANERIO_MINIO_ADDRESS, self.gs3.GLEANERIO_MINIO_PORT)
-        bucket = self.gs3.GLEANERIO_MINIO_BUCKET
+        port = self.GLEANERIO_MINIO_PORT
+        address = self.PythonMinioAddress(self.GLEANERIO_MINIO_ADDRESS, self.GLEANERIO_MINIO_PORT)
+        bucket = self.GLEANERIO_MINIO_BUCKET
         release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
         # BLAZEGRAPH SPECIFIC
         # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
