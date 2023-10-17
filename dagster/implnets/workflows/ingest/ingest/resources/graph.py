@@ -2,10 +2,10 @@ import os
 from typing import Any, Dict
 
 import pydash
-from dagster import ConfigurableResource, Config, EnvVar
+from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
 from pyairtable import Api, Table
 from pydantic import Field
-
+import requests
 #Let's try to use dasgeter aws as the minio configuration
 
 # class AirtableConfig(Config):
@@ -56,28 +56,39 @@ from pydantic import Field
 
 
 class GraphResource(ConfigurableResource):
-    GLEANER_GRAPH_URL: str =  Field(
-         description="GLEANER_GRAPH_URL.")
-    GLEANER_GRAPH_NAMESPACE: str =  Field(
-         description="GLEANER_GRAPH_NAMESPACE.")
+    GLEANERIO_GRAPH_URL: str =  Field(
+         description="GLEANERIO_GRAPH_URL.")
+    GLEANERIO_GRAPH_NAMESPACE: str =  Field(
+         description="GLEANERIO_GRAPH_NAMESPACE.")
 
-    SUMMARY_PATH = 'graphs/summary'
-    RELEASE_PATH = 'graphs/latest'
+    SUMMARY_PATH: str =  Field(
+         description="GLEANERIO_GRAPH_URL.", default_value='graphs/summary')
+    RELEASE_PATH : str =  Field(
+         description="GLEANERIO_GRAPH_URL.", default_value='graphs/latest')
 
     def GraphEndpoint(self):
-        url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
+        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{self.GLEANERIO_GRAPH_NAMESPACE}/sparql"
         return url
 
-    def post_to_graph(self, source, path=RELEASE_PATH, extension="nq", graphendpoint=_graphEndpoint()):
+    def PythonMinioAddress(url, port=None):
+
+        if (url.endswith(".amazonaws.com")):
+            PYTHON_MINIO_URL = "s3.amazonaws.com"
+        else:
+            PYTHON_MINIO_URL = url
+        if port is not None:
+            PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
+        return PYTHON_MINIO_URL
+    def post_to_graph(self, source, path=RELEASE_PATH, extension="nq", graphendpoint=GraphEndpoint()):
         # revision of EC utilities, will have a insertFromURL
         #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
         proto = "http"
 
-        if GLEANER_MINIO_USE_SSL:
+        if self.GLEANERIO_MINIO_USE_SSL:
             proto = "https"
-        port = GLEANER_MINIO_PORT
-        address = _pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT)
-        bucket = GLEANER_MINIO_BUCKET
+        port = self.GLEANERIO_MINIO_PORT
+        address = self.PythonMinioAddress(self.GLEANERIO_MINIO_ADDRESS, self.GLEANERIO_MINIO_PORT)
+        bucket = self.GLEANERIO_MINIO_BUCKET
         release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
         # BLAZEGRAPH SPECIFIC
         # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
@@ -103,7 +114,7 @@ class GraphResource(ConfigurableResource):
             'Content-Type': 'application/x-www-form-urlencoded'
         }
         r = requests.post(url, headers=headers, data=loadfrom )
-        log.debug(f' status:{r.status_code}')  # status:404
+        get_dagster_logger().debug(f' status:{r.status_code}')  # status:404
         get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
         if r.status_code == 200:
             get_dagster_logger().info(f'graph load response: {str(r.text)} ')
