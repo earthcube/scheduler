@@ -195,6 +195,18 @@ class GleanerioResource(ConfigurableResource):
         get_dagster_logger().info(len(containers))
         return service, containers[0]
 
+    def getImage(self,context):
+        run_container_context = DockerContainerContext.create_for_run(
+            context.dagster_run,
+            context.instance.run_launcher
+            if isinstance(context.instance.run_launcher, DockerRunLauncher)
+            else None,
+        )
+        get_dagster_logger().info(f"call docker _get_client: ")
+        client = self.get_client(run_container_context)
+        client.images.pull(self.GLEANERIO_GLEANER_IMAGE)
+        client.images.pull(self.GLEANERIO_NABU_IMAGE)
+
 # rewrite so that we pass in the image, args, name working dir.
     # we want to setup 'sensors' for when assets are returned by these
     # data -> returns summon directory, and a release file.
