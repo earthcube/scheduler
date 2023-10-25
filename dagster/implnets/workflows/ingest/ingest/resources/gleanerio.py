@@ -1,10 +1,15 @@
+import io
 import os
 from typing import Any, Mapping, Optional, Sequence
+
+#from dagster import Field
+from pydantic import Field
 
 import pydash
 from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
 from pyairtable import Api, Table
-from pydantic import Field
+
+
 import time
 from datetime import datetime
 import requests
@@ -12,7 +17,7 @@ import requests
 import docker
 from docker.types import RestartPolicy, ServiceMode
 
-from dagster import Field, In, Nothing, OpExecutionContext, StringSource, op
+from dagster import In, Nothing, OpExecutionContext, StringSource, op
 
 from dagster._core.utils import parse_env_var
 
@@ -22,8 +27,8 @@ from dagster_docker.docker_run_launcher import DockerRunLauncher
 from dagster_docker.utils import DOCKER_CONFIG_SCHEMA, validate_docker_image
 from docker.types.services import ContainerSpec, TaskTemplate, ConfigReference
 
-from .graph import GraphResource
-
+from .graph import GraphResource,BlazegraphResource
+from .gleanerS3 import gleanerS3Resource
 
 #Let's try to use dasgeter aws as the minio configuration
 
@@ -73,7 +78,8 @@ from .graph import GraphResource
 
 # this will probably need to handle the client, and the
 class GleanerioResource(ConfigurableResource):
-    DEBUG: bool = Field(default_value=False)
+
+    DEBUG: bool
     # docker/portainer API
     GLEANERIO_DOCKER_URL: str =  Field(
          description="Docker Endpoint URL.")
@@ -94,7 +100,7 @@ class GleanerioResource(ConfigurableResource):
         description="GLEANERIO_DOCKER_NABU_CONFIG.")
 
     GLEANERIO_HEADLESS_ENDPOINT:str = Field(
-        description="GLEANERIO_HEADLESS_NETWORK.", default_value="http://headless:9000/")
+        description="GLEANERIO_HEADLESS_NETWORK.", default="http://headless:9000/")
 
 # location where config file will be mounted in container
     GLEANERIO_GLEANER_CONFIG_PATH: str = Field(
@@ -105,12 +111,14 @@ class GleanerioResource(ConfigurableResource):
 
 # Execution parameter. The logs from LOG_PREFIX will be uploaded to s3 every n seconds.
     GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT: str = Field(
-        description="CONTAINER_WAIT_TIMEOUT.", default_value="600")
+        description="CONTAINER_WAIT_TIMEOUT.", default="600")
     GLEANERIO_LOG_PREFIX: str = Field(
         description="GLEANERIO_DOCKER_LOG_PREFIX.")
 
     GLEANERIO_DAGSTER_CONFIG_PATH: str = Field(
         description="DAGSTER_GLEANERIO_CONFIG_PATH for Project.")
+    s3: gleanerS3Resource   # this will be a botocore.client.S3.
+    triplestore: BlazegraphResource
 
     def _get_client(self, docker_container_context: DockerContainerContext):
         headers = {'X-API-Key': self.GLEANERIO_PORTAINER_APIKEY}
@@ -207,11 +215,25 @@ class GleanerioResource(ConfigurableResource):
         client.images.pull(self.GLEANERIO_GLEANER_IMAGE)
         client.images.pull(self.GLEANERIO_NABU_IMAGE)
 
+    def s3Loader(self,data, name, date_string=datetime.now().strftime("%Y_%m_%d_%H_%M_%S")):
+        logname = name + '_{}.log'.format(date_string)
+        objPrefix = self.GLEANERIO_LOG_PREFIX + logname
+        f = io.BytesIO()
+        # length = f.write(bytes(json_str, 'utf-8'))
+        length = f.write(data)
+        f.seek(0)
+        self.s3.get_client().put_object(Bucket=self.GLEANER_MINIO_BUCKET,
+                          Key=objPrefix,
+                          Body=f,  # io.BytesIO(data),
+                          ContentLength=length,  # len(data),
+                          ContentType="text/plain"
+                          )
+        get_dagster_logger().info(f"Log uploaded: {str(objPrefix)}")
 # rewrite so that we pass in the image, args, name working dir.
     # we want to setup 'sensors' for when assets are returned by these
     # data -> returns summon directory, and a release file.
 
-    def execute(self,context, mode, source, minio_resource, triplestore: GraphResource):
+    def execute(self,context, mode, source):
         ## ------------   Create
         returnCode = 0
         get_dagster_logger().info(f"Gleanerio mode: {str(mode)}")
@@ -319,13 +341,17 @@ class GleanerioResource(ConfigurableResource):
 
             # TODO: Build SPARQL_ENDPOINT from  GLEANER_GRAPH_URL, GLEANER_GRAPH_NAMESPACE
             enva = []
-            enva.append(str("MINIO_ADDRESS={}".format(minio_resource.GLEANER_MINIO_ADDRESS))) # the python needs to be wrapped, this does not
-            enva.append(str("MINIO_PORT={}".format(minio_resource.GLEANER_MINIO_PORT)))
-            enva.append(str("MINIO_USE_SSL={}".format(minio_resource.GLEANER_MINIO_USE_SSL)))
-            enva.append(str("MINIO_SECRET_KEY={}".format(minio_resource.GLEANER_MINIO_SECRET_KEY)))
-            enva.append(str("MINIO_ACCESS_KEY={}".format(minio_resource.GLEANER_MINIO_ACCESS_KEY)))
-            enva.append(str("MINIO_BUCKET={}".format(minio_resource.GLEANER_MINIO_BUCKET)))
-            enva.append(str("SPARQL_ENDPOINT={}".format(triplestore.GraphEndpoint())))
+            enva.append(str("MINIO_ADDRESS={}".format(self.s3.GLEANER_MINIO_ADDRESS))) # the python needs to be wrapped, this does not
+            enva.append(str("MINIO_PORT={}".format(self.s3.GLEANER_MINIO_PORT)))
+            #enva.append(str("MINIO_USE_SSL={}".format(self.s3.GLEANER_MINIO_USE_SSL)))
+            enva.append(str("MINIO_USE_SSL={}".format(self.s3.use_ssl)))
+            #enva.append(str("MINIO_SECRET_KEY={}".format(self.s3.GLEANER_MINIO_SECRET_KEY)))
+            #enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.GLEANER_MINIO_ACCESS_KEY)))
+            enva.append(str("MINIO_SECRET_KEY={}".format(self.s3.aws_session_token)))
+            enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.aws_secret_access_key)))
+            #enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANER_MINIO_BUCKET)))
+            enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANER_MINIO_BUCKET)))
+            enva.append(str("SPARQL_ENDPOINT={}".format(self.triplestore.GraphEndpoint())))
             enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(self.GLEANERIO_HEADLESS_ENDPOINT)))
             enva.append(str("GLEANERIO_DOCKER_HEADLESS_NETWORK={}".format(self.GLEANERIO_DOCKER_HEADLESS_NETWORK)))
 
@@ -385,7 +411,9 @@ class GleanerioResource(ConfigurableResource):
 
                     # write to s3
   # use minio_resource
+
                     s3loader(str(c).encode(), NAME, date_string=date_string)  # s3loader needs a bytes like object
+
                     # s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
                     # write to minio (would need the minio info here)
 

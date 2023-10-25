@@ -1,7 +1,7 @@
 
 from dagster import get_dagster_logger, asset, In, Nothing, Config
 
-from resources import gleanerio
+from ..resources import gleanerio
 class gleaner(Config):
    source: str
 
