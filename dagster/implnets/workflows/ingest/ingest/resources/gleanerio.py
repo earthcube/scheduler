@@ -79,7 +79,7 @@ from .gleanerS3 import gleanerS3Resource
 # this will probably need to handle the client, and the
 class GleanerioResource(ConfigurableResource):
 
-    DEBUG: bool
+    DEBUG_CONTAINER: bool
     # docker/portainer API
     GLEANERIO_DOCKER_URL: str =  Field(
          description="Docker Endpoint URL.")
@@ -110,8 +110,8 @@ class GleanerioResource(ConfigurableResource):
         description="GLEANERIO_DOCKER_NABU_CONFIG_PATH.")
 
 # Execution parameter. The logs from LOG_PREFIX will be uploaded to s3 every n seconds.
-    GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT: str = Field(
-        description="CONTAINER_WAIT_TIMEOUT.", default="600")
+    GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT: int = Field(
+        description="CONTAINER_WAIT_TIMEOUT.", default=600)
     GLEANERIO_LOG_PREFIX: str = Field(
         description="GLEANERIO_DOCKER_LOG_PREFIX.")
 
@@ -160,19 +160,19 @@ class GleanerioResource(ConfigurableResource):
         serivce_mode = ServiceMode("replicated-job", concurrency=1, replicas=1)
         get_dagster_logger().info(str(client.configs.list()))
         #  gleanerid = client.configs.list(filters={"name":{"gleaner-eco": "true"}})
-        gleanerconfig = client.configs.list(filters={"name": [self.GLEANERIO_GLEANER_DOCKER_CONFIG]})
-        if len(gleanerconfig >0) :
+        gleanerconfig = client.configs.list(filters={"name": [self.GLEANERIO_DOCKER_GLEANER_CONFIG]})
+        if gleanerconfig is not None and len(gleanerconfig ) >0:
             get_dagster_logger().info(f"docker config gleaner id {str(gleanerconfig[0].id)}")
         else:
-            raise Exception(f"docker config '{self.GLEANERIO_GLEANER_DOCKER_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
-        nabuconfig = client.configs.list(filters={"name": [self.GLEANERIO_NABU_DOCKER_CONFIG]})
-        if len(nabuconfig >0) :
+            raise Exception(f"docker config '{self.GLEANERIO_DOCKER_GLEANER_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
+        nabuconfig = client.configs.list(filters={"name": [self.GLEANERIO_DOCKER_NABU_CONFIG]})
+        if nabuconfig is not None and len(nabuconfig) >0 :
             get_dagster_logger().info(f"docker config nabu id {str(nabuconfig[0].id)}")
         else:
-            raise Exception(f"docker config '{self.GLEANERIO_NABU_DOCKER_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
+            raise Exception(f"docker config '{self.GLEANERIO_DOCKER_NABU_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
         get_dagster_logger().info(f"create docker service for {name}")
-        gleaner = ConfigReference(gleanerconfig[0].id, self.GLEANERIO_GLEANER_DOCKER_CONFIG, self.GLEANERIO_GLEANER_CONFIG_PATH)
-        nabu = ConfigReference(nabuconfig[0].id, self.GLEANERIO_NABU_DOCKER_CONFIG, self.GLEANERIO_NABU_CONFIG_PATH)
+        gleaner = ConfigReference(gleanerconfig[0].id, self.GLEANERIO_DOCKER_GLEANER_CONFIG, self.GLEANERIO_GLEANER_CONFIG_PATH)
+        nabu = ConfigReference(nabuconfig[0].id, self.GLEANERIO_DOCKER_NABU_CONFIG, self.GLEANERIO_NABU_CONFIG_PATH)
         configs = [gleaner, nabu]
         # name = name if len(name) else _get_container_name(op_context.run_id, op_context.op.name, op_context.retry_number),
         service = client.services.create(
@@ -215,14 +215,14 @@ class GleanerioResource(ConfigurableResource):
         client.images.pull(self.GLEANERIO_GLEANER_IMAGE)
         client.images.pull(self.GLEANERIO_NABU_IMAGE)
 
-    def s3Loader(self,data, name, date_string=datetime.now().strftime("%Y_%m_%d_%H_%M_%S")):
+    def s3loader(self,data, name, date_string=datetime.now().strftime("%Y_%m_%d_%H_%M_%S")):
         logname = name + '_{}.log'.format(date_string)
         objPrefix = self.GLEANERIO_LOG_PREFIX + logname
         f = io.BytesIO()
         # length = f.write(bytes(json_str, 'utf-8'))
         length = f.write(data)
         f.seek(0)
-        self.s3.get_client().put_object(Bucket=self.GLEANER_MINIO_BUCKET,
+        self.s3.get_client().put_object(Bucket=self.s3.GLEANERIO_MINIO_BUCKET,
                           Key=objPrefix,
                           Body=f,  # io.BytesIO(data),
                           ContentLength=length,  # len(data),
@@ -341,16 +341,16 @@ class GleanerioResource(ConfigurableResource):
 
             # TODO: Build SPARQL_ENDPOINT from  GLEANER_GRAPH_URL, GLEANER_GRAPH_NAMESPACE
             enva = []
-            enva.append(str("MINIO_ADDRESS={}".format(self.s3.GLEANER_MINIO_ADDRESS))) # the python needs to be wrapped, this does not
-            enva.append(str("MINIO_PORT={}".format(self.s3.GLEANER_MINIO_PORT)))
+            enva.append(str("MINIO_ADDRESS={}".format(self.s3.GLEANERIO_MINIO_ADDRESS))) # the python needs to be wrapped, this does not
+            enva.append(str("MINIO_PORT={}".format(self.s3.GLEANERIO_MINIO_PORT)))
             #enva.append(str("MINIO_USE_SSL={}".format(self.s3.GLEANER_MINIO_USE_SSL)))
             enva.append(str("MINIO_USE_SSL={}".format(self.s3.use_ssl)))
             #enva.append(str("MINIO_SECRET_KEY={}".format(self.s3.GLEANER_MINIO_SECRET_KEY)))
             #enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.GLEANER_MINIO_ACCESS_KEY)))
-            enva.append(str("MINIO_SECRET_KEY={}".format(self.s3.aws_session_token)))
-            enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.aws_secret_access_key)))
+            enva.append(str("MINIO_SECRET_KEY={}".format(self.s3.aws_secret_access_key)))
+            enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.aws_access_key_id)))
             #enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANER_MINIO_BUCKET)))
-            enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANER_MINIO_BUCKET)))
+            enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANERIO_MINIO_BUCKET)))
             enva.append(str("SPARQL_ENDPOINT={}".format(self.triplestore.GraphEndpoint())))
             enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(self.GLEANERIO_HEADLESS_ENDPOINT)))
             enva.append(str("GLEANERIO_DOCKER_HEADLESS_NETWORK={}".format(self.GLEANERIO_DOCKER_HEADLESS_NETWORK)))
@@ -412,7 +412,7 @@ class GleanerioResource(ConfigurableResource):
                     # write to s3
   # use minio_resource
 
-                    s3loader(str(c).encode(), NAME, date_string=date_string)  # s3loader needs a bytes like object
+                    self.s3loader(str(c).encode(), NAME, date_string=date_string)  # s3loader needs a bytes like object
 
                     # s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
                     # write to minio (would need the minio info here)
@@ -425,7 +425,7 @@ class GleanerioResource(ConfigurableResource):
                     for chunk in tar_archive_stream:
                         archive.extend(chunk)
                     # use minio_resource
-                    s3loader(archive, f"{source}_{mode}_runlogs", date_string=date_string)
+                    self.s3loader(archive, f"{source}_{mode}_runlogs", date_string=date_string)
                     get_dagster_logger().info(f"uploaded logs : {source}_{mode}_runlogs to  {path}")
                     break
                 except requests.exceptions.ReadTimeout as ex:
@@ -435,7 +435,7 @@ class GleanerioResource(ConfigurableResource):
                     for chunk in tar_archive_stream:
                         archive.extend(chunk)
                     # use minio_resource
-                    s3loader(archive, f"{source}_{mode}_runlogs", date_string=date_string)
+                    self.s3loader(archive, f"{source}_{mode}_runlogs", date_string=date_string)
                     get_dagster_logger().info(f"uploaded {wait_count}th log : {source}_{mode}_runlogs to  {path}")
                 except docker.errors.APIError as ex:
                     get_dagster_logger().info(f"Container Wait docker API error :  {str(ex)}")
@@ -446,7 +446,7 @@ class GleanerioResource(ConfigurableResource):
                     exit_status = container.wait()["StatusCode"]
                     returnCode = exit_status
                     # use minio_resource
-                    s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
+                    self.s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
                     # s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
                     # write to minio (would need the minio info here)
 
@@ -458,7 +458,7 @@ class GleanerioResource(ConfigurableResource):
                     for chunk in tar_archive_stream:
                         archive.extend(chunk)
                     # use minio_resource
-                    s3loader(archive, f"{source}_{mode}_runlogs", date_string=date_string)
+                    self.s3loader(archive, f"{source}_{mode}_runlogs", date_string=date_string)
                     get_dagster_logger().info(f"uploaded logs : {source}_{mode}_runlogs to  {path}")
                     break
 
@@ -470,7 +470,7 @@ class GleanerioResource(ConfigurableResource):
             if exit_status != 0:
                 raise Exception(f"Gleaner/Nabu container returned exit code {exit_status}")
         finally:
-            if (not self.DEBUG) :
+            if (not self.DEBUG_CONTAINER) :
                 if (service):
                     service.remove()
                     get_dagster_logger().info(f"Service Remove: {service.name}")

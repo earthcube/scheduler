@@ -13,6 +13,7 @@ def _pythonMinioAddress(url, port=None):
         PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
     return PYTHON_MINIO_URL
 
+
 class gleanerS3Resource(S3Resource):
     GLEANERIO_MINIO_BUCKET: str =  Field(
          description="GLEANERIO_MINIO_BUCKET.")
@@ -21,6 +22,14 @@ class gleanerS3Resource(S3Resource):
     GLEANERIO_MINIO_PORT: str =  Field(
          description="GLEANERIO_MINIO_BUCKET.")
 
+## https://docs.dagster.io/_apidocs/libraries/dagster-aws#s3
+#   fields from dagster_aws.s3.S3Resource
+# region_name
+# endpoint_url
+# use_ssl
+# aws_access_key_id
+# aws_secret_access_key
 
 
-  #  endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)
+
+     #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)

@@ -1,3 +1,19 @@
+########### NOTES ON THIS ####
+# the resources need to be correct for the code to run,
+# * fields need to be defined. they cannot be
+
+#    BlaszegraphResource(),
+
+#    need have definitions.
+
+#    BlazegraphResource(
+#             GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
+#             GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
+#         )
+#### QUIRKS ###
+# if a type is changed in a configuraiton, you need to change all the configs, and not just one.
+# so when
+
 import os
 
 from dagster import Definitions, load_assets_from_modules, EnvVar
@@ -12,6 +28,24 @@ from pydantic import Field
 from . import assets
 
 all_assets = load_assets_from_modules([assets])
+def _pythonMinioAddress(url, port=None):
+    if (url.endswith(".amazonaws.com")):
+        PYTHON_MINIO_URL = "s3.amazonaws.com"
+    else:
+        PYTHON_MINIO_URL = url
+    if port is not None:
+        PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
+    return PYTHON_MINIO_URL
+def _awsEndpointAddress(url, port=None, use_ssl=True):
+    if use_ssl:
+        protocol = "https"
+    else:
+        protocol = "http"
+    if port is not None:
+        return  f"{protocol}://{url}:{port}"
+    else:
+        return  f"{protocol}://{url}"
+
 
 minio=gleanerS3Resource(
     # GLEANER_MINIO_BUCKET =EnvVar('GLEANER_MINIO_BUCKET'),
@@ -20,6 +54,11 @@ minio=gleanerS3Resource(
     GLEANERIO_MINIO_BUCKET=EnvVar('GLEANERIO_MINIO_BUCKET'),
     GLEANERIO_MINIO_ADDRESS=EnvVar('GLEANERIO_MINIO_ADDRESS'),
     GLEANERIO_MINIO_PORT=EnvVar('GLEANERIO_MINIO_PORT'),
+    GLEANERIO_MINIO_ACCESS_KEY=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
+    GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
+    endpoint_url =_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(), port=EnvVar('GLEANERIO_MINIO_PORT').get_value()),
+    aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
+    aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
 )
 triplestore=BlazegraphResource(
             GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
@@ -34,7 +73,7 @@ resources = {
     "local": {
         "gleanerio": GleanerioResource(
 #            DEBUG=os.environ.get('DEBUG'),
-            DEBUG=False,
+            DEBUG_CONTAINER=False,
             GLEANERIO_DOCKER_URL=EnvVar('GLEANERIO_DOCKER_URL'),
             GLEANERIO_PORTAINER_APIKEY=EnvVar('GLEANERIO_PORTAINER_APIKEY'),
 
@@ -55,19 +94,21 @@ resources = {
 
             GLEANERIO_LOG_PREFIX=EnvVar('GLEANERIO_LOG_PREFIX'),
 
-            GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=EnvVar('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT'),
-            s3=gleanerS3Resource(
-                GLEANERIO_MINIO_ADDRESS="oss.geocodes-aws-dev.earthcube.org",
-                    GLEANERIO_MINIO_PORT=443,
-                    GLEANERIO_MINIO_USE_SSL=True,
-                    GLEANERIO_MINIO_BUCKET="test",
-                    GLEANERIO_MINIO_ACCESS_KEY="worldsbestaccesskey",
-                    GLEANERIO_MINIO_SECRET_KEY="worldsbestsecretkey",
-                    ),
-            triplestore=BlazegraphResource(
-                GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
-                GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
-                ),
+            GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT',600),
+            s3=minio,
+            # s3=gleanerS3Resource(
+            #     GLEANERIO_MINIO_ADDRESS="oss.geocodes-aws-dev.earthcube.org",
+            #         GLEANERIO_MINIO_PORT=443,
+            #         GLEANERIO_MINIO_USE_SSL=True,
+            #         GLEANERIO_MINIO_BUCKET="test",
+            #         GLEANERIO_MINIO_ACCESS_KEY="worldsbestaccesskey",
+            #         GLEANERIO_MINIO_SECRET_KEY="worldsbestsecretkey",
+            #         ),
+            triplestore=triplestore,
+            # triplestore=BlazegraphResource(
+            #     GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
+            #     GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
+            #     ),
             triplestore_summary=BlazegraphResource(
                 GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
                 GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
@@ -78,7 +119,7 @@ resources = {
     },
     "production": {
         "gleanerio": GleanerioResource(
-            DEBUG=False,
+            DEBUG_CONTAINER=False,
 
             GLEANERIO_DOCKER_URL=EnvVar('GLEANERIO_DOCKER_URL'),
             GLEANERIO_PORTAINER_APIKEY=EnvVar('GLEANERIO_PORTAINER_APIKEY'),
@@ -100,7 +141,7 @@ resources = {
 
             GLEANERIO_LOG_PREFIX=EnvVar('GLEANERIO_LOG_PREFIX'),
 
-            GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=EnvVar('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT'),
+            GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT',600),
             s3=gleanerS3Resource(
                 GLEANERIO_MINIO_ADDRESS="oss.geocodes-aws-dev.earthcube.org",
                 GLEANERIO_MINIO_PORT=443,
