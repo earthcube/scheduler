@@ -4,8 +4,11 @@ from typing import Any, Dict
 import pydash
 from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
 from pyairtable import Api, Table
+
+#from dagster import Field
 from pydantic import Field
 import requests
+
 #Let's try to use dasgeter aws as the minio configuration
 
 # class AirtableConfig(Config):
@@ -62,9 +65,9 @@ class GraphResource(ConfigurableResource):
          description="GLEANERIO_GRAPH_NAMESPACE.")
 
     SUMMARY_PATH: str =  Field(
-         description="GLEANERIO_GRAPH_URL.", default_value='graphs/summary')
+         description="GLEANERIO_GRAPH_SUMMARY_PATH.", default='graphs/summary')
     RELEASE_PATH : str =  Field(
-         description="GLEANERIO_GRAPH_URL.", default_value='graphs/latest')
+         description="GLEANERIO_GRAPH_RELEASE_PATH.", default='graphs/latest')
 
     def GraphEndpoint(self):
         url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{self.GLEANERIO_GRAPH_NAMESPACE}/sparql"
@@ -79,7 +82,9 @@ class GraphResource(ConfigurableResource):
         if port is not None:
             PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
         return PYTHON_MINIO_URL
-    def post_to_graph(self, source, path=RELEASE_PATH, extension="nq", graphendpoint=GraphEndpoint()):
+    def post_to_graph(self, source, path=RELEASE_PATH, extension="nq", graphendpoint=None):
+        if graphendpoint is None:
+            graphendpoint = self.GraphEndpoint()
         # revision of EC utilities, will have a insertFromURL
         #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
         proto = "http"
