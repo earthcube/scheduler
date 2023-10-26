@@ -29,7 +29,10 @@ class gleanerS3Resource(S3Resource):
 # use_ssl
 # aws_access_key_id
 # aws_secret_access_key
-
-
+    def listPath(self, path='orgs'):
+        self.get_client().list_objects(
+            Bucket=self.GLEANERIO_MINIO_BUCKET,
+            Prefix=path,
+        )
 
      #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)

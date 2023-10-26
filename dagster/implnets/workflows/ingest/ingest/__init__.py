@@ -19,11 +19,16 @@ import os
 from dagster import Definitions, load_assets_from_modules, EnvVar
 from dagster_aws.s3.resources import S3Resource
 from dagster_aws.s3.ops import S3Coordinate
+from dagster import (
+    AssetSelection,
+    Definitions,
+    define_asset_job,
+)
 
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerio import GleanerioResource
 from .resources.gleanerS3 import gleanerS3Resource
-
+from .assets import gleanerio_run, nabu_release_run, sources_partitions_def
 from pydantic import Field
 from . import assets
 
@@ -113,8 +118,8 @@ resources = {
                 GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
                 GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
             )
-        ) # gleaner
-
+        ), # gleaner
+        "s3":minio,
 
     },
     "production": {
@@ -159,13 +164,20 @@ resources = {
                 GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
             )
 
-        ),
-
+        ), # gleaner
+        "s3":minio,
 
     },
 }
 
 deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
+
+# partitioned_asset_job = define_asset_job(
+#     name="summon_and_release_job",
+#     selection=AssetSelection.assets(gleanerio_run, nabu_release_run),
+#     partitions_def=sources_partitions_def,
+# )
+
 
 defs = Definitions(
     assets=all_assets, resources=resources[deployment_name]
