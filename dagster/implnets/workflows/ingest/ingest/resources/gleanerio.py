@@ -119,7 +119,10 @@ class GleanerioResource(ConfigurableResource):
         description="DAGSTER_GLEANERIO_CONFIG_PATH for Project.")
     s3: gleanerS3Resource   # this will be a botocore.client.S3.
     triplestore: BlazegraphResource
-
+    GLEANERIO_GRAPH_NAMESPACE:str = Field(
+        description="GLEANERIO_GRAPH_NAMESPACE for Project.")
+    GLEANERIO_GRAPH_SUMMARY_NAMESPACE:str = Field(
+        description="GLEANERIO_GRAPH_SUMMARY_NAMESPACE for Project.")
     def _get_client(self, docker_container_context: DockerContainerContext):
         headers = {'X-API-Key': self.GLEANERIO_PORTAINER_APIKEY}
         client = docker.DockerClient(base_url=self.GLEANERIO_DOCKER_URL, version="1.43")
@@ -351,7 +354,7 @@ class GleanerioResource(ConfigurableResource):
             enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.aws_access_key_id)))
             #enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANER_MINIO_BUCKET)))
             enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANERIO_MINIO_BUCKET)))
-            enva.append(str("SPARQL_ENDPOINT={}".format(self.triplestore.GraphEndpoint())))
+            enva.append(str("SPARQL_ENDPOINT={}".format(self.triplestore.GraphEndpoint(self.GLEANERIO_GRAPH_NAMESPACE))))
             enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(self.GLEANERIO_HEADLESS_ENDPOINT)))
             enva.append(str("GLEANERIO_DOCKER_HEADLESS_NETWORK={}".format(self.GLEANERIO_DOCKER_HEADLESS_NETWORK)))
 
