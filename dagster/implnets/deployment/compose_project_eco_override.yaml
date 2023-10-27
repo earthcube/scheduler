@@ -86,7 +86,7 @@ services:
         - "--python-file"
         - "/usr/src/app/workflows/ecrr/ecrr/repositories/repository.py"
         - "-d"
-        - "/usr/src/app/workflows/ecrr/ecrr/"
+        - "/usr/src/app/workflows/ecrr/ecrr/repositories"
 
         #volumes: *vol
         depends_on:
