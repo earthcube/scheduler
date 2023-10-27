@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # we may want to get an unreleased version of code, so this is needed
 RUN apt-get update && apt-get install -y git
 # issue with https://pypi.org/project/JPype1-py3/
-RUN apt-get install g++ python3-dev
+RUN apt-get -y install g++ python3-dev
 # Read the ARG implnet to set who to build for.
 
 # docker buildandpush pulls the repo, so we need to put the code at a different location
