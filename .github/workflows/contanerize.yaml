@@ -10,6 +10,7 @@ on:
       - main
       - dev
       - dev_eco
+      - dev_bad_path
     #  - dev_dagster142
     tags:
       - "v*.*.*"
