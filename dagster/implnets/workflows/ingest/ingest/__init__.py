@@ -24,15 +24,25 @@ from dagster import (
     Definitions,
     define_asset_job,
 )
+from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerio import GleanerioResource
 from .resources.gleanerS3 import gleanerS3Resource
 from .assets import gleanerio_run, nabu_release_run, sources_partitions_def
 from pydantic import Field
+
 from . import assets
 
 all_assets = load_assets_from_modules([assets])
+
+from .sensors import release_file_sensor
+slack_on_run_failure = make_slack_on_run_failure_sensor(
+     os.getenv("SLACK_CHANNEL"),
+    os.getenv("SLACK_TOKEN")
+)
+all_sensors = [slack_on_run_failure, release_file_sensor]
+
 def _pythonMinioAddress(url, port=None):
     if (url.endswith(".amazonaws.com")):
         PYTHON_MINIO_URL = "s3.amazonaws.com"
@@ -120,7 +130,8 @@ resources = {
             )
         ), # gleaner
         "s3":minio,
-
+        "triplestore": triplestore,
+        "slack": SlackResource(token=EnvVar("SLACK_TOKEN")),
     },
     "production": {
         "gleanerio": GleanerioResource(
@@ -166,11 +177,13 @@ resources = {
 
         ), # gleaner
         "s3":minio,
-
+        "triplestore":triplestore,
+        "slack":SlackResource(token=EnvVar("SLACK_TOKEN")),
     },
 }
 
 deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
+
 
 # partitioned_asset_job = define_asset_job(
 #     name="summon_and_release_job",
@@ -178,7 +191,9 @@ deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 #     partitions_def=sources_partitions_def,
 # )
 
-
 defs = Definitions(
-    assets=all_assets, resources=resources[deployment_name]
+    assets=all_assets,
+    resources=resources[deployment_name],
+    sensors=all_sensors
+
 )

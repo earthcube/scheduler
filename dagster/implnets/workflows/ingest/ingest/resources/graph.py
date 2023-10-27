@@ -61,16 +61,11 @@ import requests
 class GraphResource(ConfigurableResource):
     GLEANERIO_GRAPH_URL: str =  Field(
          description="GLEANERIO_GRAPH_URL.")
-    GLEANERIO_GRAPH_NAMESPACE: str =  Field(
-         description="GLEANERIO_GRAPH_NAMESPACE.")
 
-    SUMMARY_PATH: str =  Field(
-         description="GLEANERIO_GRAPH_SUMMARY_PATH.", default='graphs/summary')
-    RELEASE_PATH : str =  Field(
-         description="GLEANERIO_GRAPH_RELEASE_PATH.", default='graphs/latest')
 
-    def GraphEndpoint(self):
-        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{self.GLEANERIO_GRAPH_NAMESPACE}/sparql"
+# need multiple namespaces. let's do this.
+    def GraphEndpoint(self, namespace):
+        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
         return url
 
     def PythonMinioAddress(url, port=None):
@@ -82,12 +77,13 @@ class GraphResource(ConfigurableResource):
         if port is not None:
             PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
         return PYTHON_MINIO_URL
-    def post_to_graph(self, source, path=RELEASE_PATH, extension="nq", graphendpoint=None):
+    def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None):
         if graphendpoint is None:
             graphendpoint = self.GraphEndpoint()
         # revision of EC utilities, will have a insertFromURL
         #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
         proto = "http"
+# this need to get file from s3.
 
         if self.GLEANERIO_MINIO_USE_SSL:
             proto = "https"

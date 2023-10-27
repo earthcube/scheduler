@@ -5,6 +5,7 @@ dagster>=1.4.2
 dagster-webserver>=1.4.2
 dagster-docker
 dagster-aws
+dagster_slack
 ipython-genutils==0.2.0
 advertools==0.13.2
 minio==7.1.13
