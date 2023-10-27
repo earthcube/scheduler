@@ -23,13 +23,29 @@ class TennantConfig(Config):
          description="GLEANERIO_GRAPH_RELEASE_PATH.", default='graphs/latest')
 
 @op(required_resource_keys={"s3","triplestore",})
-def upload_release(context, config: TennantConfig):
+def upload_release(context, config:TennantConfig  ):
     context.log.info(config.name)
 
 @op(required_resource_keys={"s3","triplestore"})
-def upload_summary(context, config: TennantConfig):
+def upload_summary(context, config:TennantConfig):
     context.log.info(config.name)
-@job
+# Put the config for a tennant at the job level so we only have to define it once
+default_config = RunConfig(
+    ops={"upload_release": TennantConfig(
+        name="name",
+source_list=[],
+TENNANT_GRAPH_NAMESPACE="",
+TENNANT_GRAPH_SUMMARY_NAMESPACE=""
+    ),
+        "upload_summary": TennantConfig(
+            name="name",
+            source_list=[],
+            TENNANT_GRAPH_NAMESPACE="",
+            TENNANT_GRAPH_SUMMARY_NAMESPACE=""
+        )
+    }
+)
+@job(config=default_config)
 def build_community():
     upload_release()
     upload_summary()
