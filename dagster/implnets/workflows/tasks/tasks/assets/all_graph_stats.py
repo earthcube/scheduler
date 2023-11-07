@@ -2,7 +2,7 @@ import distutils
 import json
 import os
 
-from dagster import asset
+from dagster import asset, define_asset_job
 from ec.graph.sparql_query import queryWithSparql
 from ec.reporting.report import  generateGraphReportsRepo, reportTypes
 from ec.datastore import s3
@@ -13,7 +13,7 @@ log = config_app()
 
 GLEANERIO_MINIO_ADDRESS = str(os.environ.get('GLEANERIO_MINIO_ADDRESS'))
 GLEANERIO_MINIO_PORT = str(os.environ.get('GLEANERIO_MINIO_PORT'))
-GLEANERIO_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL')))
+GLEANERIO_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
 GLEANERIO_MINIO_SECRET_KEY = str(os.environ.get('GLEANERIO_MINIO_SECRET_KEY'))
 GLEANERIO_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
 GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
@@ -45,8 +45,8 @@ GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_GRAPH_NAMESPACE',f
 
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
-@asset()
-def sos_types():
+@asset(group_name="graph")
+def sos_types( ):
     graphendpoint = f"{GLEANERIO_GRAPH_URL}/namespace/{GLEANERIO_GRAPH_NAMESPACE}/sparql"
     report = queryWithSparql("all_count_types", graphendpoint, parameters=None)
     report_csv =report.to_csv()
@@ -68,3 +68,5 @@ def sos_types():
 #     # report_json = generateGraphReportsRepo("all",
 #     #                                        "", reportList=reportTypes["all"])
 #     s3Minio = s3.MinioDatastore( GLEANERIO_MINIO_ADDRESS, MINIO_OPTIONS)
+
+

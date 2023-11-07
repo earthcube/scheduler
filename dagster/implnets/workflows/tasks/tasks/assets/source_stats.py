@@ -1,14 +1,15 @@
+import distutils
 import json
 import os
 
 import pandas as pd
-from dagster import asset, get_dagster_logger
+from dagster import asset, get_dagster_logger, define_asset_job
 from ec.datastore import s3
 from pydash import pick
 
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
-GLEANER_MINIO_USE_SSL = os.environ.get('GLEANERIO_MINIO_USE_SSL')
+GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
 GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANERIO_MINIO_SECRET_KEY')
 GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANERIO_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANERIO_MINIO_BUCKET')
@@ -75,6 +76,8 @@ def loadstats() -> None:
             logger.info(f"Failed to get { source.get('name')}  {ex}")
     df = pd.DataFrame(stats)
     df.to_csv(f"data/{prefix}_stats.csv")
+    s3Minio.putReportFile(GLEANER_MINIO_BUCKET, repo, f"{prefix}_stats.csv", df.to_csv())
+    get_dagster_logger().info(f"{prefix}_stats.csv uploaded ")
 #@asset( group_name="load")
 @asset(deps=[source_list], group_name="load")
 def loadstatsHistory() -> None:
@@ -109,4 +112,8 @@ def loadstatsHistory() -> None:
         except Exception as ex:
             logger.info(f"Failed to get { source.get('name')}  {ex}")
     df = pd.DataFrame(stats)
-    df.to_csv(f"data/{prefix}_stats.csv")
+    df.to_csv(f"data/all_stats.csv")
+    s3Minio.putReportFile(GLEANER_MINIO_BUCKET, "all", f"all_stats.csv", df.to_csv())
+    get_dagster_logger().info(f"all_stats.csv uploaded ")
+
+
