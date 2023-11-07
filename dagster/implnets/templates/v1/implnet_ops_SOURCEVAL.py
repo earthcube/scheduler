@@ -40,19 +40,19 @@ from dagster_docker.docker_run_launcher import DockerRunLauncher
 from dagster_docker.utils import DOCKER_CONFIG_SCHEMA, validate_docker_image
 from docker.types.services import ContainerSpec, TaskTemplate, ConfigReference
 
-DEBUG=(os.getenv('DEBUG', 'False').lower()  == 'true')
+DEBUG=(os.getenv('DEBUG_CONTAINER', 'False').lower()  == 'true')
 # #
 # path to gleaner config in Dagster-daemon is "/scheduler/gleanerconfig.yaml" (config file mounted)
 #  WHEN RUNNING dagster-dev, this needs to be a path to a local file
 ##
-DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('DAGSTER_GLEANER_CONFIG_PATH', "/scheduler/gleanerconfig.yaml")
+DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('GLEANERIO_DAGSTER_CONFIG_PATH', "/scheduler/gleanerconfig.yaml")
 
 # Vars and Envs
-GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_HEADLESS_NETWORK', "headless_gleanerio")
+GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_DOCKER_HEADLESS_NETWORK', "headless_gleanerio")
 # env items
-URL = os.environ.get('PORTAINER_URL')
-APIKEY = os.environ.get('PORTAINER_KEY')
-CONTAINER_WAIT_TIMEOUT= int( os.environ.get('GLEANERIO_CONTAINER_WAIT_SECONDS',300))
+URL = os.environ.get('GLEANERIO_DOCKER_URL')
+APIKEY = os.environ.get('GLEANERIO_PORTAINER_APIKEY')
+CONTAINER_WAIT_TIMEOUT= int( os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT',300))
 
 GLEANER_MINIO_ADDRESS = str(os.environ.get('GLEANERIO_MINIO_ADDRESS'))
 GLEANER_MINIO_PORT = str(os.environ.get('GLEANERIO_MINIO_PORT'))
@@ -84,8 +84,8 @@ GLEANERIO_NABU_ARCHIVE_PATH=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH', '/
 GLEANERIO_DOCKER_GLEANER_CONFIG=str(os.environ.get('GLEANERIO_DOCKER_GLEANER_CONFIG', 'gleaner'))
 GLEANERIO_DOCKER_NABU_CONFIG=str(os.environ.get('GLEANERIO_DOCKER_NABU_CONFIG', 'nabu'))
 #GLEANERIO_SUMMARY_GRAPH_ENDPOINT = os.environ.get('GLEANERIO_SUMMARY_GRAPH_ENDPOINT')
-GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_SUMMARY_GRAPH_NAMESPACE',f"{GLEANER_GRAPH_NAMESPACE}_summary" )
-GLEANERIO_SUMMARIZE_GRAPH=(os.getenv('GLEANERIO_SUMMARIZE_GRAPH', 'False').lower()  == 'true')
+GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE',f"{GLEANER_GRAPH_NAMESPACE}_summary" )
+GLEANERIO_SUMMARIZE_GRAPH=(os.getenv('GLEANERIO_GRAPH_SUMMARIZE', 'False').lower()  == 'true')
 
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
