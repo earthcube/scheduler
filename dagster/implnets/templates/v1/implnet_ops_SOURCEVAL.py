@@ -81,8 +81,8 @@ GLEANERIO_GLEANER_ARCHIVE_OBJECT = str(os.environ.get('GLEANERIO_GLEANER_ARCHIVE
 GLEANERIO_GLEANER_ARCHIVE_PATH = str(os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH', '/gleaner/'))
 GLEANERIO_NABU_ARCHIVE_OBJECT=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT', 'scheduler/configs/NabuCfg.tgz'))
 GLEANERIO_NABU_ARCHIVE_PATH=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH', '/nabu/'))
-GLEANERIO_GLEANER_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_GLEANER_DOCKER_CONFIG', 'gleaner'))
-GLEANERIO_NABU_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_NABU_DOCKER_CONFIG', 'nabu'))
+GLEANERIO_DOCKER_GLEANER_CONFIG=str(os.environ.get('GLEANERIO_DOCKER_GLEANER_CONFIG', 'gleaner'))
+GLEANERIO_DOCKER_NABU_CONFIG=str(os.environ.get('GLEANERIO_DOCKER_NABU_CONFIG', 'nabu'))
 #GLEANERIO_SUMMARY_GRAPH_ENDPOINT = os.environ.get('GLEANERIO_SUMMARY_GRAPH_ENDPOINT')
 GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_SUMMARY_GRAPH_NAMESPACE',f"{GLEANER_GRAPH_NAMESPACE}_summary" )
 GLEANERIO_SUMMARIZE_GRAPH=(os.getenv('GLEANERIO_SUMMARIZE_GRAPH', 'False').lower()  == 'true')
@@ -280,13 +280,13 @@ def _create_service(
     serivce_mode = ServiceMode("replicated-job",concurrency=1,replicas=1)
     get_dagster_logger().info(str(client.configs.list()))
   #  gleanerid = client.configs.list(filters={"name":{"gleaner-eco": "true"}})
-    gleanerconfig = client.configs.list(filters={"name": [GLEANERIO_GLEANER_DOCKER_CONFIG]})
+    gleanerconfig = client.configs.list(filters={"name": [GLEANERIO_DOCKER_GLEANER_CONFIG]})
     get_dagster_logger().info(f"docker config gleaner id {str(gleanerconfig[0].id)}")
-    nabuconfig = client.configs.list(filters={"name":[GLEANERIO_NABU_DOCKER_CONFIG]})
+    nabuconfig = client.configs.list(filters={"name":[GLEANERIO_DOCKER_NABU_CONFIG]})
     get_dagster_logger().info(f"docker config nabu id {str(nabuconfig[0].id)}")
     get_dagster_logger().info(f"create docker service for {name}")
-    gleaner = ConfigReference(gleanerconfig[0].id, GLEANERIO_GLEANER_DOCKER_CONFIG,GLEANERIO_GLEANER_CONFIG_PATH)
-    nabu = ConfigReference(nabuconfig[0].id, GLEANERIO_NABU_DOCKER_CONFIG,GLEANERIO_NABU_CONFIG_PATH)
+    gleaner = ConfigReference(gleanerconfig[0].id, GLEANERIO_DOCKER_GLEANER_CONFIG,GLEANERIO_GLEANER_CONFIG_PATH)
+    nabu = ConfigReference(nabuconfig[0].id, GLEANERIO_DOCKER_NABU_CONFIG,GLEANERIO_NABU_CONFIG_PATH)
     configs = [gleaner,nabu]
    # name = name if len(name) else _get_container_name(op_context.run_id, op_context.op.name, op_context.retry_number),
     service = client.services.create(
@@ -670,7 +670,7 @@ def SOURCEVAL_graph_reports(context) :
     #report = json.dumps(returned_value, indent=2) # value already json.dumps
     report = returned_value
     s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
-    get_dagster_logger().info(f"graph report  returned  {r} ")
+    get_dagster_logger().info(f"graph stats  returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
