@@ -784,7 +784,7 @@ def ecrr_submitted_upload_summarize(context):
 #     r = str('returned value:{}'.format(returned_value))
 #     return msg + r
 @graph
-def harvest_ecrr_submitted():
+def reload_ecrr_submitted():
     containers = ecrr_submitted_getImage()
     load_release = ecrr_submitted_naburelease(start=containers)
     load_uploadrelease = ecrr_submitted_uploadrelease(start=load_release)
