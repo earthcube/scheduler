@@ -34,7 +34,7 @@ configs:
     name: ${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
     external: true
   workspace:
-    name: ${GLEANERIO_WORKSPACE_DOCKER_CONFIG:-workspace}
+    name: ${GLEANERIO_DOCKER_WORKSPACE_CONFIG:-workspace}
     external: true
 
 secrets:
@@ -79,10 +79,10 @@ services:
           # DO NOT RENAME THE FIRST PART, aka the container environment variable,
           #     unless you sure what you are doing
         environment: &env
-            - DEBUG=${DEBUG:-false}
+            - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-            - PORTAINER_URL=${PORTAINER_URL}
-            - PORTAINER_KEY=${PORTAINER_KEY}
+            - GLEANERIO_DOCKER_URL=${GLEANERIO_DOCKER_URL}
+            - GLEANERIO_PORTAINER_APIKEY=${GLEANERIO_PORTAINER_APIKEY}
             - GLEANERIO_GLEANER_IMAGE=${GLEANERIO_GLEANER_IMAGE}
             - GLEANERIO_NABU_IMAGE=${GLEANERIO_NABU_IMAGE}
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
@@ -102,7 +102,7 @@ services:
             - GLEANERIO_DOCKER_GLEANER_CONFIG=${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
             - GLEANERIO_GRAPH_SUMMARY_ENDPOINT=${GLEANERIO_GRAPH_SUMMARY_ENDPOINT:-${GLEANERIO_GRAPH_URL}}
             - GLEANERIO_GRAPH_SUMMARY_NAMESPACE=${GLEANERIO_GRAPH_SUMMARY_NAMESPACE}
-            - GLEANERIO_SUMMARIZE_GRAPH=${GLEANERIO_SUMMARIZE_GRAPH:-false}
+            - GLEANERIO_GRAPH_SUMMARIZE=${GLEANERIO_GRAPH_SUMMARIZE:-false}
           #            - GLEANER_MINIO_KEY=/run/secrets/MINIO_ROOT_ACCESS_KEY
 #            - GLEANER_MINIO_SECRET=/run/secrets/MINIO_ROOT_SECRET_KEY
 
