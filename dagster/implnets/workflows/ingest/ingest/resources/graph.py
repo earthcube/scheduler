@@ -9,6 +9,7 @@ from pyairtable import Api, Table
 from pydantic import Field
 import requests
 
+from .gleanerS3 import gleanerS3Resource
 #Let's try to use dasgeter aws as the minio configuration
 
 # class AirtableConfig(Config):
@@ -61,7 +62,7 @@ import requests
 class GraphResource(ConfigurableResource):
     GLEANERIO_GRAPH_URL: str =  Field(
          description="GLEANERIO_GRAPH_URL.")
-
+    s3: gleanerS3Resource
 
 # need multiple namespaces. let's do this.
     def GraphEndpoint(self, namespace):
