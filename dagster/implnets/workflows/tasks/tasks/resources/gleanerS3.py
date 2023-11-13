@@ -1,3 +1,4 @@
+import yaml
 from dagster import asset, get_dagster_logger, define_asset_job
 from dagster_aws.s3 import  S3Resource
 
@@ -25,6 +26,7 @@ class gleanerS3Resource(S3Resource):
          description="GLEANERIO_TENNANT_CONFIG.", default="scheduler/configs/")
     GLEANERIO_TENNANT_FILENAME : str =  Field(
          description="GLEANERIO_TENNANT_CONFIG.", default="tennant.yaml")
+
 ## https://docs.dagster.io/_apidocs/libraries/dagster-aws#s3
 #   fields from dagster_aws.s3.S3Resource
 # region_name
@@ -32,25 +34,22 @@ class gleanerS3Resource(S3Resource):
 # use_ssl
 # aws_access_key_id
 # aws_secret_access_key
-    def listPath(self, path='orgs', recusrsive=True):
-        self.get_client().list_objects(
+    def listPath(self, path='orgs'):
+        return self.get_client().list_objects(
             Bucket=self.GLEANERIO_MINIO_BUCKET,
             Prefix=path,
-            Recusrsive=recusrsive
-        )
-    def getFile(self, path='test'):
+
+        )["Contents"]
+
+    def getTennatInfo(self, path='orgs'):
+        path= f"{self.GLEANERIO_TENNANT_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
         try:
-            return self.get_client().get_object(
+            r =  self.get_client().get_object(
                 Bucket=self.GLEANERIO_MINIO_BUCKET,
                 Key=path,
             )
+            return  yaml.safe_load(r["Body"])
         except Exception as ex:
-            get_dagster_logger().info(f"file {path} not found  in {self.GLEANERIO_MINIO_BUCKET} at ")
-    def getTennatFile(self, path='orgs'):
-        path= f"{self.GLEANERIO_TENNANT_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
-        try:
-            return self.getFile(self, path=path)
-
-        except Exception as ex:
-            get_dagster_logger().info(f"tennant not found ")
+            get_dagster_logger().info(f"tennant file {path} not found in bucket {self.GLEANERIO_MINIO_BUCKET} at {self.GLEANERIO_MINIO_ADDRESS} ")
+            raise ex
      #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)

@@ -3,12 +3,10 @@ from typing import Any, Dict
 
 import pydash
 from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
-from pyairtable import Api, Table
 
 #from dagster import Field
 from pydantic import Field
 import requests
-
 from .gleanerS3 import gleanerS3Resource
 #Let's try to use dasgeter aws as the minio configuration
 

@@ -1,7 +1,5 @@
 # prototype tennants file
 
-# prototype tennants file
-
 tennant:
   - community: dev
     hostname: geocodes-dev
@@ -27,3 +25,4 @@ tennant:
       summary_namespace: geocodes_test_summary
     sources:
       - all
+

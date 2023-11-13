@@ -5,7 +5,7 @@ dagster-webserver>=1.5.6
 dagster-docker>=0.21.6
 dagster-aws>=0.21.6
 dagstermill>=0.21.6
-dagster_slack
+dagster_slack>=0.21.6
 ###
 # this are modules that are not part of dagster base image
 # ipython-genutils==0.2.0
