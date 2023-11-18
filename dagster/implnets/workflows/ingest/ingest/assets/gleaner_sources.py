@@ -1,18 +1,23 @@
 # a test asset to see that all the resource configurations load.
 # basically runs the first step, of gleaner on geocodes demo datasets
-import dagster
-from dagster import get_dagster_logger, asset, In, Nothing, Config,StaticPartitionsDefinition
+import orjson
 
-sources_partitions_def = StaticPartitionsDefinition(
-    ["geocodes_demo_datasets", "iris"]
-)
+import dagster
+from dagster import get_dagster_logger, asset, In, Nothing, Config,DynamicPartitionsDefinition
+
+sources_partitions_def = DynamicPartitionsDefinition(name="gleanerio_orgs")
 from ..resources.gleanerio import GleanerioResource
-@asset(partitions_def=sources_partitions_def,required_resource_keys={"s3"})
-def gleanerio_sources(context ):
-    s3_resource = foo = context.resources.s3
+
+# for right now, using a list of orgs as the sources.
+# future read the gleaner config file.
+# future future, store soruces and read them.
+@asset(required_resource_keys={"gs3"})
+def gleanerio_orgs(context ):
+    s3_resource = context.resources.gs3
     source="geocodes_demo_datasets"
-    sources= s3_resource.listPath(path='orgs')
-    dagster.get_dagster_logger().info(str(sources))
+    files = s3_resource.listPath(path='orgs')
+    orgs = list(map(lambda o: o["Key"].removeprefix("orgs/").removesuffix(".nq") , files))
+    dagster.get_dagster_logger().info(str(orgs))
     context.add_output_metadata(
             metadata={
                 "source": source,  # Metadata can be any key-value pair
@@ -20,4 +25,4 @@ def gleanerio_sources(context ):
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
         )
-
+    return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)

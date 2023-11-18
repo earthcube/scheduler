@@ -6,14 +6,15 @@ from dagster import (
     get_dagster_logger,graph, asset,graph_asset, op, In, Nothing, Config, StaticPartitionsDefinition, Output
 )
 from ..resources.gleanerio import GleanerioResource
+from .gleaner_sources import sources_partitions_def
 
-sources_partitions_def = StaticPartitionsDefinition(
-    ["geocodes_demo_datasets", "iris"]
-)
+# sources_partitions_def = StaticPartitionsDefinition(
+#     ["geocodes_demo_datasets", "iris"]
+# )
 from ..resources.gleanerio import GleanerioResource
 @asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def gleanerio_run(context ) -> Output[Any]:
-    gleaner_resource = foo = context.resources.gleanerio
+    gleaner_resource =  context.resources.gleanerio
     source= context.asset_partition_key_for_output()
     gleaner = gleaner_resource.execute(context, "gleaner", source )
 
@@ -26,7 +27,7 @@ def gleanerio_run(context ) -> Output[Any]:
     return Output(gleaner, metadata=metadata)
 @asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def nabu_release_run(context, gleanerio_run ) -> Output[Any]:
-    gleaner_resource = foo = context.resources.gleanerio
+    gleaner_resource = context.resources.gleanerio
     source= context.asset_partition_key_for_output()
     nabu=gleaner_resource.execute(context, "release", source )
     metadata={

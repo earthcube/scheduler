@@ -117,7 +117,7 @@ class GleanerioResource(ConfigurableResource):
 
     GLEANERIO_DAGSTER_CONFIG_PATH: str = Field(
         description="DAGSTER_GLEANERIO_CONFIG_PATH for Project.")
-    s3: gleanerS3Resource   # this will be a botocore.client.S3.
+    gs3: gleanerS3Resource   # this will be a botocore.client.S3.
     triplestore: BlazegraphResource
     GLEANERIO_GRAPH_NAMESPACE:str = Field(
         description="GLEANERIO_GRAPH_NAMESPACE for Project.")
@@ -225,7 +225,7 @@ class GleanerioResource(ConfigurableResource):
         # length = f.write(bytes(json_str, 'utf-8'))
         length = f.write(data)
         f.seek(0)
-        self.s3.get_client().put_object(Bucket=self.s3.GLEANERIO_MINIO_BUCKET,
+        self.gs3.s3.get_client().put_object(Bucket=self.gs3.GLEANERIO_MINIO_BUCKET,
                           Key=objPrefix,
                           Body=f,  # io.BytesIO(data),
                           ContentLength=length,  # len(data),
@@ -344,16 +344,16 @@ class GleanerioResource(ConfigurableResource):
 
             # TODO: Build SPARQL_ENDPOINT from  GLEANER_GRAPH_URL, GLEANER_GRAPH_NAMESPACE
             enva = []
-            enva.append(str("MINIO_ADDRESS={}".format(self.s3.GLEANERIO_MINIO_ADDRESS))) # the python needs to be wrapped, this does not
-            enva.append(str("MINIO_PORT={}".format(self.s3.GLEANERIO_MINIO_PORT)))
-            #enva.append(str("MINIO_USE_SSL={}".format(self.s3.GLEANER_MINIO_USE_SSL)))
-            enva.append(str("MINIO_USE_SSL={}".format(self.s3.use_ssl)))
-            #enva.append(str("MINIO_SECRET_KEY={}".format(self.s3.GLEANER_MINIO_SECRET_KEY)))
-            #enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.GLEANER_MINIO_ACCESS_KEY)))
-            enva.append(str("MINIO_SECRET_KEY={}".format(self.s3.aws_secret_access_key)))
-            enva.append(str("MINIO_ACCESS_KEY={}".format(self.s3.aws_access_key_id)))
-            #enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANER_MINIO_BUCKET)))
-            enva.append(str("MINIO_BUCKET={}".format(self.s3.GLEANERIO_MINIO_BUCKET)))
+            enva.append(str("MINIO_ADDRESS={}".format(self.gs3.GLEANERIO_MINIO_ADDRESS))) # the python needs to be wrapped, this does not
+            enva.append(str("MINIO_PORT={}".format(self.gs3.GLEANERIO_MINIO_PORT)))
+            #enva.append(str("MINIO_USE_SSL={}".format(self.gs3.GLEANER_MINIO_USE_SSL)))
+            enva.append(str("MINIO_USE_SSL={}".format(self.gs3.s3.use_ssl)))
+            #enva.append(str("MINIO_SECRET_KEY={}".format(self.gs3.GLEANER_MINIO_SECRET_KEY)))
+            #enva.append(str("MINIO_ACCESS_KEY={}".format(self.gs3.GLEANER_MINIO_ACCESS_KEY)))
+            enva.append(str("MINIO_SECRET_KEY={}".format(self.gs3.s3.aws_secret_access_key)))
+            enva.append(str("MINIO_ACCESS_KEY={}".format(self.gs3.s3.aws_access_key_id)))
+            #enva.append(str("MINIO_BUCKET={}".format(self.gs3.GLEANER_MINIO_BUCKET)))
+            enva.append(str("MINIO_BUCKET={}".format(self.gs3.GLEANERIO_MINIO_BUCKET)))
             enva.append(str("SPARQL_ENDPOINT={}".format(self.triplestore.GraphEndpoint(self.GLEANERIO_GRAPH_NAMESPACE))))
             enva.append(str("GLEANER_HEADLESS_ENDPOINT={}".format(self.GLEANERIO_HEADLESS_ENDPOINT)))
             enva.append(str("GLEANERIO_DOCKER_HEADLESS_NETWORK={}".format(self.GLEANERIO_DOCKER_HEADLESS_NETWORK)))

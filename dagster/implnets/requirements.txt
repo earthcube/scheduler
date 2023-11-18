@@ -15,6 +15,7 @@ dagstermill>=0.21.6
 notebook
 pydash
 pyyaml
+orjson
 
 earthcube-utilities>=0.1.20
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@6a53759#subdirectory=earthcube_utilities

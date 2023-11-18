@@ -1,4 +1,4 @@
-from dagster import asset, get_dagster_logger, define_asset_job
+from dagster import asset, get_dagster_logger, define_asset_job, ConfigurableResource
 from dagster_aws.s3 import  S3Resource
 
 #from dagster import Field
@@ -14,7 +14,9 @@ def _pythonMinioAddress(url, port=None):
     return PYTHON_MINIO_URL
 
 
-class gleanerS3Resource(S3Resource):
+class gleanerS3Resource(ConfigurableResource):
+    # this should be s3, since it is the s3 resource. Others at gleaner s3 resources
+    s3: S3Resource
     GLEANERIO_MINIO_BUCKET: str =  Field(
          description="GLEANERIO_MINIO_BUCKET.")
     GLEANERIO_MINIO_ADDRESS: str =  Field(
@@ -33,23 +35,25 @@ class gleanerS3Resource(S3Resource):
 # aws_access_key_id
 # aws_secret_access_key
     def listPath(self, path='orgs', recusrsive=True):
-        self.get_client().list_objects(
+        result = self.s3.get_client().list_objects(
             Bucket=self.GLEANERIO_MINIO_BUCKET,
             Prefix=path,
-            Recusrsive=recusrsive
+#            Recusrsive=recusrsive
         )
+        return result["Contents"]
     def getFile(self, path='test'):
         try:
-            return self.get_client().get_object(
+            result =  self.s3.get_client().get_object(
                 Bucket=self.GLEANERIO_MINIO_BUCKET,
                 Key=path,
             )
+            return result["Contents"]
         except Exception as ex:
             get_dagster_logger().info(f"file {path} not found  in {self.GLEANERIO_MINIO_BUCKET} at ")
     def getTennatFile(self, path='orgs'):
         path= f"{self.GLEANERIO_TENNANT_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
         try:
-            return self.getFile(self, path=path)
+            return self.s3.getFile(self, path=path)
 
         except Exception as ex:
             get_dagster_logger().info(f"tennant not found ")

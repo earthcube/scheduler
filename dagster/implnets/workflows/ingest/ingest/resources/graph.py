@@ -62,7 +62,7 @@ from .gleanerS3 import gleanerS3Resource
 class GraphResource(ConfigurableResource):
     GLEANERIO_GRAPH_URL: str =  Field(
          description="GLEANERIO_GRAPH_URL.")
-    s3: gleanerS3Resource
+    gs3: gleanerS3Resource
 
 # need multiple namespaces. let's do this.
     def GraphEndpoint(self, namespace):
@@ -86,11 +86,11 @@ class GraphResource(ConfigurableResource):
         proto = "http"
 # this need to get file from s3.
 
-        if self.GLEANERIO_MINIO_USE_SSL:
+        if self.s3.GLEANERIO_MINIO_USE_SSL:
             proto = "https"
-        port = self.GLEANERIO_MINIO_PORT
-        address = self.PythonMinioAddress(self.GLEANERIO_MINIO_ADDRESS, self.GLEANERIO_MINIO_PORT)
-        bucket = self.GLEANERIO_MINIO_BUCKET
+        port = self.s3.GLEANERIO_MINIO_PORT
+        address = self.PythonMinioAddress(self.s3.GLEANERIO_MINIO_ADDRESS, self.s3.GLEANERIO_MINIO_PORT)
+        bucket = self.s3.GLEANERIO_MINIO_BUCKET
         release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
         # BLAZEGRAPH SPECIFIC
         # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
