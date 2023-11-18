@@ -14,3 +14,4 @@ venv/**
 /dagster/implnets/deployment/prod.env
 
 **/tmp**
+/dagster/dagster_home/
