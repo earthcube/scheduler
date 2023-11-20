@@ -29,12 +29,14 @@ from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerio import GleanerioResource
 from .resources.gleanerS3 import gleanerS3Resource
-from .assets import gleanerio_run, nabu_release_run, sources_partitions_def
+from .assets import gleanerio_run, nabu_release_run, sources_partitions_def , summon_asset_job
 from pydantic import Field
 
 from . import assets
 
 all_assets = load_assets_from_modules([assets])
+
+#harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
 from .sensors import release_file_sensor
 slack_on_run_failure = make_slack_on_run_failure_sensor(
@@ -61,8 +63,12 @@ def _awsEndpointAddress(url, port=None, use_ssl=True):
     else:
         return  f"{protocol}://{url}"
 
-
-minio=gleanerS3Resource(
+s3=S3Resource(
+    endpoint_url =_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(), port=EnvVar('GLEANERIO_MINIO_PORT').get_value()),
+    aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
+    aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
+)
+gleaners3=gleanerS3Resource(
     # GLEANER_MINIO_BUCKET =EnvVar('GLEANER_MINIO_BUCKET'),
     # GLEANER_MINIO_ADDRESS=EnvVar('GLEANER_MINIO_ADDRESS'),
     # GLEANER_MINIO_PORT=EnvVar('GLEANER_MINIO_PORT'),
@@ -71,17 +77,19 @@ minio=gleanerS3Resource(
     GLEANERIO_MINIO_PORT=EnvVar('GLEANERIO_MINIO_PORT'),
     GLEANERIO_MINIO_ACCESS_KEY=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
-    endpoint_url =_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(), port=EnvVar('GLEANERIO_MINIO_PORT').get_value()),
-    aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
-    aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
+    # this is S3. It is the s3 resource
+    s3=s3
+
 )
 triplestore=BlazegraphResource(
             GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
+       gs3=gleaners3,
         )
 triplestore_summary=BlazegraphResource(
             GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+       gs3=gleaners3,
         )
 
 resources = {
@@ -112,7 +120,7 @@ resources = {
             GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT',600),
             GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
             GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
-            s3=minio,
+            gs3=gleaners3,
             # s3=gleanerS3Resource(
             #     GLEANERIO_MINIO_ADDRESS="oss.geocodes-aws-dev.earthcube.org",
             #         GLEANERIO_MINIO_PORT=443,
@@ -126,12 +134,10 @@ resources = {
             #     GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
             #     GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
             #     ),
-            triplestore_summary=BlazegraphResource(
-                GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
-                GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
-            )
+            triplestore_summary=triplestore_summary
         ), # gleaner
-        "s3":minio,
+        "s3":s3,
+        "gs3":gleaners3,
         "triplestore": triplestore,
         "slack": SlackResource(token=EnvVar("SLACK_TOKEN")),
     },
@@ -162,25 +168,15 @@ resources = {
             GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT',600),
 GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
 GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
-            s3=gleanerS3Resource(
-                GLEANERIO_MINIO_ADDRESS="oss.geocodes-aws-dev.earthcube.org",
-                GLEANERIO_MINIO_PORT=443,
-                GLEANERIO_MINIO_USE_SSL=True,
-                GLEANERIO_MINIO_BUCKET="test",
-                GLEANERIO_MINIO_ACCESS_KEY="worldsbestaccesskey",
-                GLEANERIO_MINIO_SECRET_KEY="worldsbestsecretkey",
-            ),
-            triplestore=BlazegraphResource(
-                GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
-                GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
-            ),
-            triplestore_summary=BlazegraphResource(
-                GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
-                GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
-            )
+            gs3=gleaners3,
+            triplestore=triplestore,
+            triplestore_summary=triplestore_summary,
+
 
         ), # gleaner
-        "s3":minio,
+        # this nees to be s3 so s3 can find it.
+        "s3":s3,
+        "gs3":gleaners3,
         "triplestore":triplestore,
         "slack":SlackResource(token=EnvVar("SLACK_TOKEN")),
     },
@@ -189,15 +185,12 @@ GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
 deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 
 
-# partitioned_asset_job = define_asset_job(
-#     name="summon_and_release_job",
-#     selection=AssetSelection.assets(gleanerio_run, nabu_release_run),
-#     partitions_def=sources_partitions_def,
-# )
 
 defs = Definitions(
     assets=all_assets,
     resources=resources[deployment_name],
-    sensors=all_sensors
+    sensors=all_sensors,
+    jobs=[summon_asset_job]
+#    jobs=[harvest_job]
 
 )

@@ -30,3 +30,7 @@ Start with one. Figure out how to do multiple with different tennants.
 * add to __init__.py definition in schedules.
 
 This requires on configuration to load to a single s3.
+
+
+dynamic partitions
+https://docs.dagster.io/concepts/partitions-schedules-sensors/partitioning-assets#dynamically-partitioned-assets
