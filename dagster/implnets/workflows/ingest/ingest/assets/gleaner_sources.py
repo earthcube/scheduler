@@ -8,9 +8,17 @@ from dagster import get_dagster_logger, asset, In, Nothing, Config,DynamicPartit
 sources_partitions_def = DynamicPartitionsDefinition(name="gleanerio_orgs")
 from ..resources.gleanerio import GleanerioResource
 
+### PRESENT HACK. Using the orgs
+# really needs to read a future tenant file, and then add
+# new partions with a sensor
+# need to add a sensor to add paritions when one is added
+# https://docs.dagster.io/concepts/partitions-schedules-sensors/partitioning-assets#dynamically-partitioned-assets
+
 # for right now, using a list of orgs as the sources.
 # future read the gleaner config file.
 # future future, store soruces and read them.
+
+
 @asset(required_resource_keys={"gs3"})
 def gleanerio_orgs(context ):
     s3_resource = context.resources.gs3
@@ -25,4 +33,6 @@ def gleanerio_orgs(context ):
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
         )
-    return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
+    #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
+    # this is used for partitioning, so let it pickle (aka be a python list)
+    return orgs

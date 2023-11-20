@@ -29,14 +29,14 @@ from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerio import GleanerioResource
 from .resources.gleanerS3 import gleanerS3Resource
-from .assets import gleanerio_run, nabu_release_run, sources_partitions_def, harvest_and_release
+from .assets import gleanerio_run, nabu_release_run, sources_partitions_def , summon_asset_job
 from pydantic import Field
 
 from . import assets
 
 all_assets = load_assets_from_modules([assets])
 
-harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
+#harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
 from .sensors import release_file_sensor
 slack_on_run_failure = make_slack_on_run_failure_sensor(
@@ -185,16 +185,12 @@ GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
 deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 
 
-# partitioned_asset_job = define_asset_job(
-#     name="summon_and_release_job",
-#     selection=AssetSelection.assets(gleanerio_run, nabu_release_run),
-#     partitions_def=sources_partitions_def,
-# )
 
 defs = Definitions(
     assets=all_assets,
     resources=resources[deployment_name],
     sensors=all_sensors,
-    jobs=[harvest_job]
+    jobs=[summon_asset_job]
+#    jobs=[harvest_job]
 
 )
