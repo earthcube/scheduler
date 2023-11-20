@@ -5,7 +5,8 @@ from typing import Any
 from dagster import (
     get_dagster_logger,graph, asset,graph_asset, op, In, Nothing, Config, StaticPartitionsDefinition, Output,
 static_partitioned_config,dynamic_partitioned_config, schedule, job, RunRequest,
-define_asset_job, AssetSelection
+define_asset_job, AssetSelection,
+sensor, SensorResult, asset_sensor, AssetKey, EventLogEntry
 )
 from ..resources.gleanerio import GleanerioResource
 from .gleaner_sources import sources_partitions_def, gleanerio_orgs
@@ -49,6 +50,51 @@ summon_asset_job = define_asset_job(
     partitions_def=sources_partitions_def,
 )
 
+#might need to use this https://docs.dagster.io/_apidocs/repositories#dagster.RepositoryDefinition.get_asset_value_loader
+#@sensor(job=summon_asset_job)
+# @sensor(asset_selection=AssetSelection.keys("gleanerio_orgs"))
+# def sources_sensor(context ):
+#     sources =  gleanerio_orgs
+#     new_sources = [
+#         source
+#         for source in sources
+#         if not sources_partitions_def.has_partition_key(
+#             source, dynamic_partitions_store=context.instance
+#         )
+#     ]
+#
+#     return SensorResult(
+#         run_requests=[
+#             RunRequest(partition_key=source) for source in new_sources
+#         ],
+#         dynamic_partitions_requests=[
+#             sources_partitions_def.build_add_request(new_sources)
+#         ],
+#     )
+
+@asset_sensor( asset_key=AssetKey("gleanerio_orgs"), job=summon_asset_job)
+def sources_sensor(context,  asset_event: EventLogEntry):
+    assert asset_event.dagster_event and asset_event.dagster_event.asset_key
+
+# well this is a pain. but it works. Cannot just pass it like you do in ops
+    # otherwise it's just an AssetDefinition.
+    sources = context.repository_def.load_asset_value(AssetKey("gleanerio_orgs"))
+    new_sources = [
+        source
+        for source in sources
+        if not sources_partitions_def.has_partition_key(
+            source, dynamic_partitions_store=context.instance
+        )
+    ]
+
+    return SensorResult(
+        run_requests=[
+            RunRequest(partition_key=source) for source in new_sources
+        ],
+        dynamic_partitions_requests=[
+            sources_partitions_def.build_add_request(new_sources)
+        ],
+    )
 # need to add a sensor to add paritions when one is added
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/partitioning-assets#dynamically-partitioned-assets
 

@@ -39,11 +39,12 @@ all_assets = load_assets_from_modules([assets])
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
 from .sensors import release_file_sensor
+from .assets import sources_sensor
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
     os.getenv("SLACK_TOKEN")
 )
-all_sensors = [slack_on_run_failure, release_file_sensor]
+all_sensors = [slack_on_run_failure, release_file_sensor, sources_sensor]
 
 def _pythonMinioAddress(url, port=None):
     if (url.endswith(".amazonaws.com")):
