@@ -42,7 +42,7 @@ def gleanerio_run(context ) -> Output[Any]:
     return Output(gleaner, metadata=metadata)
 @asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 #@asset(required_resource_keys={"gleanerio"})
-def nabu_release_run(context, gleanerio_run ) -> Output[Any]:
+def release_nabu_run(context, gleanerio_run) -> Output[Any]:
     gleaner_resource = context.resources.gleanerio
     source= context.asset_partition_key_for_output()
     nabu=gleaner_resource.execute(context, "release", source )
@@ -80,8 +80,8 @@ def missingreport_s3(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
-@asset(deps=[nabu_release_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
-def summarize(context) :
+@asset(deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+def release_summarize(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 =  context.resources.gleanerio.gs3
@@ -179,8 +179,8 @@ def bucket_urls(context):
 
 summon_asset_job = define_asset_job(
     name="summon_and_release_job",
-    selection=AssetSelection.assets(gleanerio_run, nabu_release_run, missingreport_s3,
-                                    summarize),
+    selection=AssetSelection.assets(gleanerio_run, release_nabu_run, missingreport_s3,
+                                    release_summarize),
     partitions_def=sources_partitions_def,
 )
 
