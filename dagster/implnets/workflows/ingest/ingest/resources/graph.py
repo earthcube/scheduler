@@ -11,6 +11,7 @@ import requests
 
 from .gleanerS3 import gleanerS3Resource
 #Let's try to use dasgeter aws as the minio configuration
+from ..utils import PythonMinioAddress
 
 # class AirtableConfig(Config):
 # DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('DAGSTER_GLEANER_CONFIG_PATH', "/scheduler/gleanerconfig.yaml")
@@ -69,15 +70,7 @@ class GraphResource(ConfigurableResource):
         url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
         return url
 
-    def PythonMinioAddress(url, port=None):
 
-        if (url.endswith(".amazonaws.com")):
-            PYTHON_MINIO_URL = "s3.amazonaws.com"
-        else:
-            PYTHON_MINIO_URL = url
-        if port is not None:
-            PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
-        return PYTHON_MINIO_URL
     def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None):
         if graphendpoint is None:
             graphendpoint = self.GraphEndpoint()
@@ -89,7 +82,7 @@ class GraphResource(ConfigurableResource):
         if self.s3.GLEANERIO_MINIO_USE_SSL:
             proto = "https"
         port = self.s3.GLEANERIO_MINIO_PORT
-        address = self.PythonMinioAddress(self.s3.GLEANERIO_MINIO_ADDRESS, self.s3.GLEANERIO_MINIO_PORT)
+        address = PythonMinioAddress(self.s3.GLEANERIO_MINIO_ADDRESS, self.s3.GLEANERIO_MINIO_PORT)
         bucket = self.s3.GLEANERIO_MINIO_BUCKET
         release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
         # BLAZEGRAPH SPECIFIC

@@ -4,14 +4,7 @@ from dagster_aws.s3 import  S3Resource
 #from dagster import Field
 from pydantic import Field
 
-def _pythonMinioAddress(url, port=None):
-    if (url.endswith(".amazonaws.com")):
-        PYTHON_MINIO_URL = "s3.amazonaws.com"
-    else:
-        PYTHON_MINIO_URL = url
-    if port is not None:
-        PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
-    return PYTHON_MINIO_URL
+from ..utils import PythonMinioAddress
 
 
 class gleanerS3Resource(ConfigurableResource):
@@ -27,6 +20,14 @@ class gleanerS3Resource(ConfigurableResource):
          description="GLEANERIO_TENNANT_CONFIG.", default="scheduler/configs/")
     GLEANERIO_TENNANT_FILENAME : str =  Field(
          description="GLEANERIO_TENNANT_CONFIG.", default="tennant.yaml")
+
+# Courtesy method for the ec utilities
+    def MinioOptions(self):
+        return  {"secure": self.s3.use_ssl
+
+            , "access_key":  self.s3.aws_access_key_id
+            , "secret_key": self.s3.aws_secret_access_key
+                         }
 ## https://docs.dagster.io/_apidocs/libraries/dagster-aws#s3
 #   fields from dagster_aws.s3.S3Resource
 # region_name

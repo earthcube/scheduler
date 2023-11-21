@@ -1,21 +1,26 @@
 # a test asset to see that all the resource configurations load.
 # basically runs the first step, of gleaner on geocodes demo datasets
 from typing import Any
+import json
 
 from dagster import (
-    get_dagster_logger,graph, asset,graph_asset, op, In, Nothing, Config, StaticPartitionsDefinition, Output,
-static_partitioned_config,dynamic_partitioned_config, schedule, job, RunRequest,
-define_asset_job, AssetSelection,
-sensor, SensorResult, asset_sensor, AssetKey, EventLogEntry
+    asset, Config, Output,
+    define_asset_job, AssetSelection,
+get_dagster_logger,
 )
-from ..resources.gleanerio import GleanerioResource
-from .gleaner_sources import sources_partitions_def, gleanerio_orgs
+from ec.datastore import s3 as utils_s3
+
+from .gleaner_sources import sources_partitions_def
+from ..utils import PythonMinioAddress
+
+from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpointUpdateNamespace
+from ec.reporting.report import missingReport, generateIdentifierRepo
+
 class HarvestOpConfig(Config):
     source_name: str
 # sources_partitions_def = StaticPartitionsDefinition(
 #     ["geocodes_demo_datasets", "iris"]
 # )
-from ..resources.gleanerio import GleanerioResource
 @asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 #@asset( required_resource_keys={"gleanerio"})
 def gleanerio_run(context ) -> Output[Any]:
@@ -44,9 +49,34 @@ def nabu_release_run(context, gleanerio_run ) -> Output[Any]:
 
     return Output(nabu, metadata=metadata)
 
+@asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+def missingreport_s3(context):
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 =  context.resources.gleanerio.gs3
+    source_name = context.asset_partition_key_for_output()
+    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source_url = source.get('url')
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                                       gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+
+    graphendpoint = None
+    milled = False
+    summon = True
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=summon)
+    r = str('missing repoort returned value:{}'.format(returned_value))
+    report = json.dumps(returned_value, indent=2)
+    s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
+    get_dagster_logger().info(f"missing s3 report  returned  {r} ")
+    return
+
+
 summon_asset_job = define_asset_job(
     name="summon_and_release_job",
-    selection=AssetSelection.assets(gleanerio_run, nabu_release_run),
+    selection=AssetSelection.assets(gleanerio_run, nabu_release_run, missingreport_s3),
     partitions_def=sources_partitions_def,
 )
 
@@ -72,29 +102,6 @@ summon_asset_job = define_asset_job(
 #         ],
 #     )
 
-@asset_sensor( asset_key=AssetKey("gleanerio_orgs"), job=summon_asset_job)
-def sources_sensor(context,  asset_event: EventLogEntry):
-    assert asset_event.dagster_event and asset_event.dagster_event.asset_key
-
-# well this is a pain. but it works. Cannot just pass it like you do in ops
-    # otherwise it's just an AssetDefinition.
-    sources = context.repository_def.load_asset_value(AssetKey("gleanerio_orgs"))
-    new_sources = [
-        source
-        for source in sources
-        if not sources_partitions_def.has_partition_key(
-            source, dynamic_partitions_store=context.instance
-        )
-    ]
-
-    return SensorResult(
-        run_requests=[
-            RunRequest(partition_key=source) for source in new_sources
-        ],
-        dynamic_partitions_requests=[
-            sources_partitions_def.build_add_request(new_sources)
-        ],
-    )
 # need to add a sensor to add paritions when one is added
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/partitioning-assets#dynamically-partitioned-assets
 
