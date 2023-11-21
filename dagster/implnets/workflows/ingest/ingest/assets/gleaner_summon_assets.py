@@ -77,7 +77,9 @@ def missingreport_s3(context):
     s3Minio.putReportFile(bucket, source_name, "missing_report_s3.json", report)
     get_dagster_logger().info(f"missing s3 report  returned  {r} ")
     return
-
+class S3ObjectInfo:
+    bucket_name=""
+    object_name=""
 @asset(deps=[nabu_release_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def summarize(context) :
     gleaner_resource = context.resources.gleanerio
@@ -112,7 +114,7 @@ def summarize(context) :
         # we might be able to make this an asset..., but would need to be acessible by http
         # if not stored in s3
         objectname = f"{SUMMARY_PATH}/{source_name}_release.ttl"  # needs to match that is expected by post
-        s3ObjectInfo = {"bucket_name": bucket, "object_name": objectname}
+        s3ObjectInfo = S3ObjectInfo()
         s3ObjectInfo.bucket_name = bucket
         s3ObjectInfo.object_name = objectname
 
@@ -128,9 +130,57 @@ def summarize(context) :
 
     return
 
+@asset(deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+def identifier_stats(context):
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 =  context.resources.gleanerio.gs3
+    triplestore =context.resources.gleanerio.triplestore
+    source_name = context.asset_partition_key_for_output()
+    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source_url = source.get('url')
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                                       gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+
+
+    returned_value = generateIdentifierRepo(source_name, bucket, s3Minio)
+    r = str('returned value:{}'.format(returned_value))
+    #r = str('identifier stats returned value:{}'.format(returned_value))
+    report = returned_value.to_json()
+    s3Minio.putReportFile(bucket, source_name, "identifier_stats.json", report)
+    get_dagster_logger().info(f"identifer stats report  returned  {r} ")
+    return
+
+@asset(deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+def bucket_urls(context):
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 =  context.resources.gleanerio.gs3
+    triplestore =context.resources.gleanerio.triplestore
+    source_name = context.asset_partition_key_for_output()
+    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source_url = source.get('url')
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                                       gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+
+
+    res = s3Minio.listSummonedUrls(bucket, source_name)
+    r = str('returned value:{}'.format(res))
+    bucketurls = json.dumps(res, indent=2)
+    s3Minio.putReportFile(bucket, source_name, "bucketutil_urls.json", bucketurls)
+    get_dagster_logger().info(f"bucker urls report  returned  {r} ")
+    return
+
 summon_asset_job = define_asset_job(
     name="summon_and_release_job",
-    selection=AssetSelection.assets(gleanerio_run, nabu_release_run, missingreport_s3),
+    selection=AssetSelection.assets(gleanerio_run, nabu_release_run, missingreport_s3,
+                                    summarize),
     partitions_def=sources_partitions_def,
 )
 
