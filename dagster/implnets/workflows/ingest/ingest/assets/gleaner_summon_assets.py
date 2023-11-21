@@ -15,6 +15,11 @@ from ..utils import PythonMinioAddress
 
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpointUpdateNamespace
 from ec.reporting.report import missingReport, generateIdentifierRepo
+from ec.graph.release_graph import ReleaseGraph
+from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
+
+SUMMARY_PATH = 'graphs/summary'
+RELEASE_PATH = 'graphs/latest'
 
 class HarvestOpConfig(Config):
     source_name: str
@@ -49,7 +54,7 @@ def nabu_release_run(context, gleanerio_run ) -> Output[Any]:
 
     return Output(nabu, metadata=metadata)
 
-@asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(deps=[gleanerio_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def missingreport_s3(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -73,6 +78,55 @@ def missingreport_s3(context):
     get_dagster_logger().info(f"missing s3 report  returned  {r} ")
     return
 
+@asset(deps=[nabu_release_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+def summarize(context) :
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 =  context.resources.gleanerio.gs3
+    triplestore =context.resources.gleanerio.triplestore
+    source_name = context.asset_partition_key_for_output()
+    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source_url = source.get('url')
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                                       gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+
+   # endpoint = triplestore.GraphEndpoint# getting data, not uploading data
+    #summary_namespace = _graphSummaryEndpoint()
+
+    try:
+
+        # summarydf = get_summary4repoSubset(endpoint, source_name)
+        rg = ReleaseGraph()
+        rg.read_release(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                        bucket,
+                        source_name,
+                        options=gleaner_s3.MinioOptions())
+        summarydf = rg.summarize()
+        nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
+        summaryttl = g.serialize(format='longturtle')
+        # Lets always write out file to s3, and insert as a separate process
+        # we might be able to make this an asset..., but would need to be acessible by http
+        # if not stored in s3
+        objectname = f"{SUMMARY_PATH}/{source_name}_release.ttl"  # needs to match that is expected by post
+        s3ObjectInfo = {"bucket_name": bucket, "object_name": objectname}
+        s3ObjectInfo.bucket_name = bucket
+        s3ObjectInfo.object_name = objectname
+
+        s3Minio.putTextFileToStore(summaryttl, s3ObjectInfo)
+        # inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
+        # if not inserted:
+        #    raise Exception("Loading to graph failed.")
+    except Exception as e:
+        # use dagster logger
+        get_dagster_logger().error(f"Summary. Issue creating graph  {str(e)} ")
+        raise Exception(f"Loading Summary graph failed. {str(e)}")
+        return 1
+
+    return
 
 summon_asset_job = define_asset_job(
     name="summon_and_release_job",
