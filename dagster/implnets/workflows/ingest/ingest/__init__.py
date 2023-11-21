@@ -33,26 +33,22 @@ from .assets import gleanerio_run, nabu_release_run, sources_partitions_def , su
 from pydantic import Field
 
 from . import assets
+from .utils import PythonMinioAddress
+
 
 all_assets = load_assets_from_modules([assets])
 
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
-from .sensors import release_file_sensor
+from .sensors import release_file_sensor, sources_sensor
+
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
     os.getenv("SLACK_TOKEN")
 )
-all_sensors = [slack_on_run_failure, release_file_sensor]
+all_sensors = [slack_on_run_failure, release_file_sensor, sources_sensor]
 
-def _pythonMinioAddress(url, port=None):
-    if (url.endswith(".amazonaws.com")):
-        PYTHON_MINIO_URL = "s3.amazonaws.com"
-    else:
-        PYTHON_MINIO_URL = url
-    if port is not None:
-        PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
-    return PYTHON_MINIO_URL
+
 def _awsEndpointAddress(url, port=None, use_ssl=True):
     if use_ssl:
         protocol = "https"
