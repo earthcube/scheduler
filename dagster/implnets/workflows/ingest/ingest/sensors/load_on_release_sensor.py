@@ -96,6 +96,10 @@ def build_community():
     upload_release()
     upload_summary()
 #@sensor(job=build_community,minimum_interval_seconds=60)
+
+######
+# https://docs.dagster.io/concepts/partitions-schedules-sensors/asset-sensors#when-all-partitions-have-new-materializations
+########
 @asset_sensor(asset_key=AssetKey("release_summarize"), job=build_community, required_resource_keys={"gleanerio"})
 def release_file_sensor(context,config: TennantConfig, gleanerio:GleanerioResource,
                         minimum_interval_seconds=3600):
