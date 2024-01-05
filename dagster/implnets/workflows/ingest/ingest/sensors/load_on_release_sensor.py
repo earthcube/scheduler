@@ -97,6 +97,9 @@ def build_community():
     upload_summary()
 #@sensor(job=build_community,minimum_interval_seconds=60)
 
+# https://docs.dagster.io/concepts/partitions-schedules-sensors/sensors#using-resources-in-sensors
+# sensor factor example
+# https://github.com/dagster-io/dagster/blob/master/examples/project_fully_featured/project_fully_featured/sensors/hn_tables_updated_sensor.py
 ######
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/asset-sensors#when-all-partitions-have-new-materializations
 ########
