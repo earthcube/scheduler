@@ -74,29 +74,23 @@ def all_report_stats():
     bucket = GLEANER_MINIO_BUCKET
     source_url = GLEANERIO_CSV_CONFIG_URL
 
-    results = []
     if (GLEANERIO_SUMMARIZE_GRAPH):
         # all
         report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("all"), "all")
         bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_all_stats.json", report)
-        results.append(bucketname, objectname, report)
 
         # community: deepoceans
         report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("deepoceans"), "deepoceans")
         bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_deepoceans_stats.json", report)
-        results.append(bucketname, objectname, report)
 
         # community: ecoforest
         report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("ecoforecast"), "ecoforecast")
         bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_ecoforecast_stats.json", report)
-        results.append(bucketname, objectname, report)
 
         # community: geochemistry
         report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("geochemistry"), "geochemistry")
         bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_geochemistry_stats.json", report)
-        results.append(bucketname, objectname, report)
 
-    return results
 
 #all_urn_w_types_toplevel.sparql
 # returns all grapurns with a type.
