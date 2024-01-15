@@ -2,7 +2,7 @@ import distutils
 import json
 import os
 
-from dagster import asset, define_asset_job
+from dagster import asset, define_asset_job, get_dagster_logger
 from ec.graph.sparql_query import queryWithSparql
 from ec.reporting.report import generateGraphReportsRepo, reportTypes, generateReportStats
 from ec.datastore import s3
@@ -75,22 +75,24 @@ def all_report_stats():
     source_url = GLEANERIO_CSV_CONFIG_URL
 
     if (GLEANERIO_SUMMARIZE_GRAPH):
-        # all
-        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("all"), "all")
-        bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_all_stats.json", report)
+        try:
+            # all
+            report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("all"), "all")
+            bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_all_stats.json", report)
 
-        # community: deepoceans
-        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("deepoceans"), "deepoceans")
-        bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_deepoceans_stats.json", report)
+            # community: deepoceans
+            report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("deepoceans"), "deepoceans")
+            bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_deepoceans_stats.json", report)
 
-        # community: ecoforest
-        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("ecoforecast"), "ecoforecast")
-        bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_ecoforecast_stats.json", report)
+            # community: ecoforest
+            report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("ecoforecast"), "ecoforecast")
+            bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_ecoforecast_stats.json", report)
 
-        # community: geochemistry
-        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("geochemistry"), "geochemistry")
-        bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_geochemistry_stats.json", report)
-
+            # community: geochemistry
+            report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("geochemistry"), "geochemistry")
+            bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_geochemistry_stats.json", report)
+        except Exception as e:
+            get_dagster_logger().info(f"Summary report errors: {str(e)}")
 
 #all_urn_w_types_toplevel.sparql
 # returns all grapurns with a type.
