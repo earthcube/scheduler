@@ -49,8 +49,11 @@ GLEANERIO_CSV_CONFIG_URL = str(os.environ.get('GLEANERIO_CSV_CONFIG_URL'))
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
 
-def _graphSummaryEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
+def _graphSummaryEndpoint(community):
+    if community == "all":
+        url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
+    else:
+        url = f"{GLEANER_GRAPH_URL}/namespace/{community}_summary/sparql"
     return url
 @asset(group_name="graph")
 def sos_types( ):
@@ -69,14 +72,31 @@ def sos_types( ):
 def all_report_stats():
     s3Minio = s3.MinioDatastore( GLEANERIO_MINIO_ADDRESS, MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    summary_namespace = _graphSummaryEndpoint()
     source_url = GLEANERIO_CSV_CONFIG_URL
 
+    results = []
     if (GLEANERIO_SUMMARIZE_GRAPH):
-        report = generateReportStats(source_url, bucket, s3Minio, summary_namespace, "all")
+        # all
+        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("all"), "all")
         bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_all_stats.json", report)
+        results.append(bucketname, objectname, report)
 
-    return bucketname, objectname, report
+        # community: deepoceans
+        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("deepoceans"), "deepoceans")
+        bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_deepoceans_stats.json", report)
+        results.append(bucketname, objectname, report)
+
+        # community: ecoforest
+        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("ecoforecast"), "ecoforecast")
+        bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_ecoforecast_stats.json", report)
+        results.append(bucketname, objectname, report)
+
+        # community: geochemistry
+        report = generateReportStats(source_url, bucket, s3Minio, _graphSummaryEndpoint("geochemistry"), "geochemistry")
+        bucketname, objectname = s3Minio.putReportFile(bucket, "all", f"report_geochemistry_stats.json", report)
+        results.append(bucketname, objectname, report)
+
+    return results
 
 #all_urn_w_types_toplevel.sparql
 # returns all grapurns with a type.
