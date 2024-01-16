@@ -74,6 +74,7 @@ def all_report_stats():
     bucket = GLEANER_MINIO_BUCKET
     source_url = GLEANERIO_CSV_CONFIG_URL
 
+    # TODO: remove the hardcoded community list
     community_list = ["all", "deepoceans", "ecoforecast", "geochemistry"]
 
     if (GLEANERIO_SUMMARIZE_GRAPH):
