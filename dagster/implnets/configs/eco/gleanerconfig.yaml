@@ -599,6 +599,25 @@ sources:
     acceptcontenttype: application/ld+json, text/html
     jsonprofile: application/ld+json
   - sourcetype: sitemap
+    name: glim
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/glim.xml
+    headless: false
+    pid: https://github.com/earthcube/GeoCODES-Metadata/
+    propername: GLiM
+    domain: https://doi.pangaea.de/10.1594/PANGAEA.788537
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
+  - sourcetype: sitemap
     name: gpp
     logo: ""
     url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/gpp.xml
@@ -620,7 +639,7 @@ sources:
   - sourcetype: sitemap
     name: nitrogen
     logo: ""
-    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/nitrogen1.xml
+    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/nitrogen.xml
     headless: false
     pid: https://doi.pangaea.de/10.1594/PANGAEA.861203
     propername: Nitrogen Fertilizer
