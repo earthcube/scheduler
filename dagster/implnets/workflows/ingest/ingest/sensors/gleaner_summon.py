@@ -3,8 +3,9 @@ from dagster import (
     EventLogEntry, AssetKey, asset_sensor
 )
 from ..assets import (
-summon_asset_job, sources_partitions_def
+ sources_partitions_def
 )
+from ..jobs.summon_assets import summon_asset_job
 
 
 

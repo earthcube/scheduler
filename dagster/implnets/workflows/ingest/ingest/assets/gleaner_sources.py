@@ -16,13 +16,13 @@ from ..resources.gleanerio import GleanerioResource
 
 # for right now, using a list of orgs as the sources.
 # future read the gleaner config file.
-# future future, store soruces and read them.
+# future future, store sources in (s3/googlesheets) and read them.
 
 
 @asset(required_resource_keys={"gs3"})
 def gleanerio_orgs(context ):
     s3_resource = context.resources.gs3
-    source="geocodes_demo_datasets"
+    source="orgs_list_from_a_s3_bucket"
     files = s3_resource.listPath(path='orgs')
     orgs = list(map(lambda o: o["Key"].removeprefix("orgs/").removesuffix(".nq") , files))
     dagster.get_dagster_logger().info(str(orgs))
