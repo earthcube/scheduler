@@ -118,7 +118,7 @@ class GleanerioResource(ConfigurableResource):
     GLEANERIO_DAGSTER_CONFIG_PATH: str = Field(
         description="DAGSTER_GLEANERIO_CONFIG_PATH for Project.")
     gs3: gleanerS3Resource   # this will be a botocore.client.S3.
-    triplestore: BlazegraphResource
+    triplestore: GraphResource  # should be a blazegraph... but let's try generic
     GLEANERIO_GRAPH_NAMESPACE:str = Field(
         description="GLEANERIO_GRAPH_NAMESPACE for Project.")
     GLEANERIO_GRAPH_SUMMARY_NAMESPACE:str = Field(
