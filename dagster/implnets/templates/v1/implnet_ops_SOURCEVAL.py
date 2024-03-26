@@ -831,8 +831,9 @@ def harvest_SOURCEVAL():
     load_prov = SOURCEVAL_nabuprov(start=load_prune)
     load_org = SOURCEVAL_nabuorg(start=load_prov)
 
+# move after prune to be sure culled data is removed
     if(GLEANERIO_SUMMARIZE_GRAPH):
-        summarize = SOURCEVAL_summarize(start=load_uploadrelease)
+        summarize = SOURCEVAL_summarize(start=load_prune)
         upload_summarize = SOURCEVAL_upload_summarize(start=summarize)
 
 
