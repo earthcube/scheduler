@@ -23,4 +23,7 @@ a
 In prep for using a service that can mount the gleaner/nabu configs, the local 
 also creates 'file' configs using   config/$PROJECT/gleanerconfig.yaml and  config/$PROJECT/nabuconfig.yaml
 
+NOTE: Presently the service starting the container needs to be a swarm... this means that 
+GLEANERIO_DOCKER_URL=unix:///var/run/docker.sock
+will not work 
 
