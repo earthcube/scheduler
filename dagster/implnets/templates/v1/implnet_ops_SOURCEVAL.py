@@ -89,11 +89,11 @@ GLEANERIO_SUMMARIZE_GRAPH=(os.getenv('GLEANERIO_GRAPH_SUMMARIZE', 'False').lower
 
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
-def _graphEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
+def _graphEndpoint(namespace=GLEANER_GRAPH_NAMESPACE):
+    url = f"{GLEANER_GRAPH_URL}/namespace/{namespace}/sparql"
     return url
-def _graphSummaryEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
+def _graphSummaryEndpoint(namespace=GLEANERIO_SUMMARY_GRAPH_NAMESPACE):
+    url = f"{GLEANER_GRAPH_URL}/namespace/{namespace}/sparql"
     return url
 def _pythonMinioAddress(url, port = None):
 
@@ -705,59 +705,28 @@ class S3ObjectInfo:
     bucket_name=""
     object_name=""
 
-## this is not working correctly.
-@op(ins={"start": In(Nothing)})
-def SOURCEVAL_summarize_release(context) :
-    s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
-    bucket = GLEANER_MINIO_BUCKET
-    source_name = "SOURCEVAL"
-    endpoint = _graphEndpoint() # getting data, not uploading data
-    summary_namespace = _graphSummaryEndpoint()
 
-
-    try:
-
-       # summarydf = get_summary4repoSubset(endpoint, source_name)
-        rg = ReleaseGraph()
-        rg.read_release(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT),
-                        bucket,
-                        source_name,
-                        options=MINIO_OPTIONS)
-        summarydf = rg.summarize()
-        nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
-        summaryttl = g.serialize(format='longturtle')
-        # Lets always write out file to s3, and insert as a separate process
-        # we might be able to make this an asset..., but would need to be acessible by http
-        # if not stored in s3
-        objectname = f"{SUMMARY_PATH}/{source_name}_release.ttl" # needs to match that is expected by post
-        s3ObjectInfo= S3ObjectInfo()
-        s3ObjectInfo.bucket_name=bucket
-        s3ObjectInfo.object_name=objectname
-
-        s3Minio.putTextFileToStore(summaryttl, s3ObjectInfo )
-        #inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
-        #if not inserted:
-        #    raise Exception("Loading to graph failed.")
-    except Exception as e:
-        # use dagster logger
-        get_dagster_logger().error(f"Summary. Issue creating graph  {str(e)} ")
-        raise Exception(f"Loading Summary graph failed. {str(e)}")
-        return 1
-
-    return
 ## release does not return correct results, so go to graph by default
 @op(ins={"start": In(Nothing)})
 def SOURCEVAL_summarize(context, useRelease=False) :
     s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_name = "SOURCEVAL"
-    endpoint = _graphEndpoint() # getting data, not uploading data
-    summary_namespace = _graphSummaryEndpoint()
+    namespace = f"temp_{source_name}"
+    endpoint = _graphEndpoint(namespace=namespace) # getting data, not uploading data
+    #summary_namespace = _graphSummaryEndpoint()
 
+    bg =  mg(GLEANER_GRAPH_URL,namespace)
 
     try:
+        temp_namegraph = bg.createNamespace()
+        returned_value = post_to_graph("SOURCEVAL", path=RELEASE_PATH, extension="nq",
+                                       graphendpoint=endpoint)
+        r = str('returned value:{}'.format(returned_value))
+        get_dagster_logger().info(f"upload summary returned  {r} ")
+
         if not useRelease:
-            summarydf = get_summary4repoSubset(endpoint, source_name)
+            summarydf = get_summary4graph(endpoint)
         else:
             rg = ReleaseGraph()
             rg.read_release(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT),
@@ -784,6 +753,8 @@ def SOURCEVAL_summarize(context, useRelease=False) :
         get_dagster_logger().error(f"Summary. Issue creating graph  {str(e)} ")
         raise Exception(f"Loading Summary graph failed. {str(e)}")
         return 1
+    finally:
+        destroy = bg.deleteNamespace()
 
     return
 
