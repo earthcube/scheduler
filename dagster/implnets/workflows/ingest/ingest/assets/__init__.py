@@ -6,4 +6,4 @@ from .gleaner_summon_assets import (
     bucket_urls, identifier_stats,
 graph_stats_report
 )
-from .gleaner_sources import gleanerio_orgs
+from .gleaner_sources import gleanerio_orgs, gleanerio_tennants

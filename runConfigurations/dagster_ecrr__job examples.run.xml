@@ -1,6 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="dagster_ecrr__job examples" type="PythonConfigurationType" factoryName="Python" folderName="ecrr">
     <module name="scheduler" />
+    <option name="ENV_FILES" value="" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
@@ -28,7 +29,7 @@
       </ENTRIES>
     </EXTENSION>
     <option name="SCRIPT_NAME" value="dagster" />
-    <option name="PARAMETERS" value="job execute -f jobs/implnet_jobs_ecrr_examples.py  -j implnet_job_ecrr_examples" />
+    <option name="PARAMETERS" value="job execute -f jobs/implnet_jobs_ecrr_examples.py -j implnet_job_ecrr_examples" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />

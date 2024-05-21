@@ -4,9 +4,10 @@ import orjson
 
 import dagster
 from dagster import get_dagster_logger, asset, In, Nothing, Config,DynamicPartitionsDefinition, sensor
+import yaml
 
 sources_partitions_def = DynamicPartitionsDefinition(name="gleanerio_orgs")
-from ..resources.gleanerio import GleanerioResource
+#from ..resources.gleanerio import GleanerioResource
 
 ### PRESENT HACK. Using the orgs
 # really needs to read a future tenant file, and then add
@@ -36,6 +37,28 @@ def gleanerio_orgs(context ):
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return orgs
+@asset(required_resource_keys={"gs3"})
+def gleanerio_tennants(context ):
+    gleaner_resource =  context.resources.gs3
+    s3_resource = context.resources.gs3
+    # tennant_path =  f'{s3_resource.GLEANERIO_TENNANT_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
+    # get_dagster_logger().info(f"tennant_path {tennant_path} ")
+    #
+    # tennant = s3_resource.getFile(path=tennant_path)
+    tennant = s3_resource.getTennatFile()
+    get_dagster_logger().info(f"tennant {tennant} ")
+    tennant_obj = yaml.safe_load(tennant)
+    tennants = list(map(lambda t: t["community"], tennant_obj["tennant"] ))
+    context.add_output_metadata(
+            metadata={
+                "source": tennants,  # Metadata can be any key-value pair
+                "run": "gleaner",
+                # The `MetadataValue` class has useful static methods to build Metadata
+            }
+        )
+    #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
+    # this is used for partitioning, so let it pickle (aka be a python list)
+    return tennants
 
 # @asset(required_resource_keys={"gs3"})
 # def gleanerio_orgs(context ):

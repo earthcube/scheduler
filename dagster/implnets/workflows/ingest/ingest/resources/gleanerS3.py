@@ -48,14 +48,18 @@ class gleanerS3Resource(ConfigurableResource):
                 Bucket=self.GLEANERIO_MINIO_BUCKET,
                 Key=path,
             )
-            return result["Contents"]
+            get_dagster_logger().info(
+                f"file {result['Body']}" )
+            return result["Body"]
         except Exception as ex:
-            get_dagster_logger().info(f"file {path} not found  in {self.GLEANERIO_MINIO_BUCKET} at ")
-    def getTennatFile(self, path='orgs'):
-        path= f"{self.GLEANERIO_TENNANT_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
+            get_dagster_logger().info(f"file {path} not found  in {self.GLEANERIO_MINIO_BUCKET} at {self.s3.endpoint_url} {ex}")
+    def getTennatFile(self, path=''):
+        if path == '':
+            path= f"{self.GLEANERIO_TENNANT_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
         try:
-            return self.s3.getFile(self, path=path)
+            get_dagster_logger().info(f"tennant_path {path} ")
+            return self.getFile( path=path)
 
         except Exception as ex:
-            get_dagster_logger().info(f"tennant not found ")
+            get_dagster_logger().info(f"tennant {path} not found ")
      #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)
