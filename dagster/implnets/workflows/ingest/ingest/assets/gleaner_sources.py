@@ -20,7 +20,7 @@ sources_partitions_def = DynamicPartitionsDefinition(name="sources_names_active"
 # future future, store sources in (s3/googlesheets) and read them.
 
 
-@asset( group_name="ingest", name="org_names",required_resource_keys={"gs3"})
+@asset( group_name="configs", name="org_names",required_resource_keys={"gs3"})
 def gleanerio_orgs(context ):
     s3_resource = context.resources.gs3
     source="orgs_list_from_a_s3_bucket"
@@ -37,7 +37,7 @@ def gleanerio_orgs(context ):
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return orgs
-@asset(group_name="ui",name="tennant_names",required_resource_keys={"gs3"})
+@asset(group_name="configs",name="tennant_names",required_resource_keys={"gs3"})
 def gleanerio_tennants(context ):
     gleaner_resource =  context.resources.gs3
     s3_resource = context.resources.gs3
@@ -59,7 +59,7 @@ def gleanerio_tennants(context ):
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return tennants
-@multi_asset(group_name="ingest",outs=
+@multi_asset(group_name="configs",outs=
              {
                  "sources_all": AssetOut(),
                  "sources_names_active": AssetOut(),

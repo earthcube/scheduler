@@ -2,6 +2,8 @@
 # basically runs the first step, of gleaner on geocodes demo datasets
 from typing import Any
 import json
+import pandas as pd
+import csv
 
 from dagster import (
     asset, Config, Output,
@@ -26,7 +28,7 @@ class HarvestOpConfig(Config):
 # sources_partitions_def = StaticPartitionsDefinition(
 #     ["geocodes_demo_datasets", "iris"]
 # )
-@asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 #@asset( required_resource_keys={"gleanerio"})
 def gleanerio_run(context ) -> Output[Any]:
     gleaner_resource =  context.resources.gleanerio
@@ -40,7 +42,7 @@ def gleanerio_run(context ) -> Output[Any]:
             }
 
     return Output(gleaner, metadata=metadata)
-@asset(partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 #@asset(required_resource_keys={"gleanerio"})
 def release_nabu_run(context, gleanerio_run) -> Output[Any]:
     gleaner_resource = context.resources.gleanerio
@@ -60,7 +62,7 @@ And how many made it into milled (this is how good the conversion at a single js
 
 '''
 
-@asset(deps=[gleanerio_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[gleanerio_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def load_report_s3(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -93,7 +95,7 @@ And how many made it into milled (this is how good the conversion at a single js
 It then compares what identifiers are in the S3 store (summon path), and the Named Graph URI's
 '''
 
-@asset(deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def load_report_graph(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -121,7 +123,7 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
-@asset(deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def release_summarize(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -171,7 +173,7 @@ def release_summarize(context) :
 
     return
 
-@asset(deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def identifier_stats(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -195,7 +197,7 @@ def identifier_stats(context):
     get_dagster_logger().info(f"identifer stats report  returned  {r} ")
     return
 
-@asset(deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def bucket_urls(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -213,8 +215,8 @@ def bucket_urls(context):
 
     res = s3Minio.listSummonedUrls(bucket, source_name)
     r = str('returned value:{}'.format(res))
-    bucketurls = json.dumps(res, indent=2)
-    s3Minio.putReportFile(bucket, source_name, "bucketutil_urls.json", bucketurls)
+    bucketurls =  pd.DataFrame(res).to_csv(index=False, quoting=csv.QUOTE_NONNUMERIC)
+    s3Minio.putReportFile(bucket, source_name, "bucketutil_urls.csv", bucketurls)
     get_dagster_logger().info(f"bucker urls report  returned  {r} ")
     return
 
@@ -227,7 +229,7 @@ def bucket_urls(context):
 #     bucket = GLEANER_MINIO_BUCKET
 #     release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
 #     return release_url
-@asset(deps=[release_nabu_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[release_nabu_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def graph_stats_report(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -244,9 +246,9 @@ def graph_stats_report(context) :
 
     #returned_value = generateGraphReportsRepo(source_name,  graphendpoint, reportList=reportTypes["repo_detailed"])
     proto = "http"
-    if gleaner_s3.GLEANER_MINIO_USE_SSL:
+    if gleaner_s3.GLEANERIO_MINIO_USE_SSL:
         proto = "https"
-    address = PythonMinioAddress(gleaner_s3.GLEANER_MINIO_ADDRESS, gleaner_s3.GLEANER_MINIO_PORT)
+    address = PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS, gleaner_s3.GLEANERIO_MINIO_PORT)
 
     s3FileUrl = f"{proto}://{address}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
     #s3FileUrl = _releaseUrl(source_name )

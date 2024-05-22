@@ -16,8 +16,10 @@ class gleanerS3Resource(ConfigurableResource):
          description="GLEANERIO_MINIO_BUCKET.")
     GLEANERIO_MINIO_PORT: str =  Field(
          description="GLEANERIO_MINIO_BUCKET.")
+    GLEANERIO_MINIO_USE_SSL: bool=  Field(
+         default=False)
     GLEANERIO_CONFIG_PATH : str =  Field(
-         description="GLEANERIO_CONFIG_CONFIG.", default="scheduler/configs/")
+         description="GLEANERIO_CONFIG_PATH.", default="scheduler/configs/")
     GLEANERIO_TENNANT_FILENAME : str =  Field(
          description="GLEANERIO_TENNANT_FILENAME.", default="tennant.yaml")
     GLEANERIO_SOURCES_FILENAME: str =  Field(
