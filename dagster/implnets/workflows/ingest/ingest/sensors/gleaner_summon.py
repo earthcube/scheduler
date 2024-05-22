@@ -10,13 +10,13 @@ from ..jobs.summon_assets import summon_asset_job
 
 
 
-@asset_sensor( asset_key=AssetKey("gleanerio_orgs"), job=summon_asset_job)
+@asset_sensor( asset_key=AssetKey("sources_names_active"), job=summon_asset_job)
 def sources_sensor(context,  asset_event: EventLogEntry):
     assert asset_event.dagster_event and asset_event.dagster_event.asset_key
 
 # well this is a pain. but it works. Cannot just pass it like you do in ops
     # otherwise it's just an AssetDefinition.
-    sources = context.repository_def.load_asset_value(AssetKey("gleanerio_orgs"))
+    sources = context.repository_def.load_asset_value(AssetKey("sources_names_active"))
     new_sources = [
         source
         for source in sources

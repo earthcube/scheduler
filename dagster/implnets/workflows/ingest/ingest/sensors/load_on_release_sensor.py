@@ -14,6 +14,9 @@ from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
 from ..resources.graph import BlazegraphResource
 
+# This sensor needs to detect when an source has completed its' run
+# and then load the data into the client's graphstore.
+
 class TennantConfig(Config):
     source_name: str
     name: str

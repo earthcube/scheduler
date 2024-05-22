@@ -3,10 +3,10 @@
 import orjson
 
 import dagster
-from dagster import get_dagster_logger, asset, In, Nothing, Config,DynamicPartitionsDefinition, sensor
+from dagster import get_dagster_logger, asset,multi_asset, AssetOut, In, Nothing, Config,DynamicPartitionsDefinition, sensor
 import yaml
 
-sources_partitions_def = DynamicPartitionsDefinition(name="gleanerio_orgs")
+sources_partitions_def = DynamicPartitionsDefinition(name="sources_names_active")
 #from ..resources.gleanerio import GleanerioResource
 
 ### PRESENT HACK. Using the orgs
@@ -20,7 +20,7 @@ sources_partitions_def = DynamicPartitionsDefinition(name="gleanerio_orgs")
 # future future, store sources in (s3/googlesheets) and read them.
 
 
-@asset(required_resource_keys={"gs3"})
+@asset( group_name="ingest", name="org_names",required_resource_keys={"gs3"})
 def gleanerio_orgs(context ):
     s3_resource = context.resources.gs3
     source="orgs_list_from_a_s3_bucket"
@@ -37,11 +37,11 @@ def gleanerio_orgs(context ):
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return orgs
-@asset(required_resource_keys={"gs3"})
+@asset(group_name="ui",name="tennant_names",required_resource_keys={"gs3"})
 def gleanerio_tennants(context ):
     gleaner_resource =  context.resources.gs3
     s3_resource = context.resources.gs3
-    # tennant_path =  f'{s3_resource.GLEANERIO_TENNANT_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
+    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
     # get_dagster_logger().info(f"tennant_path {tennant_path} ")
     #
     # tennant = s3_resource.getFile(path=tennant_path)
@@ -59,7 +59,35 @@ def gleanerio_tennants(context ):
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return tennants
+@multi_asset(group_name="ingest",outs=
+             {
+                 "sources_all": AssetOut(),
+                 "sources_names_active": AssetOut(),
+             }
+    ,required_resource_keys={"gs3"})
+def gleanerio_sources(context ):
 
+    s3_resource = context.resources.gs3
+    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
+    # get_dagster_logger().info(f"tennant_path {tennant_path} ")
+    #
+    # tennant = s3_resource.getFile(path=tennant_path)
+    source = s3_resource.getSourcesFile()
+    get_dagster_logger().info(f"sources {source} ")
+    sources_obj = yaml.safe_load(source)
+    sources_all_value = list(filter(lambda t: t["name"], sources_obj["sources"]))
+    sources_active_value = filter(lambda t: t["active"], sources_all_value )
+    sources_active_value = list(map(lambda t: t["name"], sources_active_value))
+    # context.add_output_metadata(
+    #         metadata={
+    #             "source": sources_value,  # Metadata can be any key-value pair
+    #             "run": "gleaner",
+    #             # The `MetadataValue` class has useful static methods to build Metadata
+    #         }
+    #     )
+    #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
+    # this is used for partitioning, so let it pickle (aka be a python list)
+    return sources_all_value, sources_active_value
 # @asset(required_resource_keys={"gs3"})
 # def gleanerio_orgs(context ):
 #     s3_resource = context.resources.gs3

@@ -16,10 +16,12 @@ class gleanerS3Resource(ConfigurableResource):
          description="GLEANERIO_MINIO_BUCKET.")
     GLEANERIO_MINIO_PORT: str =  Field(
          description="GLEANERIO_MINIO_BUCKET.")
-    GLEANERIO_TENNANT_PATH : str =  Field(
-         description="GLEANERIO_TENNANT_CONFIG.", default="scheduler/configs/")
+    GLEANERIO_CONFIG_PATH : str =  Field(
+         description="GLEANERIO_CONFIG_CONFIG.", default="scheduler/configs/")
     GLEANERIO_TENNANT_FILENAME : str =  Field(
-         description="GLEANERIO_TENNANT_CONFIG.", default="tennant.yaml")
+         description="GLEANERIO_TENNANT_FILENAME.", default="tennant.yaml")
+    GLEANERIO_SOURCES_FILENAME: str =  Field(
+         description="GLEANERIO_SOURCES_FILENAME.", default="gleanerconfig.yaml")
 
 # Courtesy method for the ec utilities
     def MinioOptions(self):
@@ -55,11 +57,23 @@ class gleanerS3Resource(ConfigurableResource):
             get_dagster_logger().info(f"file {path} not found  in {self.GLEANERIO_MINIO_BUCKET} at {self.s3.endpoint_url} {ex}")
     def getTennatFile(self, path=''):
         if path == '':
-            path= f"{self.GLEANERIO_TENNANT_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
+            path= f"{self.GLEANERIO_CONFIG_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
         try:
             get_dagster_logger().info(f"tennant_path {path} ")
             return self.getFile( path=path)
 
         except Exception as ex:
             get_dagster_logger().info(f"tennant {path} not found ")
+     #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)
+
+    # this will change to use just a sources.
+    def getSourcesFile(self, path=''):
+        if path == '':
+            path= f"{self.GLEANERIO_CONFIG_PATH}{self.GLEANERIO_SOURCES_FILENAME}"
+        try:
+            get_dagster_logger().info(f"sources_path {path} ")
+            return self.getFile( path=path)
+
+        except Exception as ex:
+            get_dagster_logger().info(f"sources_path {path} not found ")
      #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)
