@@ -5,8 +5,8 @@
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
-      <env name="GLEANERIO_GLEANER_CONFIG_PATH" value="$PROJECT_DIR$/dagster/implnets/configs/eco/gleanerconfig.yaml" />
       <env name="PYTHONUNBUFFERED" value="1" />
+      <env name="GLEANERIO_GLEANER_CONFIG_PATH" value="$PROJECT_DIR$/dagster/implnets/configs/eco/gleanerconfig.yaml" />
     </envs>
     <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
     <option name="SDK_NAME" value="Python 3.9 (scheduler) (2)" />
@@ -18,7 +18,7 @@
     <EXTENSION ID="net.ashald.envfile">
       <option name="IS_ENABLED" value="true" />
       <option name="IS_SUBST" value="false" />
-      <option name="IS_PATH_MACRO_SUPPORTED" value="true" />
+      <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
       <option name="IS_IGNORE_MISSING_FILES" value="false" />
       <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
       <ENTRIES>
