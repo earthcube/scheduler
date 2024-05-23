@@ -9,8 +9,7 @@ on:
     branches:
       - main
       - dev
-      - dev_eco
-      - dev_dag156_env_updates
+ #     - dev_101_ingest_soruces_wf
     tags:
       - "v*.*.*"
 
