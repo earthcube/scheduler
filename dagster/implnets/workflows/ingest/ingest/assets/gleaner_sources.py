@@ -37,7 +37,14 @@ def gleanerio_orgs(context ):
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return orgs
-@asset(group_name="configs",name="tenant_names",required_resource_keys={"gs3"})
+#@asset(group_name="configs",name="tenant_names",required_resource_keys={"gs3"})
+@multi_asset(group_name="configs",outs=
+             {
+                 "tenant_all": AssetOut(),
+                 "tenant_names": AssetOut(),
+             }
+    ,required_resource_keys={"gs3"}
+             )
 def gleanerio_tennants(context ):
     gleaner_resource =  context.resources.gs3
     s3_resource = context.resources.gs3
@@ -54,11 +61,11 @@ def gleanerio_tennants(context ):
                 "source": tennants,  # Metadata can be any key-value pair
                 "run": "gleaner",
                 # The `MetadataValue` class has useful static methods to build Metadata
-            }
+            }, output_name="tenant_all"
         )
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
-    return tennants
+    return tennant_obj, tennants
 @multi_asset(group_name="configs",outs=
              {
                  "sources_all": AssetOut(),
