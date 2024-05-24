@@ -123,7 +123,7 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
-@asset(group_name="load",deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",name="release_summarize", deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def release_summarize(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
