@@ -6,10 +6,10 @@ from .gleaner_summon_assets import (
     graph_stats_report
 )
 from .gleaner_sources import (
-    gleanerio_orgs, gleanerio_tennants,
+    gleanerio_orgs, gleanerio_tenants,
     gleanerio_sources,
     tenant_partitions_def
-    ,sources_partitions_def
+    , sources_partitions_def
 )
 
 from .tenant import  (

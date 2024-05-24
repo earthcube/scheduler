@@ -12,7 +12,7 @@ from dagster_aws.s3.sensor import get_s3_keys
 from typing import List, Dict
 from pydantic import Field
 
-from ..assets import gleanerio_tennants, tenant_partitions_def, sources_partitions_def, upload_release,upload_summary
+from ..assets import gleanerio_tenants, tenant_partitions_def, sources_partitions_def, upload_release,upload_summary
 from ..assets.tenant import create_tenant_containers, create_graph_namespaces
 from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
@@ -52,7 +52,7 @@ class TenantConfig(Config):
          description="GLEANERIO_GRAPH_SUMMARY_PATH.", default='graphs/summary')
     RELEASE_PATH : str =  Field(
          description="GLEANERIO_GRAPH_RELEASE_PATH.", default='graphs/latest')
-@dynamic_partitioned_config(partition_fn=gleanerio_tennants)
+@dynamic_partitioned_config(partition_fn=gleanerio_tenants)
 def tenant_config(partition_key: str):
 
     # default_config ={"ops": {

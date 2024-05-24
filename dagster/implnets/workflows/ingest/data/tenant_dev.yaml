@@ -1,6 +1,6 @@
 # prototype tennants file
 
-tennant:
+tenant:
   - community: dev
     hostname: geocodes-dev
     description: GeoCodes is...

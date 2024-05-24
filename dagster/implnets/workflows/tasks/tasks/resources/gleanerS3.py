@@ -25,7 +25,7 @@ class gleanerS3Resource(S3Resource):
     GLEANERIO_TENNANT_PATH : str =  Field(
          description="GLEANERIO_TENNANT_CONFIG.", default="scheduler/configs/")
     GLEANERIO_TENNANT_FILENAME : str =  Field(
-         description="GLEANERIO_TENNANT_CONFIG.", default="tennant.yaml")
+         description="GLEANERIO_TENNANT_CONFIG.", default="tenant.yaml")
 
 ## https://docs.dagster.io/_apidocs/libraries/dagster-aws#s3
 #   fields from dagster_aws.s3.S3Resource

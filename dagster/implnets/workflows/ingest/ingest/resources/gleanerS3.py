@@ -21,7 +21,7 @@ class gleanerS3Resource(ConfigurableResource):
     GLEANERIO_CONFIG_PATH : str =  Field(
          description="GLEANERIO_CONFIG_PATH.", default="scheduler/configs/")
     GLEANERIO_TENNANT_FILENAME : str =  Field(
-         description="GLEANERIO_TENNANT_FILENAME.", default="tennant.yaml")
+         description="GLEANERIO_TENNANT_FILENAME.", default="tenant.yaml")
     GLEANERIO_SOURCES_FILENAME: str =  Field(
          description="GLEANERIO_SOURCES_FILENAME.", default="gleanerconfig.yaml")
 
