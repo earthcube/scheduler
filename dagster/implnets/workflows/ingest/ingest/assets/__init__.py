@@ -8,4 +8,4 @@ graph_stats_report
 )
 from .gleaner_sources import gleanerio_orgs, gleanerio_tennants,  tenant_partitions_def,sources_partitions_def
 
-from .tenant import  TennantOpConfig, TennantConfig, upload_release,upload_summary
+from .tenant import  TenantOpConfig, TenantConfig, upload_release,upload_summary, create_tenant_containers, create_graph_namespaces

@@ -13,8 +13,8 @@ from pydantic import Field
 from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
 from ..resources.graph import BlazegraphResource
-from ..assets import tenant_partitions_def,TennantConfig
-from ..jobs.tennant_load import  release_asset_job
+from ..assets import tenant_partitions_def,TenantConfig
+from ..jobs.tennant_load import  release_asset_job, create_graph_namespaces
 from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 
 #from ..jobs.tennant_load import  build_community
@@ -42,7 +42,7 @@ from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 @asset_sensor(asset_key=AssetKey("release_summarize"), job=release_asset_job, required_resource_keys={"gleanerio"},
             #  minimum_interval_seconds=3600
               )
-def release_file_sensor(context,config: TennantConfig
+def release_file_sensor(context,config: TenantConfig
                         ):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3

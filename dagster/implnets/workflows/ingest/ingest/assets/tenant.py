@@ -15,7 +15,7 @@ from pydantic import Field
 
 from ..assets import gleanerio_tennants, tenant_partitions_def, sources_partitions_def
 
-class TennantConfig(Config):
+class TenantConfig(Config):
     source_name: str
     name: str
     source_list: List[str]
@@ -27,9 +27,9 @@ class TennantConfig(Config):
          description="GLEANERIO_GRAPH_RELEASE_PATH.", default='graphs/latest')
 
 
-class TennantOpConfig(Config):
+class TenantOpConfig(Config):
     source_name: str
-@asset(required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
+@asset(group_name="tenant_load",required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
 #def upload_release(context, config:TennantOpConfig  ):
 def upload_release(context ):
     #context.log.info(config.source_name)
@@ -42,7 +42,7 @@ def upload_release(context ):
     pass
 
 #@asset(required_resource_keys={"gleanerio",},ins={"start": In(Nothing)})
-@asset(required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
+@asset(group_name="tenant_load",required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
 #def upload_summary(context, config:TennantOpConfig):
 def upload_summary(context):
     #context.log.info(config.source_name)
@@ -53,8 +53,37 @@ def upload_summary(context):
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
     pass
-
-
+#
+# @asset(group_name="tenant_create",required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
+# def create_graph_namespaces(context):
+#     #context.log.info(config.source_name)
+#     source_name = context.asset_partition_key_for_output()
+#     context.log.info(f"tennant_name {source_name}")
+#     gleaner_resource = context.resources.gleanerio
+#     s3_resource = context.resources.gleanerio.gs3.s3
+#     gleaner_s3 = context.resources.gleanerio.gs3
+#     triplestore = context.resources.gleanerio.triplestore
+#     pass
+@asset(group_name="tenant_create",required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
+def create_graph_namespaces(context):
+    #context.log.info(config.source_name)
+    source_name = context.asset_partition_key_for_output()
+    context.log.info(f"tennant_name {source_name}")
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 = context.resources.gleanerio.gs3
+    triplestore = context.resources.gleanerio.triplestore
+    pass
+@asset(group_name="tenant_create",required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
+def create_tenant_containers(context):
+    #context.log.info(config.source_name)
+    source_name = context.asset_partition_key_for_output()
+    context.log.info(f"tennant_name {source_name}")
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 = context.resources.gleanerio.gs3
+    triplestore = context.resources.gleanerio.triplestore
+    pass
 #@static_partitioned_config(partition_keys=TENNANT_NAMES)
 
     #return {"ops": {"continent_op": {"config": {"continent_name": partition_key}}}}

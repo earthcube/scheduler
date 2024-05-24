@@ -13,7 +13,7 @@ from typing import List, Dict
 from pydantic import Field
 
 from ..assets import gleanerio_tennants, tenant_partitions_def, sources_partitions_def, upload_release,upload_summary
-
+from ..assets.tenant import create_tenant_containers, create_graph_namespaces
 from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
 from ..resources.graph import BlazegraphResource
@@ -24,16 +24,25 @@ from ..resources.graph import BlazegraphResource
 
 
 release_asset_job = define_asset_job(
-    name="release_to_tenant_job",
+    name="tenant_release_job",
     selection=AssetSelection.assets(upload_release,upload_summary),
     partitions_def=sources_partitions_def,
 )
 
-@job(partitions_def=tenant_partitions_def)
-def tenant_create_job():
-    pass
+tenant_create_job = define_asset_job(
+    name="tenant_create_job",
+    selection=AssetSelection.assets(create_tenant_containers, create_graph_namespaces),
+    partitions_def=tenant_partitions_def,
+)
 
-class TennantConfig(Config):
+# @job(partitions_def=tenant_partitions_def)
+# def tenant_create_job(context):
+#     source_name = context.asset_partition_key_for_output()
+#     context.log.info(f"tennant_name {source_name}")
+#     create_tenant_containers(create_graph_namespaces())
+
+
+class TenantConfig(Config):
     source_name: str
     name: str
     source_list: List[str]
@@ -44,7 +53,7 @@ class TennantConfig(Config):
     RELEASE_PATH : str =  Field(
          description="GLEANERIO_GRAPH_RELEASE_PATH.", default='graphs/latest')
 @dynamic_partitioned_config(partition_fn=gleanerio_tennants)
-def tennant_config(partition_key: str):
+def tenant_config(partition_key: str):
 
     # default_config ={"ops": {
     #     "upload_release":
