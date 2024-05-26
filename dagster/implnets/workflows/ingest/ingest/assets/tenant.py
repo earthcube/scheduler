@@ -1,19 +1,25 @@
 from dagster import (
     op, job, Config,asset,
-In, Nothing,
+    In, Nothing,
     sensor, RunRequest, RunConfig,
     SensorEvaluationContext, asset_sensor, EventLogEntry,
     SkipReason,
     AssetKey,
     static_partitioned_config, dynamic_partitioned_config, DynamicPartitionsDefinition,
-    define_asset_job, AssetSelection,graph_asset
+    define_asset_job, AssetSelection,graph_asset,
+    get_dagster_logger
 )
 
 from dagster_aws.s3.sensor import get_s3_keys
 from typing import List, Dict
 from pydantic import Field
+import pydash
+
+#from pydash.collections import find
+#from pydash.predicates import is_match
 from ec.graph.manageGraph import ManageBlazegraph
 from ..assets import gleanerio_tenants, tenant_partitions_def, sources_partitions_def
+from .gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 
 class TenantConfig(Config):
     source_name: str
@@ -29,26 +35,50 @@ class TenantConfig(Config):
 
 class TenantOpConfig(Config):
     source_name: str
+
+def find_tenants_with_source(source_name, tennats_all):
+    get_dagster_logger().info(f" find tenant  {source_name} with {tennats_all}")
+    tenants =[]
+    # tenants = pydash.collections.find(tennats_all,
+    #            lambda t: pydash.predicates.is_match(t["sources"], source_name) or pydash.predicates.is_match(t["sources"], 'all')
+    #                                   )
+    #tenants = pydash.collections.find(tennats_all,  lambda t: pydash.predicates.is_match(t["sources"], "all") )
+    for tenant in tennats_all:
+        get_dagster_logger().info(f"  tenant sources {tenant['sources']}")
+        if source_name in tenant["sources"]:
+            get_dagster_logger().info(f" found source  {source_name} in {tenant['community']}")
+            tenants.append(tenant)
+        if 'all' in tenant["sources"]:
+            get_dagster_logger().info(f" found source  all in {tenant['community']}")
+            tenants.append(tenant)
+    return tenants
 @asset(group_name="tenant_load",required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
 #def upload_release(context, config:TennantOpConfig  ):
 def upload_release(context ):
     #context.log.info(config.source_name)
-    tenants = context.repository_def.load_asset_value(AssetKey("tenant_all"))
+    tenants_all = context.repository_def.load_asset_value(AssetKey("tenant_all"))['tenant']
     source_name = context.asset_partition_key_for_output()
+
     context.log.info(f"source_name {source_name}")
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
-    bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, gleaner_resource.tenant_name)
-    try:
-        bg.upload_nq_file()
-    except Exception as ex:
-        context.log.info(f"load to tennant {source_name} failed {ex}")
-        raise Exception(f"load to tennant {source_name} failed {ex}")
-    return
-def find_tenants_with_source(source_name, tennats_all):
-    return []
+    tenants = find_tenants_with_source(source_name, tenants_all)
+    for tenant in tenants:
+        #tenant["graph"]['main_namespace']
+        #bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, tenant["graph"]['main_namespace'])
+        try:
+            #bg.upload_nq_file()
+            namespace = tenant['graph']['main_namespace']
+            endpoint =  triplestore.GraphEndpoint(namespace)
+            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+            context.log.info(f"load  release for {source_name} to tennant  {tenant['community']}  {triplestore.GLEANERIO_GRAPH_URL} ")
+        except Exception as ex:
+            context.log.info(f"load to tennant {source_name} failed {ex}")
+            raise Exception(f"load to tennant {source_name} failed {ex}")
+        return
+
 #@asset(required_resource_keys={"gleanerio",},ins={"start": In(Nothing)})
 @asset(group_name="tenant_load",required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
 #def upload_summary(context, config:TennantOpConfig):
@@ -56,21 +86,25 @@ def upload_summary(context):
     #context.log.info(config.source_name)
     source_name = context.asset_partition_key_for_output()
     context.log.info(f"tennant_name {source_name} ")
-    tenants = context.repository_def.load_asset_value(AssetKey("tenant_all"))
-    tennat_to_load = find_tenants_with_source(source_name, tenants)
+    tenants_all = context.repository_def.load_asset_value(AssetKey("tenant_all"))['tenant']
 
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
-    bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, source_name)
-    try:
-        bg.upload_nq_file()
-        context.log.info(f"load to tennant {source_name}  {triplestore.GLEANERIO_GRAPH_URL}")
-    except Exception as ex:
-        context.log.error(f"load to tennant failed {source_name}  {triplestore.GLEANERIO_GRAPH_URL} {ex}")
-        raise Exception(f"load to tennant failed {source_name}  {triplestore.GLEANERIO_GRAPH_URL}  {ex}")
-    return
+    tenants = find_tenants_with_source(source_name, tenants_all)
+    for tenant in tenants:
+       # bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL,  tenant["graph"]['summary_namespace'])
+        try:
+           # bg.upload_nq_file()
+            namespace = tenant['graph']['summary_namespace']
+            endpoint = triplestore.GraphEndpoint(namespace)
+            triplestore.post_to_graph(source_name, path=SUMMARY_PATH,extension="ttl", graphendpoint=endpoint)
+            context.log.info(f"load summary for {source_name} to tennant  {tenant['community']}   {triplestore.GLEANERIO_GRAPH_URL}")
+        except Exception as ex:
+            context.log.error(f"load to tennant failed {source_name}  {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"load to tennant failed {source_name}  {triplestore.GLEANERIO_GRAPH_URL}  {ex}")
+        return
 #
 # @asset(group_name="tenant_create",required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
 # def create_graph_namespaces(context):

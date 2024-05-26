@@ -79,11 +79,11 @@ class GraphResource(ConfigurableResource):
         proto = "http"
 # this need to get file from s3.
 
-        if self.s3.GLEANERIO_MINIO_USE_SSL:
+        if self.gs3.GLEANERIO_MINIO_USE_SSL:
             proto = "https"
-        port = self.s3.GLEANERIO_MINIO_PORT
-        address = PythonMinioAddress(self.s3.GLEANERIO_MINIO_ADDRESS, self.s3.GLEANERIO_MINIO_PORT)
-        bucket = self.s3.GLEANERIO_MINIO_BUCKET
+        port = self.gs3.GLEANERIO_MINIO_PORT
+        address = PythonMinioAddress(self.gs3.GLEANERIO_MINIO_ADDRESS, self.gs3.GLEANERIO_MINIO_PORT)
+        bucket = self.gs3.GLEANERIO_MINIO_BUCKET
         release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
         # BLAZEGRAPH SPECIFIC
         # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
