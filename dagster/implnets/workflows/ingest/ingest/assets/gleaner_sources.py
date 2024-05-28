@@ -8,7 +8,7 @@ import yaml
 
 sources_partitions_def = DynamicPartitionsDefinition(name="sources_names_active")
 #from ..resources.gleanerio import GleanerioResource
-
+tenant_partitions_def = DynamicPartitionsDefinition(name="tenant_names_paritition")
 ### PRESENT HACK. Using the orgs
 # really needs to read a future tenant file, and then add
 # new partions with a sensor
@@ -37,28 +37,35 @@ def gleanerio_orgs(context ):
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return orgs
-@asset(group_name="configs",name="tennant_names",required_resource_keys={"gs3"})
-def gleanerio_tennants(context ):
+#@asset(group_name="configs",name="tenant_names",required_resource_keys={"gs3"})
+@multi_asset(group_name="configs",outs=
+             {
+                 "tenant_all": AssetOut(),
+                 "tenant_names": AssetOut(),
+             }
+    ,required_resource_keys={"gs3"}
+             )
+def gleanerio_tenants(context):
     gleaner_resource =  context.resources.gs3
     s3_resource = context.resources.gs3
-    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
+    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENANT_FILENAME}'
     # get_dagster_logger().info(f"tennant_path {tennant_path} ")
     #
     # tennant = s3_resource.getFile(path=tennant_path)
-    tennant = s3_resource.getTennatFile()
-    get_dagster_logger().info(f"tennant {tennant} ")
-    tennant_obj = yaml.safe_load(tennant)
-    tennants = list(map(lambda t: t["community"], tennant_obj["tennant"] ))
+    tenant = s3_resource.getTennatFile()
+    get_dagster_logger().info(f"tenant {tenant} ")
+    tenant_obj = yaml.safe_load(tenant)
+    tenants = list(map(lambda t: t["community"], tenant_obj["tenant"] ))
     context.add_output_metadata(
             metadata={
-                "source": tennants,  # Metadata can be any key-value pair
+                "source": tenants,  # Metadata can be any key-value pair
                 "run": "gleaner",
                 # The `MetadataValue` class has useful static methods to build Metadata
-            }
+            }, output_name="tenant_all"
         )
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
-    return tennants
+    return tenant_obj, tenants
 @multi_asset(group_name="configs",outs=
              {
                  "sources_all": AssetOut(),
@@ -68,7 +75,7 @@ def gleanerio_tennants(context ):
 def gleanerio_sources(context ):
 
     s3_resource = context.resources.gs3
-    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
+    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENANT_FILENAME}'
     # get_dagster_logger().info(f"tennant_path {tennant_path} ")
     #
     # tennant = s3_resource.getFile(path=tennant_path)

@@ -20,8 +20,8 @@ class gleanerS3Resource(ConfigurableResource):
          default=False)
     GLEANERIO_CONFIG_PATH : str =  Field(
          description="GLEANERIO_CONFIG_PATH.", default="scheduler/configs/")
-    GLEANERIO_TENNANT_FILENAME : str =  Field(
-         description="GLEANERIO_TENNANT_FILENAME.", default="tennant.yaml")
+    GLEANERIO_TENANT_FILENAME : str =  Field(
+         description="GLEANERIO_TENANT_FILENAME.", default="tenant.yaml")
     GLEANERIO_SOURCES_FILENAME: str =  Field(
          description="GLEANERIO_SOURCES_FILENAME.", default="gleanerconfig.yaml")
 
@@ -59,13 +59,13 @@ class gleanerS3Resource(ConfigurableResource):
             get_dagster_logger().info(f"file {path} not found  in {self.GLEANERIO_MINIO_BUCKET} at {self.s3.endpoint_url} {ex}")
     def getTennatFile(self, path=''):
         if path == '':
-            path= f"{self.GLEANERIO_CONFIG_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
+            path= f"{self.GLEANERIO_CONFIG_PATH}{self.GLEANERIO_TENANT_FILENAME}"
         try:
-            get_dagster_logger().info(f"tennant_path {path} ")
+            get_dagster_logger().info(f"tenant_path {path} ")
             return self.getFile( path=path)
 
         except Exception as ex:
-            get_dagster_logger().info(f"tennant {path} not found ")
+            get_dagster_logger().info(f"tenant {path} not found ")
      #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)
 
     # this will change to use just a sources.

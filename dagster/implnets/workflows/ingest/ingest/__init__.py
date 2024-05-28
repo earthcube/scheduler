@@ -42,13 +42,20 @@ all_assets = load_assets_from_modules([assets])
 
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
-from .sensors import release_file_sensor, sources_sensor
-
+from .sensors import release_file_sensor, sources_sensor, tenant_names_sensor,sources_s3_sensor, tenant_s3_sensor
+#from .sensors import  sources_sensor, tenant_names_sensor
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
     os.getenv("SLACK_TOKEN")
 )
-all_sensors = [slack_on_run_failure, release_file_sensor, sources_sensor]
+all_sensors = [
+    slack_on_run_failure,
+               release_file_sensor,
+               sources_sensor,
+               tenant_names_sensor,
+                sources_s3_sensor,
+                tenant_s3_sensor,
+               ]
 
 
 def _awsEndpointAddress(url, port=None, use_ssl=True):
@@ -78,7 +85,7 @@ gleaners3=gleanerS3Resource(
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
     GLEANERIO_CONFIG_PATH=os.environ.get('GLEANERIO_CONFIG_PATH'),
     GLEANERIO_SOURCES_FILENAME=os.environ.get('GLEANERIO_SOURCES_FILENAME'),
-    GLEANERIO_TENNANT_FILENAME=os.environ.get('GLEANERIO_TENNANT_FILENAME'),
+    GLEANERIO_TENANT_FILENAME=os.environ.get('GLEANERIO_TENANT_FILENAME'),
     # this is S3. It is the s3 resource
     s3=s3
 
@@ -168,8 +175,8 @@ resources = {
             GLEANERIO_LOG_PREFIX=EnvVar('GLEANERIO_LOG_PREFIX'),
 
             GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT',600),
-GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
-GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+            GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
+            GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
             gs3=gleaners3,
             triplestore=triplestore,
             triplestore_summary=triplestore_summary,

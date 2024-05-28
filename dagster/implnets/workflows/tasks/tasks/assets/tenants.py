@@ -16,48 +16,48 @@ asset_sensor, AssetKey,
                      )
 
 @asset(required_resource_keys={"triplestore"})
-def tennant_sources(context ) ->Any:
+def tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
 
     t=s3_resource.getTennatInfo()
-    tennants = t['tennant']
-    listTennants = map (lambda a: {a['community']}, tennants)
+    tenants = t['tenant']
+    listTenants = map (lambda a: {a['community']}, tenants)
     get_dagster_logger().info(str(t))
 
     return t
         #     metadata={
-        #         "tennants": str(listTennants),  # Metadata can be any key-value pair
+        #         "tennants": str(listTenants),  # Metadata can be any key-value pair
         #         "run": "gleaner",
         #         # The `MetadataValue` class has useful static methods to build Metadata
         #     }
         # )
 @asset(required_resource_keys={"triplestore"})
-def tennant_names(context, tennant_sources ) -> Output[Any]:
+def tenant_names(context, tenant_sources) -> Output[Any]:
 
-    tennants = tennant_sources['tennant']
-    listTennants = map (lambda a: {a['community']}, tennants)
-    get_dagster_logger().info(str(listTennants))
-    communities = list(listTennants)
+    tenants = tenant_sources['tenant']
+    listTenants = map (lambda a: {a['community']}, tenants)
+    get_dagster_logger().info(str(listTenants))
+    communities = list(listTenants)
     return Output(
             communities,
             metadata={
-                "tennants": str(listTennants),  # Metadata can be any key-value pair
+                "tenants": str(listTenants),  # Metadata can be any key-value pair
                 "run": "gleaner",
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
         )
 
 
-community_partitions_def = DynamicPartitionsDefinition(name="tennant_names")
-tennant_job = define_asset_job(
-    "tennant_job", AssetSelection.keys("tennant_names"), partitions_def=community_partitions_def
+community_partitions_def = DynamicPartitionsDefinition(name="tenant_names")
+tenant_job = define_asset_job(
+    "tenant_job", AssetSelection.keys("tenant_names"), partitions_def=community_partitions_def
 )
-#@sensor(job=tennant_job)
-@asset_sensor(asset_key=AssetKey("tennant_names"), job=tennant_job)
+#@sensor(job=tenant_job)
+@asset_sensor(asset_key=AssetKey("tenant_names"), job=tenant_job)
 def community_sensor(context):
     new_community = [
         community
-        for community in tennant_names
+        for community in tenant_names
         if not context.instance.has_dynamic_partition(
             community_partitions_def.name, community
         )
@@ -88,7 +88,7 @@ def _pythonMinioUrl(url):
 def getName(name):
     return name.replace("orgs/","").replace(".nq","")
 # @asset(group_name="community")
-# def source_list(tennant_sources) -> Output(str):
+# def source_list(tenant_sources) -> Output(str):
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
 #     orglist = s3Minio.listPath(GLEANER_MINIO_BUCKET, ORG_PATH,recursive=False)
 #     sources = map( lambda f: { "name": getName(f.object_name)}, orglist )
@@ -105,10 +105,10 @@ def getName(name):
 
 #@asset( group_name="load")
 @asset(partitions_def=community_partitions_def,
-     #  deps=[tennant_sources],
+     #  deps=[tenant_sources],
        group_name="community",
        required_resource_keys={"triplestore"} )
-def loadstatsCommunity(context, tennant_sources) -> None:
+def loadstatsCommunity(context, tenant_sources) -> None:
     prefix="history"
     logger = get_dagster_logger()
     s3 = context.resources.triplestore.s3
@@ -117,8 +117,8 @@ def loadstatsCommunity(context, tennant_sources) -> None:
     community_code= context.asset_partition_key_for_output()
     stats = []
     try:
-        ts = tennant_sources
-        t =list(filter ( lambda a: a['community']== community_code, ts["tennant"] ))
+        ts = tenant_sources
+        t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
         s = t[0]["sources"]
         for source in s:
 
@@ -127,9 +127,13 @@ def loadstatsCommunity(context, tennant_sources) -> None:
 
             for d in dirs:
                 latestpath = f"{REPORT_PATH}{source}/latest/"
-                if (d.object_name.casefold() == latestpath.casefold()) or (d.is_dir == False):
+                # minio reference
+                # if (d.object_name.casefold() == latestpath.casefold()) or (d.is_dir == False):
+                #     continue
+                # path = f"/{d.object_name}{STAT_FILE_NAME}"
+                if (d['Key'].casefold() == latestpath.casefold()) or not (d['Key'].endswith('/')):
                     continue
-                path = f"/{d.object_name}{STAT_FILE_NAME}"
+                path = f"/{d['Key']}{STAT_FILE_NAME}"
 
                 try:
                     resp = s3Client.getFile(path=path)
@@ -141,8 +145,8 @@ def loadstatsCommunity(context, tennant_sources) -> None:
                 except Exception as ex:
                     get_dagster_logger().info(f"Failed to get source {source} for tennant {community_code}  {ex}")
     except Exception as ex:
-        get_dagster_logger().info(f"Failed to get tennat {community_code}  {ex}")
-    # for source in tennant_sources["tennant"]:
+        get_dagster_logger().info(f"Failed to get tenant {community_code}  {ex}")
+    # for source in tenant_sources["tennant"]:
     #     try:
     #        # stat = s3Minio.getReportFile(GLEANER_MINIO_BUCKET,source.get("name"), STAT_FILE_NAME )
     #        repo = community_code
@@ -165,10 +169,16 @@ def loadstatsCommunity(context, tennant_sources) -> None:
     #     except Exception as ex:
     #         logger.info(f"Failed to get { source.get('name')}  {ex}")
     df = pd.DataFrame(stats)
-    os.mkdir(f"data/{community_code}")
+    try:
+        os.mkdir(f"data/{community_code}")
+    except FileExistsError:
+        logger.debug(f"directory data/{community_code} exists")
+    except FileNotFoundError:
+        logger.error(f"error creating directory. Fix community name.  'data/{community_code}' ")
     df.to_csv(f"data/{community_code}/all_stats.csv")
     df_csv = df.to_csv()
     # humm, should we just have an EC utils resource
     #s3Minio.putReportFile(GLEANER_MINIO_BUCKET, "all", f"all_stats.csv", df_csv)
     get_dagster_logger().info(f"all_stats.csv uploaded ")
-    return df_csv
+    #return df_csv # now checking return types
+    return

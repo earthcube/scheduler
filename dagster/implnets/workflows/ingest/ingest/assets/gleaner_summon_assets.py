@@ -51,6 +51,8 @@ def release_nabu_run(context, gleanerio_run) -> Output[Any]:
     metadata={
                 "source": source,  # Metadata can be any key-value pair
                 "run": "release",
+                 "bucket_name": gleaner_resource.gs3.GLEANERIO_MINIO_BUCKET,  # Metadata can be any key-value pair
+                 "object_name": f"{RELEASE_PATH}{source}"
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
 
@@ -123,7 +125,7 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
-@asset(group_name="load",deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",name="release_summarize", deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
 def release_summarize(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -161,7 +163,16 @@ def release_summarize(context) :
         s3ObjectInfo.bucket_name = bucket
         s3ObjectInfo.object_name = objectname
 
-        s3Minio.putTextFileToStore(summaryttl, s3ObjectInfo)
+        bucket_name, object_name =s3Minio.putTextFileToStore(summaryttl, s3ObjectInfo)
+        context.add_output_metadata(
+            metadata={
+                "source": source,  # Metadata can be any key-value pair
+                "run": "release_summarize",
+                "bucket_name": bucket_name,  # Metadata can be any key-value pair
+                "object_name": object_name,
+                # The `MetadataValue` class has useful static methods to build Metadata
+            }
+        )
         # inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
         # if not inserted:
         #    raise Exception("Loading to graph failed.")

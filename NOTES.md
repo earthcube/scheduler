@@ -1,5 +1,8 @@
 # Notes
 
+need to do dynamic ops.assets
+https://medium.com/@thegreat.rashid83/dagster-sensors-partition-c7a5205d4c0d
+
 ## Development
 
 At the top level (dagster/implents) you can run 
