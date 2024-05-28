@@ -34,3 +34,6 @@ This requires on configuration to load to a single s3.
 
 dynamic partitions
 https://docs.dagster.io/concepts/partitions-schedules-sensors/partitioning-assets#dynamically-partitioned-assets
+
+
+Th

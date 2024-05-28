@@ -29,7 +29,9 @@ from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerio import GleanerioResource
 from .resources.gleanerS3 import gleanerS3Resource
-from .assets import gleanerio_run, nabu_release_run, sources_partitions_def , summon_asset_job
+from .assets import (gleanerio_run, release_nabu_run)
+
+from .jobs.summon_assets import summon_asset_job
 from pydantic import Field
 
 from . import assets
@@ -40,13 +42,20 @@ all_assets = load_assets_from_modules([assets])
 
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
-from .sensors import release_file_sensor, sources_sensor
-
+from .sensors import release_file_sensor, sources_sensor, tenant_names_sensor,sources_s3_sensor, tenant_s3_sensor
+#from .sensors import  sources_sensor, tenant_names_sensor
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
     os.getenv("SLACK_TOKEN")
 )
-all_sensors = [slack_on_run_failure, release_file_sensor, sources_sensor]
+all_sensors = [
+    slack_on_run_failure,
+               release_file_sensor,
+               sources_sensor,
+               tenant_names_sensor,
+                sources_s3_sensor,
+                tenant_s3_sensor,
+               ]
 
 
 def _awsEndpointAddress(url, port=None, use_ssl=True):
@@ -71,8 +80,12 @@ gleaners3=gleanerS3Resource(
     GLEANERIO_MINIO_BUCKET=EnvVar('GLEANERIO_MINIO_BUCKET'),
     GLEANERIO_MINIO_ADDRESS=EnvVar('GLEANERIO_MINIO_ADDRESS'),
     GLEANERIO_MINIO_PORT=EnvVar('GLEANERIO_MINIO_PORT'),
+    GLEANERIO_MINIO_USE_SSL=os.environ.get('GLEANERIO_MINIO_USE_SSL', "True"),
     GLEANERIO_MINIO_ACCESS_KEY=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
+    GLEANERIO_CONFIG_PATH=os.environ.get('GLEANERIO_CONFIG_PATH'),
+    GLEANERIO_SOURCES_FILENAME=os.environ.get('GLEANERIO_SOURCES_FILENAME'),
+    GLEANERIO_TENANT_FILENAME=os.environ.get('GLEANERIO_TENANT_FILENAME'),
     # this is S3. It is the s3 resource
     s3=s3
 
@@ -162,8 +175,8 @@ resources = {
             GLEANERIO_LOG_PREFIX=EnvVar('GLEANERIO_LOG_PREFIX'),
 
             GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT',600),
-GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
-GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+            GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
+            GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
             gs3=gleaners3,
             triplestore=triplestore,
             triplestore_summary=triplestore_summary,

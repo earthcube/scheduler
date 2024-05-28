@@ -4,8 +4,7 @@ sensor, RunRequest, RunConfig,
 SensorEvaluationContext,asset_sensor, EventLogEntry,
 SkipReason,
 AssetKey,
-static_partitioned_config,
-DefaultSensorStatus
+static_partitioned_config
 )
 from dagster_aws.s3.sensor import get_s3_keys
 from typing import List, Dict
@@ -42,7 +41,6 @@ from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/asset-sensors#when-all-partitions-have-new-materializations
 ########
 @sensor(name="s3_config_source_sensor",
-    default_status=DefaultSensorStatus.RUNNING,
     #, job_name="sources_updated_job",
         job=sources_asset_job,
      required_resource_keys={"gleanerio"},
@@ -88,7 +86,6 @@ def sources_s3_sensor(context
     return run_requests
 
 @sensor(name="s3_configs_tenant__sensor",
-    default_status=DefaultSensorStatus.RUNNING,
     #, job_name="sources_updated_job",
         job=tenant_asset_job,
      required_resource_keys={"gleanerio"},

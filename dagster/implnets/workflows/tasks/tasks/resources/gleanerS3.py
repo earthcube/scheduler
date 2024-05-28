@@ -22,10 +22,10 @@ class gleanerS3Resource(S3Resource):
          description="GLEANERIO_MINIO_BUCKET.")
     GLEANERIO_MINIO_PORT: str =  Field(
          description="GLEANERIO_MINIO_BUCKET.")
-    GLEANERIO_TENNANT_PATH : str =  Field(
-         description="GLEANERIO_TENNANT_CONFIG.", default="scheduler/configs/")
-    GLEANERIO_TENNANT_FILENAME : str =  Field(
-         description="GLEANERIO_TENNANT_CONFIG.", default="tennant.yaml")
+    GLEANERIO_CONFIG_PATH : str =  Field(
+         description="GLEANERIO_CONFIG_PATH.", default="scheduler/configs/test/")
+    GLEANERIO_TENANT_FILENAME : str =  Field(
+         description="GLEANERIO_TENANT_CONFIG.", default="tenant.yaml")
 
 ## https://docs.dagster.io/_apidocs/libraries/dagster-aws#s3
 #   fields from dagster_aws.s3.S3Resource
@@ -42,7 +42,7 @@ class gleanerS3Resource(S3Resource):
         )["Contents"]
 
     def getTennatInfo(self, path='orgs'):
-        path= f"{self.GLEANERIO_TENNANT_PATH}{self.GLEANERIO_TENNANT_FILENAME}"
+        path= f"{self.GLEANERIO_CONFIG_PATH}{self.GLEANERIO_TENANT_FILENAME}"
         try:
             r =  self.get_client().get_object(
                 Bucket=self.GLEANERIO_MINIO_BUCKET,

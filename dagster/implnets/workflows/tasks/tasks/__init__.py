@@ -4,7 +4,7 @@ from dagster import Definitions, load_assets_from_modules, EnvVar
 #from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from . import assets
 from .sch import weekly_sch
-from .assets.tennants import community_sensor
+from .assets.tenants import community_sensor
 
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerS3 import gleanerS3Resource
