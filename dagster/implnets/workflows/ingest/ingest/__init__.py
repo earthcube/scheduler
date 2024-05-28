@@ -44,6 +44,7 @@ all_assets = load_assets_from_modules([assets])
 
 from .sensors import (
     release_file_sensor,
+release_file_sensor_v2,
     sources_sensor,
     tenant_names_sensor,
     sources_s3_sensor,
@@ -57,7 +58,8 @@ slack_on_run_failure = make_slack_on_run_failure_sensor(
 )
 all_sensors = [
     slack_on_run_failure,
-               release_file_sensor,
+              # release_file_sensor,
+release_file_sensor_v2,
                sources_sensor, # original code. Now use a schedule
                tenant_names_sensor,
                 sources_s3_sensor,
