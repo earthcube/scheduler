@@ -1,7 +1,7 @@
 from dagster import (
     SensorResult, RunRequest,
     EventLogEntry, AssetKey, asset_sensor,
-    schedule,ScheduleDefinition,DefaultSensorStatus,
+    schedule,ScheduleDefinition,DefaultSensorStatus,DefaultScheduleStatus,
 get_dagster_logger
 )
 from ..assets import (
@@ -43,7 +43,9 @@ def sources_sensor(context,  asset_event: EventLogEntry):
 #
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/schedules#static-partitioned-jobs
 #     #  so this needs to be a schedule, and we handle the cron by ourselves.)
-@schedule(job=summon_asset_job, cron_schedule="@weekly")
+@schedule(job=summon_asset_job, cron_schedule="@weekly",
+        default_status=DefaultScheduleStatus.RUNNING,
+          )
 def sources_schedule(context):
     partition_keys = sources_partitions_def.get_partition_keys(dynamic_partitions_store=context.instance)
     get_dagster_logger().info(str(partition_keys))

@@ -1,5 +1,5 @@
 from dagster import (
-op, job, Config,get_dagster_logger,
+op, job, Config,get_dagster_logger,DefaultSensorStatus,
 sensor, RunRequest, RunConfig,
 SensorEvaluationContext,asset_sensor, EventLogEntry,
 SkipReason,
@@ -39,7 +39,9 @@ from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 ######
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/asset-sensors#when-all-partitions-have-new-materializations
 ########
-@asset_sensor(asset_key=AssetKey("release_summarize"), job=release_asset_job, required_resource_keys={"gleanerio"},
+@asset_sensor(asset_key=AssetKey("release_summarize"),
+       #       default_status=DefaultSensorStatus.RUNNING,
+              job=release_asset_job, required_resource_keys={"gleanerio"},
             #  minimum_interval_seconds=3600
               )
 def release_file_sensor(context,config: TenantConfig
