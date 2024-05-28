@@ -7,7 +7,7 @@ AssetKey,
 static_partitioned_config,DynamicPartitionsDefinition,
 DefaultSensorStatus,DefaultScheduleStatus
 )
-from ..jobs.tenant_load import tenant_namespaces_job
+from ..jobs.tenant_load import tenant_namespaces_job, release_asset_job
 from ..assets import tenant_partitions_def
 #from ..assets.tenant import build_community
 
@@ -24,7 +24,8 @@ from ..assets import tenant_partitions_def
 @asset_sensor( asset_key=AssetKey("tenant_names"),
                default_status=DefaultSensorStatus.RUNNING,
 #default_status=DefaultScheduleStatus.RUNNING,
-               job=tenant_namespaces_job
+               job=tenant_namespaces_job,
+         #      jobs=[tenant_namespaces_job,release_asset_job]
    # , minimum_interval_seconds=600
                )
 def tenant_names_sensor(context,  asset_event: EventLogEntry):

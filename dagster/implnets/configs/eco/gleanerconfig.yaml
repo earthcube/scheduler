@@ -150,7 +150,7 @@ sources:
     pid: https://www.re3data.org/repository/r3d100011538
     propername: earthchem
     domain: https://ecl.earthchem.org/home.php
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -169,7 +169,7 @@ sources:
     pid: http://www.earthcube.org/resourceregistry/examples
     propername: Earthcube Resource Registry Examples
     domain: http://www.earthcube.org/resourceregistry/examples
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -226,7 +226,7 @@ sources:
     pid: https://github.com/earthcube/GeoCODES-Metadata/
     propername: GeoCodes Tools Examples
     domain: https://github.com/earthcube/GeoCODES-Metadata/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -245,7 +245,7 @@ sources:
     pid: https://www.re3data.org/repository/r3d100012625
     propername: Consortium of Universities for the Advancement of Hydrologic Science, Inc.¬†(CUAHSI)
     domain: https://www.cuahsi.org/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: -1
@@ -264,7 +264,7 @@ sources:
     pid: https://www.re3data.org/repository/r3d100010578
     propername: IEDA (Integrated Earth Data Applications)
     domain: http://www.iedadata.org/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -302,7 +302,7 @@ sources:
     pid: http://wiki.linked.earth
     propername: Linked Earth
     domain: http://wiki.linked.earth
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: -1
@@ -340,7 +340,7 @@ sources:
     pid: http://www.re3data.org/repository/r3d100011910
     propername: Magnetics Information Consortium (MagIC)
     domain: https://www.earthref.org/MagIC
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -378,7 +378,7 @@ sources:
     pid: http://www.re3data.org/repository/r3d100011761
     propername: Neotoma
     domain: http://www.neotomadb.org/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -416,7 +416,7 @@ sources:
     pid: https://www.re3data.org/repository/r3d100010655
     propername: OpenTopography
     domain: http://www.opentopography.org/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -473,7 +473,7 @@ sources:
     pid: https://www.re3data.org/repository/r3d100010267
     propername: IODP Site Survey Databank
     domain: https://ssdb.iodp.org/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -511,7 +511,7 @@ sources:
     pid: http://www.re3data.org/repository/r3d100010872
     propername: UNAVCO
     domain: http://www.unavco.org/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -549,7 +549,7 @@ sources:
     pid: https://www.re3data.org/repository/r3d100010660
     propername: U.S. Antarctic Program Data Center
     domain: https://www.usap-dc.org/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -568,7 +568,7 @@ sources:
     pid: https://wifire-data.sdsc.edu/
     propername: WIFIRE Commons
     domain: https://wifire-data.sdsc.edu/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
