@@ -6,7 +6,7 @@ SkipReason,
 AssetKey,
 static_partitioned_config,DynamicPartitionsDefinition
 )
-from ..jobs.tennant_load import tenant_create_job
+from ..jobs.tenant_load import tenant_create_job
 from ..assets import tenant_partitions_def
 #from ..assets.tenant import build_community
 

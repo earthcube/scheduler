@@ -42,7 +42,7 @@ tenant_create_job = define_asset_job(
 # @job(partitions_def=tenant_partitions_def)
 # def tenant_create_job(context):
 #     source_name = context.asset_partition_key_for_output()
-#     context.log.info(f"tennant_name {source_name}")
+#     context.log.info(f"tenant_name {source_name}")
 #     create_tenant_containers(create_graph_namespaces())
 
 
@@ -50,8 +50,8 @@ class TenantConfig(Config):
     source_name: str
     name: str
     source_list: List[str]
-    TENNANT_GRAPH_NAMESPACE: str
-    TENNANT_GRAPH_SUMMARY_NAMESPACE: str
+    TENANT_GRAPH_NAMESPACE: str
+    TENANT_GRAPH_SUMMARY_NAMESPACE: str
     SUMMARY_PATH: str =  Field(
          description="GLEANERIO_GRAPH_SUMMARY_PATH.", default='graphs/summary')
     RELEASE_PATH : str =  Field(
@@ -63,12 +63,12 @@ def tenant_config(partition_key: str):
     #     "upload_release":
     #         {"config":
     #             {
-    #                 TennantConfig(
+    #                 TenantConfig(
     #                     source_name=partition_key,
     #                     name="name",
     #                     source_list=[],
-    #                     TENNANT_GRAPH_NAMESPACE="",
-    #                     TENNANT_GRAPH_SUMMARY_NAMESPACE=""
+    #                     TENANT_GRAPH_NAMESPACE="",
+    #                     TENANT_GRAPH_SUMMARY_NAMESPACE=""
     #                 )
     #             }
     #             }
@@ -76,12 +76,12 @@ def tenant_config(partition_key: str):
     #     "upload_summary":
     #         {"config":
     #             {
-    #                 TennantConfig(
+    #                 TenantConfig(
     #                 source_name=partition_key,
     #                 name="name",
     #                 source_list=[],
-    #                 TENNANT_GRAPH_NAMESPACE="",
-    #                 TENNANT_GRAPH_SUMMARY_NAMESPACE=""
+    #                 TENANT_GRAPH_NAMESPACE="",
+    #                 TENANT_GRAPH_SUMMARY_NAMESPACE=""
     #                 )
     #             }
     #         }

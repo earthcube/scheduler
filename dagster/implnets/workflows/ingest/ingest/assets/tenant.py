@@ -25,8 +25,8 @@ class TenantConfig(Config):
     source_name: str
     name: str
     source_list: List[str]
-    TENNANT_GRAPH_NAMESPACE: str
-    TENNANT_GRAPH_SUMMARY_NAMESPACE: str
+    TENANT_GRAPH_NAMESPACE: str
+    TENANT_GRAPH_SUMMARY_NAMESPACE: str
     SUMMARY_PATH: str =  Field(
          description="GLEANERIO_GRAPH_SUMMARY_PATH.", default='graphs/summary')
     RELEASE_PATH : str =  Field(
@@ -36,14 +36,14 @@ class TenantConfig(Config):
 class TenantOpConfig(Config):
     source_name: str
 
-def find_tenants_with_source(source_name, tennats_all):
-    get_dagster_logger().info(f" find tenant  {source_name} with {tennats_all}")
+def find_tenants_with_source(source_name, tenats_all):
+    get_dagster_logger().info(f" find tenant  {source_name} with {tenats_all}")
     tenants =[]
-    # tenants = pydash.collections.find(tennats_all,
-    #            lambda t: pydash.predicates.is_match(t["sources"], source_name) or pydash.predicates.is_match(t["sources"], 'all')
+    # tenants = pydash.collections.find(tenats_all,
+    #            lambda t: p    ydash.predicates.is_match(t["sources"], source_name) or pydash.predicates.is_match(t["sources"], 'all')
     #                                   )
-    #tenants = pydash.collections.find(tennats_all,  lambda t: pydash.predicates.is_match(t["sources"], "all") )
-    for tenant in tennats_all:
+    #tenants = pydash.collections.find(tenats_all,  lambda t: pydash.predicates.is_match(t["sources"], "all") )
+    for tenant in tenats_all:
         get_dagster_logger().info(f"  tenant sources {tenant['sources']}")
         if source_name in tenant["sources"]:
             get_dagster_logger().info(f" found source  {source_name} in {tenant['community']}")

@@ -48,7 +48,7 @@ def gleanerio_orgs(context ):
 def gleanerio_tenants(context):
     gleaner_resource =  context.resources.gs3
     s3_resource = context.resources.gs3
-    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
+    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENANT_FILENAME}'
     # get_dagster_logger().info(f"tennant_path {tennant_path} ")
     #
     # tennant = s3_resource.getFile(path=tennant_path)
@@ -75,7 +75,7 @@ def gleanerio_tenants(context):
 def gleanerio_sources(context ):
 
     s3_resource = context.resources.gs3
-    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENNANT_FILENAME}'
+    # tennant_path =  f'{s3_resource.GLEANERIO_CONFIG_PATH}{s3_resource.GLEANERIO_TENANT_FILENAME}'
     # get_dagster_logger().info(f"tennant_path {tennant_path} ")
     #
     # tennant = s3_resource.getFile(path=tennant_path)

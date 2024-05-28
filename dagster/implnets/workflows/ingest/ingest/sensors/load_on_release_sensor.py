@@ -14,7 +14,7 @@ from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
 from ..resources.graph import BlazegraphResource
 from ..assets import tenant_partitions_def,TenantConfig
-from ..jobs.tennant_load import  release_asset_job, create_graph_namespaces
+from ..jobs.tenant_load import  release_asset_job, create_graph_namespaces
 from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 
 #from ..jobs.tennant_load import  build_community
