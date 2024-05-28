@@ -76,7 +76,7 @@ def release_file_sensor(context,config: TenantConfig
     context.update_cursor(last_key)
     return run_requests
 @asset_sensor(asset_key=AssetKey("release_summarize"),
-       #       default_status=DefaultSensorStatus.RUNNING,
+              default_status=DefaultSensorStatus.RUNNING,
               job=release_asset_job, required_resource_keys={"gleanerio"},
             #  minimum_interval_seconds=3600
               )
