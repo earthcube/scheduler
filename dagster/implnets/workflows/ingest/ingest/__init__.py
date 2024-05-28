@@ -42,7 +42,7 @@ all_assets = load_assets_from_modules([assets])
 
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
-from .sensors import release_file_sensor, sources_sensor, tenant_names_sensor
+from .sensors import release_file_sensor, sources_sensor, tenant_names_sensor,sources_s3_sensor, tenant_s3_sensor
 #from .sensors import  sources_sensor, tenant_names_sensor
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
@@ -52,7 +52,9 @@ all_sensors = [
     slack_on_run_failure,
                release_file_sensor,
                sources_sensor,
-               tenant_names_sensor
+               tenant_names_sensor,
+                sources_s3_sensor,
+                tenant_s3_sensor,
                ]
 
 

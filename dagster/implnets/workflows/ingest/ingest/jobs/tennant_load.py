@@ -21,7 +21,11 @@ from ..resources.graph import BlazegraphResource
 
 
 
-
+tenant_asset_job = define_asset_job(
+    name="tenant_config_updated_job",
+    selection=AssetSelection.assets(gleanerio_tenants),
+    partitions_def=sources_partitions_def,
+)
 
 release_asset_job = define_asset_job(
     name="tenant_release_job",
