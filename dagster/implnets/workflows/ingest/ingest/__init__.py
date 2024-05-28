@@ -42,21 +42,34 @@ all_assets = load_assets_from_modules([assets])
 
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
-from .sensors import release_file_sensor, sources_sensor, tenant_names_sensor,sources_s3_sensor, tenant_s3_sensor
-#from .sensors import  sources_sensor, tenant_names_sensor
+from .sensors import (
+    release_file_sensor,
+release_file_sensor_v2,
+    sources_sensor,
+    tenant_names_sensor,
+    sources_s3_sensor,
+    tenant_s3_sensor,
+
+)
+
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
     os.getenv("SLACK_TOKEN")
 )
 all_sensors = [
     slack_on_run_failure,
-               release_file_sensor,
-               sources_sensor,
+              # release_file_sensor,
+release_file_sensor_v2,
+               sources_sensor, # original code. Now use a schedule
                tenant_names_sensor,
                 sources_s3_sensor,
                 tenant_s3_sensor,
+
                ]
 
+from .sensors.gleaner_summon import sources_schedule
+
+all_schedules = [sources_schedule]
 
 def _awsEndpointAddress(url, port=None, use_ssl=True):
     if use_ssl:
@@ -199,7 +212,8 @@ defs = Definitions(
     assets=all_assets,
     resources=resources[deployment_name],
     sensors=all_sensors,
-    jobs=[summon_asset_job]
+    jobs=[summon_asset_job],
+    schedules=all_schedules
 #    jobs=[harvest_job]
 
 )

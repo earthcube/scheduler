@@ -33,14 +33,14 @@ release_asset_job = define_asset_job(
     partitions_def=sources_partitions_def,
 )
 
-tenant_create_job = define_asset_job(
-    name="tenant_create_job",
+tenant_namespaces_job = define_asset_job(
+    name="tenant_namespaces_job",
     selection=AssetSelection.assets(create_tenant_containers, create_graph_namespaces),
     partitions_def=tenant_partitions_def,
 )
 
 # @job(partitions_def=tenant_partitions_def)
-# def tenant_create_job(context):
+# def tenant_namespaces_job(context):
 #     source_name = context.asset_partition_key_for_output()
 #     context.log.info(f"tenant_name {source_name}")
 #     create_tenant_containers(create_graph_namespaces())
