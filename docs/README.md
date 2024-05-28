@@ -15,8 +15,10 @@ basic view and doesn't present any scaling or fail over elements.
 
 The key elements are:
 
-* sources to configuration and then the creation of the archive files that are loaded and used
-to load into the Gleaner and Nabu tools
+* sources to configuration  to load into the Gleaner and Nabu tools, and push to the triplestore. These are now stored in
+an s3 location
+  * gleaner configuration. a list of sources to load
+  * tenant configuration. a list communities, and which sources they load
 * The Dagster set which loads three containers to support workflow operations
 * The Gleaner Architecture images which loads three or more containers to support 
   * s3 object storage
@@ -28,20 +30,98 @@ and removed by the Dagster workflow
 
 ![upper level](images/gleanerDagster.svg)
 
+```mermaid
+flowchart LR
+    subgraph dagster
+        subgraph sensors
+            s3_config_sources_sensor['sources_all_active']
+            s3_config_tenant_sensor['tenant with sources']
+            sources_sensor
+            release_file_sensor
+            tenant_names_sensor
+            tenant_namespaces_job
+        end
+        subgraph jobs
+            summon_and_release
+            sources_config_updated
+            tenant_release
+            tenant_config_updated
+        end
+        subgraph assets
+            source_names_active
+            sources_all
+            tenant_names
+            tenant_all
+        end
 
-### Template files
+        
+    end
+    s3_config_sources_sensor--monitors --> sources_config
+    s3_config_tenant_sensor--monitors  -->tenant_config 
+    s3_config_sources_sensor--starts-->sources_config_updated
+    sources_config_updated--materializes-->source_names_active
+    sources_config_updated--materializes-->sources_all
+    s3_config_tenant_sensor--starts-->tenant_config_updated
+    tenant_config_updated--creates-->tenant_names
+    tenant_config_updated--creates-->tenant_all
+    sources_sensor--monitors-->sources_all
+    sources_sensor--starts-->summon_and_release
+    summon_and_release--starts--> gleanerio
+    gleanerio-->summon
+    gleanerio-->graph_path
+    tenant_names-->tenant_names_sensor
+    tenant_names_sensor--starts-->tenant_namespaces_job
+    tenant_namespaces_job--creates--> tenant_namespace
+    tenant_namespaces_job--creates-->tenant_summary_namespace
+    release_file_sensor--monitors-->graph_path
+    release_file_sensor--loads-->tenant_namespace
+    release_file_sensor--loads-->tenant_summary_namespace
+    
+    subgraph portainer
+      gleanerio 
+      tenant_ui
+      subgraph services
+           subgraph triplestore
+               tenant_namespace
+               tenant_summary_namespace
+            end
+    
+          subgraph minio_s3 
+            subgraph bucket_paths
+                subgraph scheduler
+                     sources_config["`scheduler/configs/gleanerconfig.yaml`"]
+                     tenant_config["`scheduler/configs/tenant.yaml`"]
+                     logs
+                end
+                summon
+                graph_path['graph']
+            end
+            end
 
-The template files define the Dagster Ops, Jobs and Schedules.  From these
-and a GleanerIO config file a set of Python scripts for Dagster are created in
-the output directory. 
+         end
+    end
+    
+   
+```
 
-These only need to be changed or used to regenerate if you wish to alter the 
-execution graph (ie, the ops, jobs and schedules) or change the config file.
-In the later case only a regeneration needs to be done.
-
-There are then Docker build scripts to build out new containers.  
-
-See:  [template](./implnets/src/implnet-example/templates)
+```mermaid
+sequenceDiagram
+    participant S3
+    participant Ingest
+    participant Portainer
+    participant Tenant
+    S3->>Ingest: read sources from scheduler/configs/gleanerconfig.yaml
+    S3->>Ingest: read tenant from scheduler/configs/tenant.yaml
+    Ingest->>Portainer: run gleanerio summon for sources
+    Ingest->>S3: logs from run to S3
+    Ingest->>S3: jsonld  to s3
+    Ingest->>Ingest: convert jsonld  to release and release summary
+    Ingest->>S3: release and release summary  to s3
+    Ingest->>Ingest: load statistics using EC Utils
+    Ingest->>S3: statistics  to s3
+    Ingest->>Tenant: Create a namespaces for tenant
+    Ingest->>Tenant: load release and release summary to namespaces
+```
 
 ## Steps to build and deploy
 
@@ -62,28 +142,18 @@ To deploy in portainer, use the deployment/compose_project.yaml docker stack.
 ### docker compose Configuration:
 1) there are three files that need to be installed into docker configs. 
 
+ (NOTE: I think the configs are still needed in the containers) 
+
 | file               | local                               | stack | note                     |
 |--------------------|-------------------------------------| ------ |--------------------------|
 | workspace          | configs/PROJECT/worksapce.yaml      | env () | used by dagster          |
 | gleanerconfig.yaml | configs/PROJECT/gleanerconfigs.yaml | env () | needs to be in portainer |
 | nabuconfig.yaml    | configs/PROJECT/nabuconfigs.yaml    | env () | needs to be in portainer |
-2) 
 
-## Editing Template
 
-you can edit implnets/template
+## Upload the configs
 
-then deploy with
 
-`pygen.py -cf ./configs/eco/gleanerconfig.yaml -od ./generatedCode/implnet-eco/output -td ./templates/v1 -d 7 ``
-
-If you are running using dagster_localrun.sh 
-1) go to the deployment at http://localhost:3000/locations
-2) click 'reload on gleaner@project_grpc'
-3) then if code is correct, then you will be able run the changed [workflows](http://localhost:3000/overview/jobs)
-
-(TODO NEEDS MORE
-)
 
 ## MAKEFILE
 1) Place your gleanerconfig.yaml (use that exact name) in _confgis/NETWORK/gleanerconfig.yaml_
