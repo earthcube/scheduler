@@ -4,7 +4,8 @@ sensor, RunRequest, RunConfig,SensorResult,
 SensorEvaluationContext,asset_sensor, EventLogEntry,
 SkipReason,
 AssetKey,
-static_partitioned_config,DynamicPartitionsDefinition
+static_partitioned_config,DynamicPartitionsDefinition,
+DefaultSensorStatus
 )
 from ..jobs.tenant_load import tenant_create_job
 from ..assets import tenant_partitions_def
@@ -20,7 +21,7 @@ from ..assets import tenant_partitions_def
 # now we do need to build tenants when a new tenant is added.
 # this should just handle the cretion of namespaces, and adding the UI's
 
-@asset_sensor( asset_key=AssetKey("tenant_names"), job=tenant_create_job
+@asset_sensor( asset_key=AssetKey("tenant_names"),default_status=DefaultSensorStatus.RUNNING, job=tenant_create_job
    # , minimum_interval_seconds=600
                )
 def tenant_names_sensor(context,  asset_event: EventLogEntry):
