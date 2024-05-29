@@ -53,3 +53,43 @@ def tenant_names_sensor(context,  asset_event: EventLogEntry):
             tenant_partitions_def.build_add_request(new_tenants)
         ],
     )
+
+@asset_sensor( asset_key=AssetKey("tenant_names"),
+               default_status=DefaultSensorStatus.RUNNING,
+#default_status=DefaultScheduleStatus.RUNNING,
+         #      job=tenant_namespaces_job,
+               jobs=[tenant_namespaces_job,release_asset_job]
+   # , minimum_interval_seconds=600
+               )
+def tenant_names_sensor_v2(context,  asset_event: EventLogEntry):
+    assert asset_event.dagster_event and asset_event.dagster_event.asset_key
+
+# well this is a pain. but it works. Cannot just pass it like you do in ops
+    # otherwise it's just an AssetDefinition.
+    tenants = context.repository_def.load_asset_value(AssetKey("tenant_names"))
+    new_tenants = [
+        tenant
+        for tenant in tenants
+        if not tenant_partitions_def.has_partition_key(
+            tenant, dynamic_partitions_store=context.instance
+        )
+    ]
+# in order for this to work, the tenant_release_job  needs to be fed valid sources,
+# from some aggreate from the sources in the new_tenants[*]['sources']
+
+    return SensorResult(
+        run_requests=[
+            RunRequest(partition_key=tenant
+                       , job_name="tenant_namespaces_job"
+            , run_key=f"{tenant}_tenant_namespace"
+                       ) for tenant in new_tenants
+        ] + [
+            RunRequest(partition_key=tenant
+                       , job_name="tenant_release_job"
+            , run_key=f"{tenant}_tenant_release"
+                       ) for tenant in new_tenants
+        ],
+        dynamic_partitions_requests=[
+            tenant_partitions_def.build_add_request(new_tenants)
+        ],
+    )

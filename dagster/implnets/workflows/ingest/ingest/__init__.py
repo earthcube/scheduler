@@ -49,7 +49,7 @@ release_file_sensor_v2,
     tenant_names_sensor,
     sources_s3_sensor,
     tenant_s3_sensor,
-
+#tenant_names_sensor_v2
 )
 
 slack_on_run_failure = make_slack_on_run_failure_sensor(
@@ -64,7 +64,7 @@ release_file_sensor_v2,
                tenant_names_sensor,
                 sources_s3_sensor,
                 tenant_s3_sensor,
-
+#tenant_names_sensor_v2
                ]
 
 from .sensors.gleaner_summon import sources_schedule
