@@ -157,9 +157,10 @@ We use portainer to manage our docker deployments.
 
 ## Pycharm -- Run local with remote services
 You can test components in pycharm. Run configurations for pycgharm  are in runConfigurations (TODO: Instructions)
+use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
 ![pycharm runconfig](images/pycharm_runconfig.png)
 1) move to the  implnets/deployment directory
-2) copy the envFile.env to .env [see](#environment-files) 
+2) copy the envFile.env to .env [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
 3) edit the entries to point at a portainer/traefik with running services
 4) edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
 5) upload configuration implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
@@ -169,7 +170,7 @@ You can test components in pycharm. Run configurations for pycgharm  are in runC
 
 ## full stack test Run local with remote services
 1) move to the implnets/deployment directory
-2) copy the envFile.env to .env [see](#environment-files) 
+2) copy the envFile.env to .env [see](#environment-files)use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
 3) edit the entries.
 4) edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
 5) upload configuration implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
