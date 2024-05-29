@@ -32,7 +32,34 @@ and removed by the Dagster workflow
 
 ```mermaid
 ---
-title: Simplified
+title: Dagster Workflow Sequence
+---
+sequenceDiagram
+    participant S3
+    participant Ingest
+    participant Portainer
+    participant Graph
+    S3->>Ingest: read sources from scheduler/configs/gleanerconfig.yaml
+    S3->>Ingest: read tenant from scheduler/configs/tenant.yaml
+    Ingest->>Portainer: run gleanerio 
+    Portainer-->Portainer: summon for sources
+    Portainer->>S3: jsonld  to s3
+    Portainer->>Ingest:  logs returned
+    Ingest->>S3: logs from run to S3
+    Ingest->>Ingest: create load reports using EC Utils
+    Ingest->>S3: load reports  to s3
+    Ingest->>Portainer: run nabu  to 
+    Portainer-->Portainer: convert jsonld  to release and release summary
+    Portainer->>S3: release and release summary  to s3
+    Ingest->>Ingest: create graph report using EC Utils
+    Ingest->>S3: graph report  to s3
+    Ingest->>Graph: Create a namespaces for tenant
+    Ingest->>Graph: load release and release summary to namespaces
+```
+
+```mermaid
+---
+title: Simplified Flowchart 
 ---
 flowchart LR
     subgraph config
@@ -164,36 +191,33 @@ flowchart LR
    
 ```
 
-```mermaid
-sequenceDiagram
-    participant S3
-    participant Ingest
-    participant Portainer
-    participant Tenant
-    S3->>Ingest: read sources from scheduler/configs/gleanerconfig.yaml
-    S3->>Ingest: read tenant from scheduler/configs/tenant.yaml
-    Ingest->>Portainer: run gleanerio summon for sources
-    Ingest->>S3: logs from run to S3
-    Ingest->>S3: jsonld  to s3
-    Ingest->>Ingest: convert jsonld  to release and release summary
-    Ingest->>S3: release and release summary  to s3
-    Ingest->>Ingest: load statistics using EC Utils
-    Ingest->>S3: statistics  to s3
-    Ingest->>Tenant: Create a namespaces for tenant
-    Ingest->>Tenant: load release and release summary to namespaces
-```
+
 
 ## Steps to build and deploy
 
-The deployment can be tested locally using docker.
-The production 'containers' are built with a github action, or using a makefile.
+The deployment can be tested locally. You can setup a services stack in docker to locally test, or use existing 
+services.
+
+The production 'containers' dagster, gleaner, and nabu are built with a github action. You can also use  a makefile.
 
 This describes the local and container deployment
 We use portainer to manage our docker deployments.
 
-1) move to the the deployment directory
+## Pycharm -- Run local with remote services
+You can test components in pycharm. Run configurations for pycgharm  are in runConfigurations (TODO: Instructions)
+1) move to the  implnets/deployment directory
+2) copy the envFile.env to .env 
+3) edit the entries to point at a portainer/traefik with running services
+4) upload configuraiton files to s3: gleanerconfig.yaml, tenant.yaml
+4) run a component, 
+5) eg dagster_ingest_debug
+4) go to http://localhost:3000/
+
+## full stack test Run local with remote services
+1) move to the implnets/deployment directory
 2) copy the envFile.env to .env 
 3) edit the entries.
+4) upload configuraiton files to s3: gleanerconfig.yaml, tenant.yaml
 4) for local, `./dagster_localrun.sh`
 5) go to http://localhost:3000/
 
@@ -204,34 +228,51 @@ To deploy in portainer, use the deployment/compose_project.yaml docker stack.
 
  (NOTE: I think the configs are still needed in the containers) 
 
-| file               | local                               | stack | note                     |
-|--------------------|-------------------------------------| ------ |--------------------------|
-| workspace          | configs/PROJECT/worksapce.yaml      | env () | used by dagster          |
-| gleanerconfig.yaml | configs/PROJECT/gleanerconfigs.yaml | env () | needs to be in portainer |
-| nabuconfig.yaml    | configs/PROJECT/nabuconfigs.yaml    | env () | needs to be in portainer |
+| file               | local                                             |  | note                                  |
+|--------------------|---------------------------------------------------| ------ |---------------------------------------|
+| workspace          | configs/PROJECT/worksapce.yaml                    | | used by dagster                       |
+| gleanerconfig.yaml | s3:{bucket}/scheduler/configs/gleanerconfigs.yaml | | ingest workflow needs to be in minio/s3  
+| tenant.yaml        | s3:{bucket}/scheduler/configs/enant.yaml          |  | ingest workflow needs to be in minio/s3  
+
+these may still be needed:
+
+| file                | local                                                     | stack | note                                  |
+|---------------------|-----------------------------------------------------------| ------ |---------------------------------------|
+| gleanerconfig.yaml  | configs/PROJECT/gleanerconfigs.yaml                       | env () | generated code needs to be in ~~portainer~~          |
+| nabuconfig.yaml | configs/PROJECT/nabuconfigs.yaml                          | env () | generated codeneeds to be in ~~portainer~~ |
 
 
-## Upload the configs
+## Runtime configuration
 
+### upload to an s3 bucket
 
+| file               | local                                             |  | note                                  |
+|--------------------|---------------------------------------------------| ------ |---------------------------------------|
+| gleanerconfig.yaml | s3:{bucket}/scheduler/configs/gleanerconfigs.yaml | | ingest workflow needs to be in minio/s3  
+| tenant.yaml        | s3:{bucket}/scheduler/configs/enant.yaml          |  | ingest workflow needs to be in minio/s3  
 
-## MAKEFILE
-1) Place your gleanerconfig.yaml (use that exact name) in _confgis/NETWORK/gleanerconfig.yaml_
-   1) Note:  When doing your docker build, you will use this NETWORK name as a value in the command such as
-   ```bash
-   podman build  --tag="docker.io/fils/dagster_nsdf:$(VERSION)"  --build-arg implnet=nsdf --file=./build/Dockerfile 
-   ```
-1) Make any needed edits to the templates in directory _templates/v1/_ or make your own template set in that directory
+### updating config
+You can update a config, and a sensor should pick up the changes.
+1) Upload changed file to s3
+2) go to overview, ![overview](images/overview_sensors_tab.png)
+3) go to  ![sensor](images/sources_sensor.png). s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
+4) at some point, a run should occur, 
+5) then go to the sources_sensor, or tenant sensor 
+if job does not run, you can do a backfill.
+#### new sources:
+6)  so to job tab, and run summon_and_release with the 'partitions' aka 'sources' that are recent.'
+7) click materialize_all, and be sure only the added partition is selected
+8) go to runs, and see that a job with a partition with that name is queded,/running
+9) run tenant_release_job with same partition name to load data to tenants
+###
+#### new tenants:
+There are two jobs that need to run to move data to a tenant. (third will be needed for UI)
+6)  so to job tab, and run tenant_namespaces_job with the 'partitions' aka 'tenant' that are recent.'
+7) click materialize_all, and be sure only the added partition is selected
+8) go to runs, and see that a job with a partition with that name is queded,/running
+6)  so to job tab, and run tenant_release_job with the 'partitions' aka 'sources' for that tenant
+7) click materialize_all, The data will be pushed to all tenant namespaces
 
-The command to build using the pygen.py program follows.  This is done from the standpoint of running in from the 
-implenet directory.
-
-```bash
- python pygen.py -cf ./configs/nsdf/gleanerconfig.yaml -od ./generatedCode/implnet-nsdf/output  -td ./templates/v1   -d 7
-```
-
-1) This will generate the code to build a dagster instance from the combination of the templates and gelanerconfig.yaml.
-2) 
 
 
 
@@ -336,21 +377,6 @@ The example is based on the official [tutorial].
 * src
 * tooling
 
-## Requirements
-
-At this point it is expected that you have a valid Gleaner config file named
-_gleanerconfig.yaml_ located in some path within the _configs_ directory.
-
-## Building the dagster code from templates
-
-The python program pygen will read a gleaner configuration file and a set of 
-template and build the Dagster code from there.  
-
-```bash
-python pygen.py -cf ./configs/nsdf/gleanerconfig.yaml -od ./src/implnet-nsdf/output  -td ./src/implnet-nsdf/templates  -d 7
-```
-
-
 ## Running 
 
 There is an example on how to run a single pipeline in `src/main.py`. First
@@ -370,22 +396,6 @@ things like sensors and other approaches.
 
 If you wish to still try the generated code cd into the output directory
 you specified in the pygen command.
-
-Then use:
-
-```bash
-dagit -h ghost.lan -w workspace.yaml
-```
-
-## Building
-
-```bash
- podman build  -t  docker.io/fils/dagster:0.0.24  .
-```
-
-```bash
- podman push docker.io/fils/dagster:0.0.24
-```
 
 
 

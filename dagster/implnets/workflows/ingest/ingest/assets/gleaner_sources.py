@@ -20,7 +20,9 @@ tenant_partitions_def = DynamicPartitionsDefinition(name="tenant_names_parititio
 # future future, store sources in (s3/googlesheets) and read them.
 
 
-@asset( group_name="configs", name="org_names",required_resource_keys={"gs3"})
+@asset(
+    #group_name="configs",
+        name="org_names",required_resource_keys={"gs3"})
 def gleanerio_orgs(context ):
     s3_resource = context.resources.gs3
     source="orgs_list_from_a_s3_bucket"
@@ -38,7 +40,9 @@ def gleanerio_orgs(context ):
     # this is used for partitioning, so let it pickle (aka be a python list)
     return orgs
 #@asset(group_name="configs",name="tenant_names",required_resource_keys={"gs3"})
-@multi_asset(group_name="configs",outs=
+@multi_asset(
+    #group_name="configs",
+    outs=
              {
                  "tenant_all": AssetOut(),
                  "tenant_names": AssetOut(),
@@ -63,10 +67,19 @@ def gleanerio_tenants(context):
                 # The `MetadataValue` class has useful static methods to build Metadata
             }, output_name="tenant_all"
         )
+    context.add_output_metadata(
+        metadata={
+            "source": tenants,  # Metadata can be any key-value pair
+            "run": "gleaner",
+            # The `MetadataValue` class has useful static methods to build Metadata
+        }, output_name="tenant_names"
+    )
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return tenant_obj, tenants
-@multi_asset(group_name="configs",outs=
+@multi_asset(
+    #group_name="configs",
+             outs=
              {
                  "sources_all": AssetOut(),
                  "sources_names_active": AssetOut(),
@@ -85,13 +98,13 @@ def gleanerio_sources(context ):
     sources_all_value = list(filter(lambda t: t["name"], sources_obj["sources"]))
     sources_active_value = filter(lambda t: t["active"], sources_all_value )
     sources_active_value = list(map(lambda t: t["name"], sources_active_value))
-    # context.add_output_metadata(
-    #         metadata={
-    #             "source": sources_value,  # Metadata can be any key-value pair
-    #             "run": "gleaner",
-    #             # The `MetadataValue` class has useful static methods to build Metadata
-    #         }
-    #     )
+    context.add_output_metadata(
+            metadata={
+                "source": sources_active_value,  # Metadata can be any key-value pair
+                "run": "gleaner",
+                # The `MetadataValue` class has useful static methods to build Metadata
+            }, output_name="sources_names_active"
+        )
     #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
     # this is used for partitioning, so let it pickle (aka be a python list)
     return sources_all_value, sources_active_value

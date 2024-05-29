@@ -1,3 +1,4 @@
+import dagster
 from dagster import (
     SensorResult, RunRequest,
     EventLogEntry, AssetKey, asset_sensor,
@@ -12,12 +13,15 @@ from ..jobs.summon_assets import summon_asset_job
 
 # this monitors the asset. It will harvest a new source
 # the sources_schedule_sensor will add to the weekly schedule
+
+# note on removal of partitions https://github.com/dagster-io/dagster/issues/14026
 @asset_sensor(default_status=DefaultSensorStatus.RUNNING, asset_key=AssetKey("sources_names_active"), job=summon_asset_job
    # , minimum_interval_seconds=600
                )
 def sources_sensor(context,  asset_event: EventLogEntry):
+    context.log.info(f"sources_sensor: start")
     assert asset_event.dagster_event and asset_event.dagster_event.asset_key
-
+    context.log.info(f"asset_key {asset_event.dagster_event.asset_key}")
 # well this is a pain. but it works. Cannot just pass it like you do in ops
     # otherwise it's just an AssetDefinition.
     sources = context.repository_def.load_asset_value(AssetKey("sources_names_active"))
@@ -28,7 +32,15 @@ def sources_sensor(context,  asset_event: EventLogEntry):
             source, dynamic_partitions_store=context.instance
         )
     ]
-
+    removed_sources = [
+        source
+        for source in sources_partitions_def.get_partition_keys(dynamic_partitions_store=context.instance)
+        if not source in sources
+    ]
+    for s in removed_sources:
+        context.instance.delete_dynamic_partition("sources_names_active", s)
+    context.log.info(f"new sources {new_sources}")
+    context.log.info(f"Removed {removed_sources}")
     return SensorResult(
         run_requests=[
             RunRequest(partition_key=source

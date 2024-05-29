@@ -32,6 +32,20 @@ from .resources.gleanerS3 import gleanerS3Resource
 from .assets import (gleanerio_run, release_nabu_run)
 
 from .jobs.summon_assets import summon_asset_job
+from .jobs import (
+    summon_asset_job, sources_asset_job,
+                   sources_partitions_def
+                ,tenant_asset_job,
+                   tenant_namespaces_job,
+                   release_asset_job
+)
+
+jobs = [
+summon_asset_job, sources_asset_job,
+                tenant_asset_job,
+                   tenant_namespaces_job,
+                   release_asset_job
+]
 from pydantic import Field
 
 from . import assets
@@ -212,7 +226,7 @@ defs = Definitions(
     assets=all_assets,
     resources=resources[deployment_name],
     sensors=all_sensors,
-    jobs=[summon_asset_job],
+    jobs=jobs,
     schedules=all_schedules
 #    jobs=[harvest_job]
 

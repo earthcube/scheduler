@@ -5,7 +5,8 @@ from dagster import (
     SkipReason,
     AssetKey,
     static_partitioned_config, dynamic_partitioned_config, DynamicPartitionsDefinition,
-    define_asset_job, AssetSelection,graph_asset
+    define_asset_job, AssetSelection,graph_asset,
+BackfillPolicy
 )
 
 from dagster_aws.s3.sensor import get_s3_keys
@@ -23,7 +24,7 @@ from ..resources.graph import BlazegraphResource
 
 tenant_asset_job = define_asset_job(
     name="tenant_config_updated_job",
-    selection=AssetSelection.assets(gleanerio_tenants),
+    selection=AssetSelection.assets(AssetKey("tenant_names")).required_multi_asset_neighbors(),
     partitions_def=sources_partitions_def,
 )
 

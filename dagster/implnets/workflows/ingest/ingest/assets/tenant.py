@@ -52,7 +52,10 @@ def find_tenants_with_source(source_name, tenats_all):
             get_dagster_logger().info(f" found source  all in {tenant['community']}")
             tenants.append(tenant)
     return tenants
-@asset(group_name="tenant_load",required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
+@asset(
+    group_name="tenant_load",
+    deps=["tenant_names", "tenant_all"],
+    required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
 #def upload_release(context, config:TennantOpConfig  ):
 def upload_release(context ):
     #context.log.info(config.source_name)
@@ -80,7 +83,9 @@ def upload_release(context ):
         return
 
 #@asset(required_resource_keys={"gleanerio",},ins={"start": In(Nothing)})
-@asset(group_name="tenant_load",required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
+@asset(group_name="tenant_load",
+       deps=["tenant_names", "tenant_all"],
+       required_resource_keys={"gleanerio",},partitions_def=sources_partitions_def)
 #def upload_summary(context, config:TennantOpConfig):
 def upload_summary(context):
     #context.log.info(config.source_name)
@@ -116,7 +121,9 @@ def upload_summary(context):
 #     gleaner_s3 = context.resources.gleanerio.gs3
 #     triplestore = context.resources.gleanerio.triplestore
 #     pass
-@asset(group_name="tenant_create",required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
+@asset(group_name="tenant_create",
+       deps=["tenant_all"],
+       required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
 def create_graph_namespaces(context):
     #context.log.info(config.source_name)
     tenant_name = context.asset_partition_key_for_output()
@@ -146,7 +153,9 @@ def create_graph_namespaces(context):
         raise Exception(f"graph creation failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
-@asset(group_name="tenant_create",required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
+@asset(group_name="tenant_create",
+       deps=["tenant_all", "create_graph_namespaces"],
+       required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
 def create_tenant_containers(context):
     #context.log.info(config.source_name)
     tenant_name = context.asset_partition_key_for_output()

@@ -131,7 +131,7 @@ sources:
     pid: ""
     propername: ""
     domain: https://www.designsafe-ci.org/data/browser/public/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -207,7 +207,7 @@ sources:
     pid: https://github.com/earthcube/GeoCODES-Metadata/metadata/OtherResources
     propername: Geocodes Demo Datasets
     domain: https://www.earthcube.org/datasets/
-    active: true
+    active: false
     credentialsfile: ""
     other: { }
     headlesswait: 0
@@ -226,7 +226,7 @@ sources:
     pid: https://github.com/earthcube/GeoCODES-Metadata/
     propername: GeoCodes Tools Examples
     domain: https://github.com/earthcube/GeoCODES-Metadata/
-    active: false
+    active: true
     credentialsfile: ""
     other: { }
     headlesswait: 0

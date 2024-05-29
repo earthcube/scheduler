@@ -1,5 +1,5 @@
 from dagster import (
-op, job, Config,
+op, job, Config,get_dagster_logger,
 sensor, RunRequest, RunConfig,SensorResult,
 SensorEvaluationContext,asset_sensor, EventLogEntry,
 SkipReason,
@@ -29,8 +29,9 @@ from ..assets import tenant_partitions_def
    # , minimum_interval_seconds=600
                )
 def tenant_names_sensor(context,  asset_event: EventLogEntry):
+    context.log.info(f"tenant_names_sensor: start")
     assert asset_event.dagster_event and asset_event.dagster_event.asset_key
-
+    context.log.info(f"asset_key: {asset_event.dagster_event.asset_key}")
 # well this is a pain. but it works. Cannot just pass it like you do in ops
     # otherwise it's just an AssetDefinition.
     tenants = context.repository_def.load_asset_value(AssetKey("tenant_names"))
@@ -41,7 +42,15 @@ def tenant_names_sensor(context,  asset_event: EventLogEntry):
             tenant, dynamic_partitions_store=context.instance
         )
     ]
-
+    removed_tenants  = [
+        tenant
+        for tenant  in tenant_partitions_def.get_partition_keys(dynamic_partitions_store=context.instance)
+        if not tenant in tenants
+    ]
+    for t in removed_tenants:
+        context.instance.delete_dynamic_partition("tenant_names_paritition", t)
+    context.log.info(f"Removed {removed_tenants}")
+    context.log.info(f"new tenant {new_tenants}")
     return SensorResult(
         run_requests=[
             RunRequest(partition_key=tenant
