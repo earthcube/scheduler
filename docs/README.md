@@ -30,7 +30,65 @@ and removed by the Dagster workflow
 
 ![upper level](images/gleanerDagster.svg)
 
+```mermaid
+---
+title: Simplified
+---
+flowchart LR
+    subgraph config
+          s3_config_sensors
+    end    
+    subgraph jobs
+        summon_and_release
+        tenant_release
+    end
+    subgraph assets
+        sources
+        tenants
+    end
 
+        
+    
+    s3_config_sensors--monitors --> configs
+    s3_config_sensors--writes  -->sources 
+    s3_config_sensors--writes  -->tenants
+    summon_and_release--uses-->sources --runs --> gleanerio
+    tenant_release--uses-->tenants --runs --> tenant_release
+    gleanerio--stores JSONLD -->summon
+    gleanerio--stores log -->logs
+    summon_and_release-- reads --> summon
+    summon_and_release-- converts to graph  -->graph_path
+    tenant_release -- monitors --> graph_path
+    tenant_release -- loads releases to --> tenant_namespace
+    tenant_release -- loads releases to --> tenant_summary_namespace
+    
+    
+    subgraph portainer
+      gleanerio 
+      tenant_ui
+      end
+      subgraph services
+           triplestore
+               tenant_namespace
+               tenant_summary_namespace
+            end
+    
+          subgraph minio_s3 
+            subgraph bucket_paths
+                subgraph scheduler
+                     configs["`scheduler/configs`"]
+                     logs
+                end
+                summon
+                graph_path['graph']
+            end
+            end
+
+         
+    
+    
+   
+```
 
 ```mermaid
 flowchart LR
