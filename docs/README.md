@@ -157,19 +157,22 @@ We use portainer to manage our docker deployments.
 
 ## Pycharm -- Run local with remote services
 You can test components in pycharm. Run configurations for pycgharm  are in runConfigurations (TODO: Instructions)
+![pycharm runconfig](images/pycharm_runconfig.png)
 1) move to the  implnets/deployment directory
-2) copy the envFile.env to .env 
+2) copy the envFile.env to .env [see](#environment-files) 
 3) edit the entries to point at a portainer/traefik with running services
-4) upload configuraiton files to s3: gleanerconfig.yaml, tenant.yaml
+4) edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
+5) upload configuration implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
 4) run a component, 
 5) eg dagster_ingest_debug
 4) go to http://localhost:3000/
 
 ## full stack test Run local with remote services
 1) move to the implnets/deployment directory
-2) copy the envFile.env to .env 
+2) copy the envFile.env to .env [see](#environment-files) 
 3) edit the entries.
-4) upload configuraiton files to s3: gleanerconfig.yaml, tenant.yaml
+4) edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
+5) upload configuration implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
 4) for local, `./dagster_localrun.sh`
 5) go to http://localhost:3000/
 
@@ -207,14 +210,15 @@ these may still be needed:
 You can update a config, and a sensor should pick up the changes.
 1) Upload changed file to s3
 2) go to overview, ![overview](images/overview_sensors_tab.png)
-3) go to  ![sensor](images/sources_sensor.png). s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
-4) at some point, a run should occur, 
+3) go to  s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
+ ![sensor](images/sources_sensor.png).
+4) at some point, a run should occur.  ![run](images/runs.png).
 5) then go to the sources_sensor, or tenant sensor 
 if job does not run, you can do a backfill.
 #### new sources:
-6)  so to job tab, and run summon_and_release with the 'partitions' aka 'sources' that are recent.'
-7) click materialize_all, and be sure only the added partition is selected
-8) go to runs, and see that a job with a partition with that name is queded,/running
+6)  so to job tab, and run summon_and_release with the 'partitions' aka 'sources' that are recent.
+7) click materialize_all, and in the backfill dialog be sure only the added partition is selected.  ![backfill](images/materialize.png).
+8) go to runs, and see that a job with a partition with that name is queued/running
 9) run tenant_release_job with same partition name to load data to tenants
 ###
 #### new tenants:
@@ -235,49 +239,62 @@ There are two jobs that need to run to move data to a tenant. (third will be nee
 2) edit
 3) `export $(cat .env | xargs)`
 export $(cat .env | xargs)
-``` bash
+```yaml
 ######
 # Nabu and Gleaner configs need to be in docker configs
 ## docker config name GLEANER_GLEANER_DOCKER_CONFIG
 ## docker config name GLEANER_NABU_DOCKER_CONFIG
 #        suggested DOCKER_CONFIG NAMING PATTERN (nabu||gleaner)-{PROJECT}
 ########
-GLEANERIO_GLEANER_DOCKER_CONFIG=gleaner-eco
-GLEANERIO_NABU_DOCKER_CONFIG=nabu-eco
+GLEANERIO_DOCKER_GLEANER_CONFIG=gleaner-eco
+GLEANERIO_DOCKER_NABU_CONFIG=nabu-eco
 
 # ###
 # workspace for dagster
 ####
 GLEANERIO_WORKSPACE_CONFIG_PATH=/usr/src/app/workspace.yaml
-GLEANERIO_WORKSPACE_DOCKER_CONFIG=workspace-eco
+GLEANERIO_DOCKER_WORKSPACE_CONFIG=workspace-eco
 
 
-DEBUG=False
-GLEANERIO_CONTAINER_WAIT_SECONDS=300
-# debuggin set to 5 or 10 seconds
+
+DEBUG_CONTAINER=false
+
+#### HOST
+#  host base name for treafik. fixed to localhost:3000 when using  compose_local.
+HOST=localhost
+# Applies only to compose_project.yaml runs
+
+#  modify SCHED_HOSTNAME is you want to run more than one instance
+#    aka two different project havests for now.
+SCHED_HOSTNAME=sched
+
+GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=300
+# debugging set to 10 - 30 seconds
+
+
 PROJECT=eco
-CONTAINER_CODE_TAG=latest
-CONTAINER_DAGSTER_TAG=latest
 #PROJECT=iow
 #PROJECT=oih
-HOST=localhost
+# tags for docker compose
+CONTAINER_CODE_TAG=latest
+CONTAINER_DAGSTER_TAG=latest
+
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 # port is required: https://portainer.{HOST}:443/api/endpoints/2/docker/
-PORTAINER_URL=
-PORTAINER_KEY=
+GLEANERIO_DOCKER_URL=https://portainer.{HOST}:443/api/endpoints/2/docker/
+GLEANERIO_PORTAINER_APIKEY=
 # if running dagster-dev, then this needs to be set ,
 #       defaults to "/scheduler/gleanerconfig.yaml" which is path to config mounted in containers
 # when debugging generated code "../../../configs/eco/gleanerconfig.yaml"
 # when debugging code in workflows "../../configs/eco/gleanerconfig.yaml"
-# DAGSTER_GLEANER_CONFIG_PATH=../../../configs/eco/gleanerconfig.yaml
-GLEANERIO_CONTAINER_WAIT_SECONDS=3600
-#GLEANERIO_CONTAINER_WAIT_SECONDS=30
+GLEANERIO_DAGSTER_CONFIG_PATH=../../../configs/eco/gleanerconfig.yaml
+
 # Network
-GLEANERIO_HEADLESS_NETWORK=headless_gleanerio
+GLEANERIO_DOCKER_HEADLESS_NETWORK=headless_gleanerio
 
 ### GLEANER/NABU Dockers
-GLEANERIO_GLEANER_IMAGE=nsfearthcube/gleaner:latest
-GLEANERIO_NABU_IMAGE=nsfearthcube/nabu:latest
+GLEANERIO_GLEANER_IMAGE=nsfearthcube/gleaner:dev_ec
+GLEANERIO_NABU_IMAGE=nsfearthcube/nabu:dev_eco
 
 ##
 # path where configs are deployed/mounted
@@ -297,13 +314,27 @@ GLEANERIO_MINIO_SECRET_KEY=
 GLEANERIO_HEADLESS_ENDPOINT=http://headless:9222
 
 # just the base address, no namespace https://graph.geocodes-aws-dev.earthcube.org/blazegraph
-GLEANERIO_GRAPH_URL=
-GLEANERIO_GRAPH_NAMESPACE=
+GLEANERIO_GRAPH_URL=https://graph.geocodes-aws.earthcube.org/blazegraph
+GLEANERIO_GRAPH_NAMESPACE=mytest
 
-# example: https://graph.geocodes.ncsa.illinois.edu/blazegraph/namespace/yyearthcube2/sparql
-#graph endpoint will be GLEANERIO_GRAPH_URL
-GLEANERIO_SUMMARY_GRAPH_NAMESPACE=
-GLEANERIO_SUMMARIZE_GRAPH=True
+# optional: GLEANERIO_GRAPH_SUMMARY_ENDPOINT defaults to GLEANERIO_GRAPH_URL
+#GLEANERIO_GRAPH_SUMMARY_ENDPOINT=https://graph.geocodes-aws-dev.earthcube.org/blazegraph
+GLEANERIO_GRAPH_SUMMARY_NAMESPACE=mytest_summary
+GLEANERIO_GRAPH_SUMMARIZE=True
+
+# where are the gleaner and tennant configurations
+GLEANERIO_CONFIG_PATH="scheduler/configs/"
+GLEANERIO_TENANT_FILENAME="tenant.yaml"
+GLEANERIO_SOURCES_FILENAME="gleanerconfig.yaml"
+
+# ECO Custom variables for ecrr
+ECRR_GRAPH_NAMESPACE=ecrr
+ECRR_MINIO_BUCKET=ecrr
+
+# only a public slack channel works. DV has no permissions to create a new channel
+#SLACK_CHANNEL="#production_discussion"
+SLACK_CHANNEL="#twitterfeed"
+SLACK_TOKEN=
 
 ```
 
