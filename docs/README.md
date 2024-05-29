@@ -167,6 +167,7 @@ use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
 4) run a component, 
 5) eg dagster_ingest_debug
 4) go to http://localhost:3000/
+6) you cah [test the schedules](#test-schedules) 
 
 ## full stack test Run local with remote services
 1) move to the implnets/deployment directory
@@ -230,10 +231,12 @@ There are two jobs that need to run to move data to a tenant. (third will be nee
 6)  so to job tab, and run tenant_release_job with the 'partitions' aka 'sources' for that tenant
 7) click materialize_all, The data will be pushed to all tenant namespaces
 
-
-
-
-
+## test schedules
+ 
+![schedules tab](images/schedules_tab.png)
+![schedules example](images/schedules_example.png)
+![schedules select](images/schedules_select.png)
+![schedules test](images/schedules_test.png)
 ### Environment files
 
 1) cp deployment/envFile.env .env

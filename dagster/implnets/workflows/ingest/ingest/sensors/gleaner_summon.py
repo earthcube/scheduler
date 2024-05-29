@@ -54,6 +54,8 @@ def sources_sensor(context,  asset_event: EventLogEntry):
     )
 #
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/schedules#static-partitioned-jobs
+# humm https://github.com/dagster-io/dagster/blob/567cb59f1da819bbb8522108fc2c2a3bace6c7b3/python_modules/dagster-test/dagster_test/toys/schedules.py#L41
+
 #     #  so this needs to be a schedule, and we handle the cron by ourselves.)
 @schedule(job=summon_asset_job, cron_schedule="@weekly",
         default_status=DefaultScheduleStatus.RUNNING,
