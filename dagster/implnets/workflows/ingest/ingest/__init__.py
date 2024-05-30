@@ -29,7 +29,10 @@ from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerio import GleanerioResource
 from .resources.gleanerS3 import gleanerS3Resource
-from .assets import (gleanerio_run, release_nabu_run)
+from .assets import (
+    gleanerio_run,
+                     release_nabu_run
+)
 
 from .jobs.summon_assets import summon_asset_job
 from .jobs import (

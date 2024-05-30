@@ -1,4 +1,4 @@
-# Dagster
+# Scheduler, AKA Dagster
 
 
 ## About
@@ -197,6 +197,8 @@ these may still be needed:
 |---------------------|-----------------------------------------------------------| ------ |---------------------------------------|
 | gleanerconfig.yaml  | configs/PROJECT/gleanerconfigs.yaml                       | env () | generated code needs to be in ~~portainer~~          |
 | nabuconfig.yaml | configs/PROJECT/nabuconfigs.yaml                          | env () | generated codeneeds to be in ~~portainer~~ |
+2) when the containers are running in a  stack, on portainer, there will need to
+   be updated by pulling from dockerhub. The ENV variables may need to be updated for the CONTAINER*_TAG
 
 
 ## Runtime configuration

@@ -51,6 +51,10 @@ services:
             - SLACK_TOKEN=${SLACK_TOKEN}
             - ECRR_MINIO_BUCKET=${ECRR_MINIO_BUCKET}
             - ECRR_GRAPH_NAMESPACE=${ECRR_GRAPH_NAMESPACE}
+            - GLEANERIO_TENNANT_FILENAME=${TASK_TENNANT_FILENAME:-tennant.yaml}
+            - GLEANERIO_TENNANT_PATH=${TASK_TENNANT_PATH:-scheduler/configs/}
+            - TASK_TENNANT_FILENAME=${TASK_TENNANT_FILENAME:-tennant.yaml}
+            - TASK_TENNANT_PATH=${TASK_TENNANT_PATH:-scheduler/configs/}
 
 
  #        command:
