@@ -38,6 +38,7 @@ services:
             - GLEANERIO_GRAPH_URL=${GLEANERIO_GRAPH_URL}
             - GLEANERIO_HEADLESS_ENDPOINT=${GLEANERIO_HEADLESS_ENDPOINT}
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX:-scheduler/logs/}
+            - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
             - GLEANERIO_MINIO_ACCESS_KEY=${GLEANERIO_MINIO_ACCESS_KEY}
             - GLEANERIO_MINIO_ADDRESS=${GLEANERIO_MINIO_ADDRESS}
             - GLEANERIO_MINIO_BUCKET=${GLEANERIO_MINIO_BUCKET}
@@ -47,14 +48,14 @@ services:
             - GLEANERIO_NABU_CONFIG_PATH=${GLEANERIO_NABU_CONFIG_PATH:-/configs/gleaner/nabuconfig.yaml}
             - GLEANERIO_NABU_IMAGE=${GLEANERIO_NABU_IMAGE}
             - GLEANERIO_PORTAINER_APIKEY=${GLEANERIO_PORTAINER_APIKEY}
-            - GLEANERIO_DEFAULT_SCHEDULE=${GLEANERIO_DEFAULT_SCHEDULE:-@weekly}
-            - GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE=${GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE:-"America/Los_Angeles"}
             - GLEANERIO_SOURCES_FILENAME=${GLEANERIO_SOURCES_FILENAME:-gleanerconfig.yaml}
             - GLEANERIO_TENANT_FILENAME=${GLEANERIO_TENANT_FILENAME:-tenant.yaml}
             - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
             - SLACK_TOKEN=${SLACK_TOKEN}
+            - ECRR_MINIO_BUCKET=${ECRR_MINIO_BUCKET}
+            - ECRR_GRAPH_NAMESPACE=${ECRR_GRAPH_NAMESPACE}
 # caution for a portainer additional file deply
     # portainer issue, merging commands may need to create a combined customised on
         command: 'dagster-webserver  -w workspace.yaml  -h "0.0.0.0" -p 3000'

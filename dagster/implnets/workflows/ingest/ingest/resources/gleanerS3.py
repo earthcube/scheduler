@@ -24,7 +24,13 @@ class gleanerS3Resource(ConfigurableResource):
          description="GLEANERIO_TENANT_FILENAME.", default="tenant.yaml")
     GLEANERIO_SOURCES_FILENAME: str =  Field(
          description="GLEANERIO_SOURCES_FILENAME.", default="gleanerconfig.yaml")
+    # now using the boto s3 embedded in dagster_aws, but just in case we need them
+    GLEANERIO_MINIO_ACCESS_KEY: str = Field(
+        description="GLEANERIO_MINIO_ACCESS_KEY")
+    GLEANERIO_MINIO_SECRET_KEY: str = Field(
+        description="GLEANERIO_MINIO_SECRET_KEY")
 
+    ## https://docs.dagster.io/_apidocs/libraries/dagster-a
 # Courtesy method for the ec utilities
     def MinioOptions(self):
         return  {"secure": self.s3.use_ssl

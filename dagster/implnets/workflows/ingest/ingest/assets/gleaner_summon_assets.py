@@ -6,9 +6,9 @@ import pandas as pd
 import csv
 
 from dagster import (
-    asset, Config, Output,
+    asset, Config, Output,AssetKey,
     define_asset_job, AssetSelection,
-get_dagster_logger,
+get_dagster_logger,BackfillPolicy
 )
 from ec.datastore import s3 as utils_s3
 
@@ -28,7 +28,17 @@ class HarvestOpConfig(Config):
 # sources_partitions_def = StaticPartitionsDefinition(
 #     ["geocodes_demo_datasets", "iris"]
 # )
-@asset(group_name="load",partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+
+def getSource(context, source_name):
+    sources = context.repository_def.load_asset_value(AssetKey("sources_all"))
+    source = list(filter(lambda t: t["name"]==source_name, sources))
+    return source[0]
+
+@asset(group_name="load",
+      deps=[ "sources_names_active"],
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+ #   , backfill_policy=BackfillPolicy.single_run()
+       )
 #@asset( required_resource_keys={"gleanerio"})
 def gleanerio_run(context ) -> Output[Any]:
     gleaner_resource =  context.resources.gleanerio
@@ -42,9 +52,13 @@ def gleanerio_run(context ) -> Output[Any]:
             }
 
     return Output(gleaner, metadata=metadata)
-@asset(group_name="load",partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",
+       deps=[gleanerio_run],
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+  #     ,backfill_policy=BackfillPolicy.single_run()
+     )
 #@asset(required_resource_keys={"gleanerio"})
-def release_nabu_run(context, gleanerio_run) -> Output[Any]:
+def release_nabu_run(context) -> Output[Any]:
     gleaner_resource = context.resources.gleanerio
     source= context.asset_partition_key_for_output()
     nabu=gleaner_resource.execute(context, "release", source )
@@ -64,13 +78,18 @@ And how many made it into milled (this is how good the conversion at a single js
 
 '''
 
-@asset(group_name="load",deps=[gleanerio_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(
+    #group_name="load",
+       deps=[gleanerio_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+  #  , backfill_policy=BackfillPolicy.single_run()
+)
 def load_report_s3(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 =  context.resources.gleanerio.gs3
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -97,7 +116,11 @@ And how many made it into milled (this is how good the conversion at a single js
 It then compares what identifiers are in the S3 store (summon path), and the Named Graph URI's
 '''
 
-@asset(group_name="load",deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(
+    #group_name="load",
+       deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+  #  , backfill_policy=BackfillPolicy.single_run()
+)
 def load_report_graph(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
@@ -105,7 +128,8 @@ def load_report_graph(context):
     gleaner_triplestore = context.resources.gleanerio.triplestore
 
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -125,14 +149,18 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
-@asset(group_name="load",name="release_summarize", deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",name="release_summarize",
+       deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+   # , backfill_policy=BackfillPolicy.single_run()
+       )
 def release_summarize(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 =  context.resources.gleanerio.gs3
     triplestore =context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    #source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context,source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -184,14 +212,18 @@ def release_summarize(context) :
 
     return
 
-@asset(group_name="load",deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[gleanerio_run],
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+   # , backfill_policy=BackfillPolicy.single_run()
+       )
 def identifier_stats(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 =  context.resources.gleanerio.gs3
     triplestore =context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -208,14 +240,18 @@ def identifier_stats(context):
     get_dagster_logger().info(f"identifer stats report  returned  {r} ")
     return
 
-@asset(group_name="load",deps=[gleanerio_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[gleanerio_run],
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+   # , backfill_policy=BackfillPolicy.single_run()
+       )
 def bucket_urls(context):
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 =  context.resources.gleanerio.gs3
     triplestore =context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -240,14 +276,18 @@ def bucket_urls(context):
 #     bucket = GLEANER_MINIO_BUCKET
 #     release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
 #     return release_url
-@asset(group_name="load",deps=[release_nabu_run],  partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"})
+@asset(group_name="load",deps=[release_nabu_run],
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+   # , backfill_policy=BackfillPolicy.single_run()
+       )
 def graph_stats_report(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                          gleaner_s3.GLEANERIO_MINIO_PORT),

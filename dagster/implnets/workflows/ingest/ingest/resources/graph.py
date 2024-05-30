@@ -3,7 +3,6 @@ from typing import Any, Dict
 
 import pydash
 from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
-from pyairtable import Api, Table
 
 #from dagster import Field
 from pydantic import Field
@@ -63,6 +62,8 @@ from ..utils import PythonMinioAddress
 class GraphResource(ConfigurableResource):
     GLEANERIO_GRAPH_URL: str =  Field(
          description="GLEANERIO_GRAPH_URL.")
+    GLEANERIO_GRAPH_NAMESPACE: str =  Field(
+         description="GLEANERIO_GRAPH_NAMESPACE.")
     gs3: gleanerS3Resource
 
 # need multiple namespaces. let's do this.
