@@ -789,7 +789,7 @@ def reload_ecrr_examples():
     harvest = ecrr_examples_gleaner(start=containers)
     load_release = ecrr_examples_naburelease(start=harvest)
     load_uploadrelease = ecrr_examples_uploadrelease(start=load_release)
-    report_graph = ecrr_examples_graph_reports(start=load_uploadrelease)
+   # report_graph = ecrr_examples_graph_reports(start=load_uploadrelease)
 
 
 

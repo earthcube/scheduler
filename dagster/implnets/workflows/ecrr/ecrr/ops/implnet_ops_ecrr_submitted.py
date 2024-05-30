@@ -788,7 +788,7 @@ def reload_ecrr_submitted():
     containers = ecrr_submitted_getImage()
     load_release = ecrr_submitted_naburelease(start=containers)
     load_uploadrelease = ecrr_submitted_uploadrelease(start=load_release)
-    report_graph = ecrr_submitted_graph_reports(start=load_uploadrelease)
+    #report_graph = ecrr_submitted_graph_reports(start=load_uploadrelease)
   #  harvest = ecrr_submitted_gleaner(start=containers)
 
 #
