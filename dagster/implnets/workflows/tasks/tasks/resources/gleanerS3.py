@@ -26,7 +26,11 @@ class gleanerS3Resource(S3Resource):
          description="GLEANERIO_CONFIG_PATH.", default="scheduler/configs/test/")
     GLEANERIO_TENANT_FILENAME : str =  Field(
          description="GLEANERIO_TENANT_CONFIG.", default="tenant.yaml")
-
+    # now using the boto s3 embedded in dagster_aws, but just in case we need them
+    GLEANERIO_MINIO_ACCESS_KEY: str =  Field(
+         description="GLEANERIO_MINIO_ACCESS_KEY")
+    GLEANERIO_MINIO_SECRET_KEY: str =  Field(
+         description="GLEANERIO_MINIO_SECRET_KEY")
 ## https://docs.dagster.io/_apidocs/libraries/dagster-aws#s3
 #   fields from dagster_aws.s3.S3Resource
 # region_name

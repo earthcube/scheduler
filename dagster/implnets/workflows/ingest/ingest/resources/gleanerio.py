@@ -7,7 +7,7 @@ from pydantic import Field
 
 import pydash
 from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
-from pyairtable import Api, Table
+
 
 
 import time

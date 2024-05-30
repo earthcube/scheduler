@@ -6,7 +6,7 @@ import pandas as pd
 import csv
 
 from dagster import (
-    asset, Config, Output,
+    asset, Config, Output,AssetKey,
     define_asset_job, AssetSelection,
 get_dagster_logger,BackfillPolicy
 )
@@ -28,6 +28,12 @@ class HarvestOpConfig(Config):
 # sources_partitions_def = StaticPartitionsDefinition(
 #     ["geocodes_demo_datasets", "iris"]
 # )
+
+def getSource(context, source_name):
+    sources = context.repository_def.load_asset_value(AssetKey("sources_all"))
+    source = list(filter(lambda t: t["name"]==source_name, sources))
+    return source[0]
+
 @asset(group_name="load",
       deps=[ "sources_names_active"],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -82,7 +88,8 @@ def load_report_s3(context):
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 =  context.resources.gleanerio.gs3
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -121,7 +128,8 @@ def load_report_graph(context):
     gleaner_triplestore = context.resources.gleanerio.triplestore
 
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -151,7 +159,8 @@ def release_summarize(context) :
     gleaner_s3 =  context.resources.gleanerio.gs3
     triplestore =context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    #source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context,source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -213,7 +222,8 @@ def identifier_stats(context):
     gleaner_s3 =  context.resources.gleanerio.gs3
     triplestore =context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -240,7 +250,8 @@ def bucket_urls(context):
     gleaner_s3 =  context.resources.gleanerio.gs3
     triplestore =context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -275,7 +286,8 @@ def graph_stats_report(context) :
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
-    source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
