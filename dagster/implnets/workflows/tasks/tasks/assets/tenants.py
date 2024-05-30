@@ -10,7 +10,7 @@ from dagster import (asset,
                      DynamicPartitionsDefinition,
                      define_asset_job,
                     AssetSelection,
-                    sensor,SensorResult,
+                    sensor,SensorResult,DefaultSensorStatus,
                     RunRequest,
 asset_sensor, AssetKey,
                      )
@@ -35,7 +35,7 @@ def tenant_sources(context) ->Any:
 def tenant_names(context, tenant_sources) -> Output[Any]:
 
     tenants = tenant_sources['tenant']
-    listTenants = map (lambda a: {a['community']}, tenants)
+    listTenants = map (lambda a: a['community'], tenants)
     get_dagster_logger().info(str(listTenants))
     communities = list(listTenants)
     return Output(
@@ -49,15 +49,18 @@ def tenant_names(context, tenant_sources) -> Output[Any]:
 
 
 community_partitions_def = DynamicPartitionsDefinition(name="tenant_names")
-tenant_job = define_asset_job(
-    "tenant_job", AssetSelection.keys("tenant_names"), partitions_def=community_partitions_def
+tenant_task_job = define_asset_job(
+    "tenant_job", AssetSelection.keys("loadstatsCommunity"), partitions_def=community_partitions_def
 )
 #@sensor(job=tenant_job)
-@asset_sensor(asset_key=AssetKey("tenant_names"), job=tenant_job)
+@asset_sensor(asset_key=AssetKey("tenant_names"),
+               default_status=DefaultSensorStatus.RUNNING,
+     job=tenant_task_job)
 def community_sensor(context):
+    tenants = context.repository_def.load_asset_value(AssetKey("tenant_names"))
     new_community = [
         community
-        for community in tenant_names
+        for community in tenants
         if not context.instance.has_dynamic_partition(
             community_partitions_def.name, community
         )
