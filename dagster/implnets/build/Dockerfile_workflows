@@ -1,5 +1,6 @@
 FROM python:3.9-slim
 
+
 # this file no longer needs to generate code. It will just include the base
 # it will run ingest by default
 # we may want to get an unreleased version of code, so this is needed
@@ -23,7 +24,7 @@ RUN pip install -r requirements.txt
 
 # this add the code
 COPY . scheduler
-COPY ./configs/${implnet}/gleanerconfig.yaml scheduler/gleanerconfig.yaml
+#COPY ./configs/${implnet}/gleanerconfig.yaml scheduler/gleanerconfig.yaml
 
 COPY ./deployment/dagster.yaml /usr/src/app/
 
