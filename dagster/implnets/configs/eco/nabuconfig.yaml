@@ -54,6 +54,10 @@ objects:
     - summoned/gpp
     - summoned/nitrogen
     - summoned/nitrogen2
+    - summoned/hydrography90m
+    - summoned/neon4cast
+    - summoned/usgsrc4cast
+    - summoned/vera4cast
     - prov/aquadocs
     - prov/bcodmo
     - prov/cchdo
