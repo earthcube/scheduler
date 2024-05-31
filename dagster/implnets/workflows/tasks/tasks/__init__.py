@@ -1,9 +1,11 @@
 import os
 from distutils.util import strtobool
 from dagster import Definitions, load_assets_from_modules, EnvVar
+from dagster_aws.s3 import  S3Resource
 #from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from . import assets
 from .sch import weekly_sch
+from .sch.s3_sensor import tenant_s3_sensor
 from .assets.tenants import community_sensor
 
 from .resources.graph import BlazegraphResource, GraphResource
@@ -20,10 +22,18 @@ def _awsEndpointAddress(url, port=None, use_ssl=True):
 
 all_assets = load_assets_from_modules([assets])
 weekly_data_schedule=[ weekly_sch.loadstats_schedule, weekly_sch.all_graph_stats_schedule]
+s3 = S3Resource(
+    endpoint_url=_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(),
+                                     port=EnvVar('GLEANERIO_MINIO_PORT').get_value()),
+    aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
+    aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
+)
 minio=gleanerS3Resource(
+    s3=s3,
     # GLEANER_MINIO_BUCKET =EnvVar('GLEANER_MINIO_BUCKET'),
     # GLEANER_MINIO_ADDRESS=EnvVar('GLEANER_MINIO_ADDRESS'),
     # GLEANER_MINIO_PORT=EnvVar('GLEANER_MINIO_PORT'),
+
     GLEANERIO_MINIO_BUCKET=EnvVar('GLEANERIO_MINIO_BUCKET'),
     GLEANERIO_MINIO_ADDRESS=EnvVar('GLEANERIO_MINIO_ADDRESS'),
     GLEANERIO_MINIO_PORT=EnvVar('GLEANERIO_MINIO_PORT'),
@@ -31,7 +41,10 @@ minio=gleanerS3Resource(
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
     endpoint_url =_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(), port=EnvVar('GLEANERIO_MINIO_PORT').get_value()),
     aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
-    aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
+    aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
+    GLEANERIO_CONFIG_PATH=EnvVar('GLEANERIO_CONFIG_PATH'),
+    GLEANERIO_TENANT_FILENAME=EnvVar('GLEANERIO_TENANT_FILENAME')
+
 )
 triplestore=BlazegraphResource(
             GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
@@ -60,5 +73,5 @@ defs = Definitions(
     assets=all_assets,
     schedules=weekly_data_schedule,
      resources=resources[deployment_name],
-    sensors=[community_sensor]
+    sensors=[community_sensor, tenant_s3_sensor]
 )

@@ -16,7 +16,7 @@ asset_sensor, AssetKey,
                      )
 
 @asset(required_resource_keys={"triplestore"})
-def tenant_sources(context) ->Any:
+def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
 
     t=s3_resource.getTennatInfo()
@@ -32,9 +32,9 @@ def tenant_sources(context) ->Any:
         #     }
         # )
 @asset(name='task_tenant_names',required_resource_keys={"triplestore"})
-def task_tenant_names(context, tenant_sources) -> Output[Any]:
+def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
 
-    tenants = tenant_sources['tenant']
+    tenants = task_tenant_sources['tenant']
     listTenants = map (lambda a: a['community'], tenants)
     get_dagster_logger().info(str(listTenants))
     communities = list(listTenants)
@@ -57,7 +57,7 @@ tenant_task_job = define_asset_job(
                default_status=DefaultSensorStatus.RUNNING,
      job=tenant_task_job)
 def community_sensor(context):
-    tenants = context.repository_def.load_asset_value(AssetKey("tenant_names"))
+    tenants = context.repository_def.load_asset_value(AssetKey("task_tenant_names"))
     new_community = [
         community
         for community in tenants
@@ -111,16 +111,16 @@ def getName(name):
      #  deps=[tenant_sources],
        group_name="community",
        required_resource_keys={"triplestore"} )
-def loadstatsCommunity(context, tenant_sources) -> None:
+def loadstatsCommunity(context, task_tenant_sources) -> None:
     prefix="history"
     logger = get_dagster_logger()
     s3 = context.resources.triplestore.s3
-    s3Client = context.resources.triplestore.s3.get_client()
+    s3Client = context.resources.triplestore.s3.s3.get_client()
  #   sourcelist = list(s3Minio.listPath(GLEANER_MINIO_BUCKET, ORG_PATH,recursive=False))
     community_code= context.asset_partition_key_for_output()
     stats = []
     try:
-        ts = tenant_sources
+        ts = task_tenant_sources
         t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
         s = t[0]["sources"]
         for source in s:
