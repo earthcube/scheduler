@@ -212,7 +212,6 @@ services:
         # in code, use names defined in network above
     dagster-code-ingest:
 
-        platform: linux/x86_64
         build:
           #context: .
           context: ..
