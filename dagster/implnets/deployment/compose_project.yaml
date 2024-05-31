@@ -240,7 +240,7 @@ services:
         depends_on:
             - dagster-postgres
         networks:
-            - traefik_proxy
+            - dagster_host
     dagster-code-tasks:
         # you should be able to change the source locally, without a full rebuild.
        #image: dagster-${PROJECT:-eco}:latest
