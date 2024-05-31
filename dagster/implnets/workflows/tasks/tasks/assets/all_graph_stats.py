@@ -7,7 +7,7 @@ from ec.graph.sparql_query import queryWithSparql
 from ec.reporting.report import generateGraphReportsRepo, reportTypes, generateReportStats
 from ec.datastore import s3
 from ec.logger import config_app
-from .tenants import tenant_names
+from .tenants import task_tenant_names
 log = config_app()
 
 
@@ -69,7 +69,7 @@ def sos_types( ):
     return bucketname, objectname, report_csv
 
 @asset(group_name="graph")
-def all_report_stats(context, tenant_names):
+def all_report_stats(context, task_tenant_names):
     s3Minio = s3.MinioDatastore( GLEANERIO_MINIO_ADDRESS, MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_url = GLEANERIO_CSV_CONFIG_URL
@@ -77,7 +77,7 @@ def all_report_stats(context, tenant_names):
     # TODO: remove the hardcoded community list
     #community_list = ["all", "deepoceans", "ecoforecast", "geochemistry"]
     #community_list = context.repository_def.load_asset_value(AssetKey("tenant_names"))
-    community_list = tenant_names
+    community_list = task_tenant_names
     if (GLEANERIO_SUMMARIZE_GRAPH):
         for community in community_list:
             try:

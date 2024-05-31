@@ -31,8 +31,8 @@ def tenant_sources(context) ->Any:
         #         # The `MetadataValue` class has useful static methods to build Metadata
         #     }
         # )
-@asset(required_resource_keys={"triplestore"})
-def tenant_names(context, tenant_sources) -> Output[Any]:
+@asset(name='task_tenant_names',required_resource_keys={"triplestore"})
+def task_tenant_names(context, tenant_sources) -> Output[Any]:
 
     tenants = tenant_sources['tenant']
     listTenants = map (lambda a: a['community'], tenants)
@@ -48,12 +48,12 @@ def tenant_names(context, tenant_sources) -> Output[Any]:
         )
 
 
-community_partitions_def = DynamicPartitionsDefinition(name="tenant_names")
+community_partitions_def = DynamicPartitionsDefinition(name="tenantsPartition")
 tenant_task_job = define_asset_job(
     "tenant_job", AssetSelection.keys("loadstatsCommunity"), partitions_def=community_partitions_def
 )
 #@sensor(job=tenant_job)
-@asset_sensor(asset_key=AssetKey("tenant_names"),
+@asset_sensor(asset_key=AssetKey("task_tenant_names"),
                default_status=DefaultSensorStatus.RUNNING,
      job=tenant_task_job)
 def community_sensor(context):
