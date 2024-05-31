@@ -60,16 +60,16 @@ services:
             # gid: "103"
             mode:
               0444
-          - source: gleaner
-            target: /scheduler/gleanerconfig.yaml
-            mode:
-                044
-          - source: nabu
-            target: /scheduler/nabuconfig.yaml
-            # uid: "103"
-            # gid: "103"
-            mode:
-              044
+#          - source: gleaner
+#            target: /scheduler/gleanerconfig.yaml
+#            mode:
+#                044
+#          - source: nabu
+#            target: /scheduler/nabuconfig.yaml
+#            # uid: "103"
+#            # gid: "103"
+#            mode:
+#              044
         secrets:
           - MINIO_ROOT_ACCESS_KEY
           - MINIO_ROOT_SECRET_KEY
