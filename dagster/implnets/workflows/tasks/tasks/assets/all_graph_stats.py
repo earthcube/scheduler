@@ -2,7 +2,7 @@ import distutils
 import json
 import os
 
-from dagster import asset, define_asset_job, get_dagster_logger
+from dagster import asset, define_asset_job, get_dagster_logger, AssetKey
 from ec.graph.sparql_query import queryWithSparql
 from ec.reporting.report import generateGraphReportsRepo, reportTypes, generateReportStats
 from ec.datastore import s3
@@ -68,14 +68,15 @@ def sos_types( ):
     bucketname, objectname = s3Minio.putReportFile(GLEANER_MINIO_BUCKET,"all","sos_types.csv",report_csv)
     return bucketname, objectname, report_csv
 
-@asset(group_name="graph")
-def all_report_stats():
+@asset(group_name="graph", deps=["tenant_names"])
+def all_report_stats(context):
     s3Minio = s3.MinioDatastore( GLEANERIO_MINIO_ADDRESS, MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_url = GLEANERIO_CSV_CONFIG_URL
 
     # TODO: remove the hardcoded community list
-    community_list = ["all", "deepoceans", "ecoforecast", "geochemistry"]
+    #community_list = ["all", "deepoceans", "ecoforecast", "geochemistry"]
+    community_list = context.repository_def.load_asset_value(AssetKey("tenant_names"))
 
     if (GLEANERIO_SUMMARIZE_GRAPH):
         for community in community_list:

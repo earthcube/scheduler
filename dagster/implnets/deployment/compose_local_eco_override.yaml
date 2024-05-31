@@ -38,7 +38,6 @@ services:
             - GLEANERIO_GRAPH_URL=${GLEANERIO_GRAPH_URL}
             - GLEANERIO_HEADLESS_ENDPOINT=${GLEANERIO_HEADLESS_ENDPOINT}
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX:-scheduler/logs/}
-            - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX}
             - GLEANERIO_MINIO_ACCESS_KEY=${GLEANERIO_MINIO_ACCESS_KEY}
             - GLEANERIO_MINIO_ADDRESS=${GLEANERIO_MINIO_ADDRESS}
             - GLEANERIO_MINIO_BUCKET=${GLEANERIO_MINIO_BUCKET}
@@ -54,8 +53,6 @@ services:
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
             - SLACK_TOKEN=${SLACK_TOKEN}
-            - ECRR_MINIO_BUCKET=${ECRR_MINIO_BUCKET}
-            - ECRR_GRAPH_NAMESPACE=${ECRR_GRAPH_NAMESPACE}
 # caution for a portainer additional file deply
     # portainer issue, merging commands may need to create a combined customised on
         command: 'dagster-webserver  -w workspace.yaml  -h "0.0.0.0" -p 3000'
