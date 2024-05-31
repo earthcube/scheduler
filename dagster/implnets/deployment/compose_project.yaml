@@ -27,12 +27,12 @@ volumes:
         driver: local
 # external so it could be shared accross docker swarms
 configs:
-  gleaner:
-    name: ${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
-    external: true
-  nabu:
-    name: ${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
-    external: true
+#  gleaner:
+#    name: ${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
+#    external: true
+#  nabu:
+#    name: ${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
+#    external: true
   workspace:
     name: ${GLEANERIO_DOCKER_WORKSPACE_CONFIG:-workspace}
     external: true

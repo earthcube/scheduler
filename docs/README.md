@@ -32,10 +32,72 @@ and removed by the Dagster workflow
 
 ### WORKFLOWS
 
-There are three dat
+There are three workflows
 * ingest works to load sources
 * tasks weekly task
 * ecrr - loads Earthcube Resource Registry
+
+#### basic deployment
+
+1. information for environment variables is created
+2. The configuration files are created and loaded to s3, and docker/config
+2. a docker stack is created, and the environment variables are added.
+3. portainer deploys containers
+4. when ingest and tasks are executed, they read
+
+```mermaid
+---
+title: Dagster Stack
+---
+flowchart LR
+    subgraph DockerCompose[Docker Compose Stacks]
+            maincompose[dagster/implents/deployment/compose_project.yaml]
+            project_overrides[dagster/implnets/deployment/compose_project_eco_override.yaml]
+    end
+    
+    subgraph Config
+         subgraph s3
+            gleanconfig[gleanerconfig.yaml]
+            tenant[tenant.yaml]
+        end
+        
+        subgraph Dagster/Config
+            workflow[ eco-wf ]
+        end
+        env['environment variables']
+
+    end
+    subgraph docker[docker managed by portainer]
+    
+        subgraph Containers
+                dagit
+                dagster
+                postgres
+                ingest
+                tasks
+                ecrr
+        end
+        config
+        subgraph Volumes
+            dagster-postgres
+        end
+    end
+    postgres--uses-->dagster-postgres
+    dagster--uses-->workflow
+    dagit--uses-->workflow
+    workflow-->config
+    maincompose--deploys-->dagit[dagster webserver]
+    maincompose--deploys-->dagster[dagster main]
+    maincompose--deploys-->ingest[gleanerio ingest code]
+    maincompose--deploys-->tasks[gleanerio task code]
+    project_overrides--deploys-->ecrr[earthcube code]
+    ingest--reads-->gleanconfig
+    ingest--reads-->tenant
+    tasks--reads-->gleanconfig
+    tasks--reads-->gleanconfig
+    dagster--uses-->postgres
+    
+```
 
 #### Ingest Workflow
 ```mermaid
