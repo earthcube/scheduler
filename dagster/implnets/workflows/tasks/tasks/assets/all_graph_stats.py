@@ -1,4 +1,4 @@
-import distutils
+from distutils import util
 import json
 import os
 
@@ -7,13 +7,13 @@ from ec.graph.sparql_query import queryWithSparql
 from ec.reporting.report import generateGraphReportsRepo, reportTypes, generateReportStats
 from ec.datastore import s3
 from ec.logger import config_app
-
+from .tenants import tenant_names
 log = config_app()
 
 
 GLEANERIO_MINIO_ADDRESS = str(os.environ.get('GLEANERIO_MINIO_ADDRESS'))
 GLEANERIO_MINIO_PORT = str(os.environ.get('GLEANERIO_MINIO_PORT'))
-GLEANERIO_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
+GLEANERIO_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
 GLEANERIO_MINIO_SECRET_KEY = str(os.environ.get('GLEANERIO_MINIO_SECRET_KEY'))
 GLEANERIO_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
 GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
@@ -68,16 +68,16 @@ def sos_types( ):
     bucketname, objectname = s3Minio.putReportFile(GLEANER_MINIO_BUCKET,"all","sos_types.csv",report_csv)
     return bucketname, objectname, report_csv
 
-@asset(group_name="graph", deps=["tenant_names"])
-def all_report_stats(context):
+@asset(group_name="graph")
+def all_report_stats(context, tenant_names):
     s3Minio = s3.MinioDatastore( GLEANERIO_MINIO_ADDRESS, MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
     source_url = GLEANERIO_CSV_CONFIG_URL
 
     # TODO: remove the hardcoded community list
     #community_list = ["all", "deepoceans", "ecoforecast", "geochemistry"]
-    community_list = context.repository_def.load_asset_value(AssetKey("tenant_names"))
-
+    #community_list = context.repository_def.load_asset_value(AssetKey("tenant_names"))
+    community_list = tenant_names
     if (GLEANERIO_SUMMARIZE_GRAPH):
         for community in community_list:
             try:
