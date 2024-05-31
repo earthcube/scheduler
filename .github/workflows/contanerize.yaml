@@ -237,7 +237,7 @@ jobs:
           build-args:
             implnet=${{ matrix.project }}
           #file: ./dagster/implnets/build/Dockerfile
-          file: ./build/Dockerfile_code
+          file: ./build/Dockerfile_workflows
           context:  "{{defaultContext}}:dagster/implnets"
           tags: ${{ steps.meta.outputs.tags }}
 #          tags: nsfearthcube/ec_facets_client:latest
