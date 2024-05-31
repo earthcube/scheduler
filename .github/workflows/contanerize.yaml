@@ -9,7 +9,7 @@ on:
     branches:
       - main
       - dev
-      - dev_101_ingest_soruces_wf
+      - dev_101_ingest_sources_wf
     tags:
       - "v*.*.*"
 
