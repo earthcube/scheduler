@@ -1,5 +1,6 @@
 import json
 from typing import Any
+from io import StringIO
 import yaml
 import os
 import pandas as pd
@@ -91,7 +92,7 @@ def _pythonMinioUrl(url):
 def getName(name):
     return name.replace("orgs/","").replace(".nq","")
 # @asset(group_name="community")
-# def source_list(tenant_sources) -> Output(str):
+# def source_list(task_tenant_sources) -> Output(str):
 #     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
 #     orglist = s3Minio.listPath(GLEANER_MINIO_BUCKET, ORG_PATH,recursive=False)
 #     sources = map( lambda f: { "name": getName(f.object_name)}, orglist )
@@ -108,7 +109,7 @@ def getName(name):
 
 #@asset( group_name="load")
 @asset(partitions_def=community_partitions_def,
-     #  deps=[tenant_sources],
+     #  deps=[task_tenant_sources],
        group_name="community",
        required_resource_keys={"triplestore"} )
 def loadstatsCommunity(context, task_tenant_sources) -> None:
@@ -125,7 +126,7 @@ def loadstatsCommunity(context, task_tenant_sources) -> None:
         s = t[0]["sources"]
         for source in s:
 
-            dirs = s3.listPath(path=f"{REPORT_PATH}{source}/")
+            dirs = s3.listPath(path=f"{REPORT_PATH}{source}/", recursive=False)
 
 
             for d in dirs:
@@ -134,7 +135,7 @@ def loadstatsCommunity(context, task_tenant_sources) -> None:
                 # if (d.object_name.casefold() == latestpath.casefold()) or (d.is_dir == False):
                 #     continue
                 # path = f"/{d.object_name}{STAT_FILE_NAME}"
-                if (d['Key'].casefold() == latestpath.casefold()) or not (d['Key'].endswith('/')):
+                if (d['Key'].casefold() == latestpath.casefold()) or (d.is_dir == False) :
                     continue
                 path = f"/{d['Key']}{STAT_FILE_NAME}"
 
@@ -148,8 +149,8 @@ def loadstatsCommunity(context, task_tenant_sources) -> None:
                 except Exception as ex:
                     get_dagster_logger().info(f"Failed to get source {source} for tennant {community_code}  {ex}")
     except Exception as ex:
-        get_dagster_logger().info(f"Failed to get tenant {community_code}  {ex}")
-    # for source in tenant_sources["tennant"]:
+        context.log.info(f"Failed to get tenant {community_code}  {ex}")
+    # for source in task_tenant_sources["tennant"]:
     #     try:
     #        # stat = s3Minio.getReportFile(GLEANER_MINIO_BUCKET,source.get("name"), STAT_FILE_NAME )
     #        repo = community_code
@@ -171,17 +172,23 @@ def loadstatsCommunity(context, task_tenant_sources) -> None:
     #                logger.info(f"no missing graph report {source.get('name')}  {ex}")
     #     except Exception as ex:
     #         logger.info(f"Failed to get { source.get('name')}  {ex}")
+    context.log.info(stats)
     df = pd.DataFrame(stats)
-    try:
-        os.mkdir(f"data/{community_code}")
-    except FileExistsError:
-        logger.debug(f"directory data/{community_code} exists")
-    except FileNotFoundError:
-        logger.error(f"error creating directory. Fix community name.  'data/{community_code}' ")
-    df.to_csv(f"data/{community_code}/all_stats.csv")
-    df_csv = df.to_csv()
+    context.log.info(df)
+    # try:
+    #     os.mkdir(f"data/{community_code}")
+    # except FileExistsError:
+    #     logger.debug(f"directory data/{community_code} exists")
+    # except FileNotFoundError:
+    #     logger.error(f"error creating directory. Fix community name.  'data/{community_code}' ")
+    #df.to_csv(f"data/{community_code}/all_stats.csv")
+    stringio = StringIO()
+    df.to_csv(stringio)
+    s3Client.upload_fileobj(stringio, s3.GLEANERIO_MINIO_BUCKET, f"data/{community_code}/all_stats.csv")
     # humm, should we just have an EC utils resource
-    #s3Minio.putReportFile(GLEANER_MINIO_BUCKET, "all", f"all_stats.csv", df_csv)
+    #s3Client.putReportFile(s3.GLEANERIO_MINIO_BUCKET, "all", f"all_stats.csv", df_csv)
+    # with open(stringio, "rb") as f:
+    #     s3.upload_fileobj(f, s3.GLEANERIO_MINIO_BUCKET, f"data/all/all_stats.csv")
     get_dagster_logger().info(f"all_stats.csv uploaded ")
     #return df_csv # now checking return types
     return
