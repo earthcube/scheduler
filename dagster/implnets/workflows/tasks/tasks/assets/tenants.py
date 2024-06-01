@@ -15,7 +15,22 @@ from dagster import (asset,
                     RunRequest,
 asset_sensor, AssetKey,
                      )
+from ec.datastore import s3
+from distutils import util
+from ..resources.gleanerS3 import _pythonMinioAddress
 
+GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
+GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
+GLEANER_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
+GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANERIO_MINIO_SECRET_KEY')
+GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANERIO_MINIO_ACCESS_KEY')
+GLEANER_MINIO_BUCKET = os.environ.get('GLEANERIO_MINIO_BUCKET')
+
+MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
+
+              ,"access_key": GLEANER_MINIO_ACCESS_KEY
+              ,"secret_key": GLEANER_MINIO_SECRET_KEY
+               }
 @asset(required_resource_keys={"triplestore"})
 def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
@@ -112,11 +127,12 @@ def getName(name):
      #  deps=[task_tenant_sources],
        group_name="community",
        required_resource_keys={"triplestore"} )
-def loadstatsCommunity(context, task_tenant_sources) -> None:
+def loadstatsCommunity(context, task_tenant_sources) -> str:
     prefix="history"
     logger = get_dagster_logger()
-    s3 = context.resources.triplestore.s3
+    s3_config = context.resources.triplestore.s3
     s3Client = context.resources.triplestore.s3.s3.get_client()
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(s3_config.GLEANERIO_MINIO_ADDRESS), MINIO_OPTIONS)
  #   sourcelist = list(s3Minio.listPath(GLEANER_MINIO_BUCKET, ORG_PATH,recursive=False))
     community_code= context.asset_partition_key_for_output()
     stats = []
@@ -126,7 +142,7 @@ def loadstatsCommunity(context, task_tenant_sources) -> None:
         s = t[0]["sources"]
         for source in s:
 
-            dirs = s3.listPath(path=f"{REPORT_PATH}{source}/", recursive=False)
+            dirs = s3Minio.listPath(path=f"{REPORT_PATH}{source}/",recursive=False )
 
 
             for d in dirs:
@@ -182,13 +198,15 @@ def loadstatsCommunity(context, task_tenant_sources) -> None:
     # except FileNotFoundError:
     #     logger.error(f"error creating directory. Fix community name.  'data/{community_code}' ")
     #df.to_csv(f"data/{community_code}/all_stats.csv")
-    stringio = StringIO()
-    df.to_csv(stringio)
-    s3Client.upload_fileobj(stringio, s3.GLEANERIO_MINIO_BUCKET, f"data/{community_code}/all_stats.csv")
+
+    df_csv = df.to_csv()
+
+    # stringio = StringIO(df_csv)
+    # s3Client.upload_fileobj(stringio, s3_config.GLEANERIO_MINIO_BUCKET, f"data/{community_code}/all_stats.csv")
     # humm, should we just have an EC utils resource
-    #s3Client.putReportFile(s3.GLEANERIO_MINIO_BUCKET, "all", f"all_stats.csv", df_csv)
+    s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}", f"all_stats.csv", df_csv)
     # with open(stringio, "rb") as f:
     #     s3.upload_fileobj(f, s3.GLEANERIO_MINIO_BUCKET, f"data/all/all_stats.csv")
-    get_dagster_logger().info(f"all_stats.csv uploaded ")
+    context.log.info(f"all_stats.csv uploaded ")
     #return df_csv # now checking return types
-    return
+    return df_csv
