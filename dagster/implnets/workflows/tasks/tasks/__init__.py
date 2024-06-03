@@ -10,6 +10,12 @@ from .assets.tenants import community_sensor
 
 from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerS3 import gleanerS3Resource
+
+from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
+slack_on_run_failure = make_slack_on_run_failure_sensor(
+     os.getenv("SLACK_CHANNEL"),
+    os.getenv("SLACK_TOKEN")
+)
 def _awsEndpointAddress(url, port=None, use_ssl=True):
     if use_ssl:
         protocol = "https"
@@ -70,5 +76,5 @@ defs = Definitions(
     assets=all_assets,
     schedules=weekly_data_schedule,
      resources=resources[deployment_name],
-    sensors=[community_sensor, tenant_s3_sensor]
+    sensors=[community_sensor, tenant_s3_sensor, slack_on_run_failure]
 )
