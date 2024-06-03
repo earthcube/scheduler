@@ -25,6 +25,8 @@ networks:
 volumes:
   dagster-postgres:
         driver: local
+  dagster-storage:
+    driver: local
 # external so it could be shared accross docker swarms
 configs:
 #  gleaner:
@@ -237,7 +239,8 @@ services:
         - "-d"
         - "/usr/src/app/"
 
-        #volumes: *vol
+        volumes: &codevol
+            - dagster-storage:/usr/src/app/storage
         depends_on:
             - dagster-postgres
         networks:
@@ -261,7 +264,7 @@ services:
         - "-d"
         - "/usr/src/app/"
 
-       # volumes: *vol
+        volumes: *codevol
         depends_on:
             - dagster-postgres
         networks:

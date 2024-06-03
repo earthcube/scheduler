@@ -11,7 +11,8 @@ networks:
 volumes:
     dagster-postgres:
         driver: local
-
+#    dagster-storage:
+#      driver: local
 # let yourself use local configuration
 configs:
 #  gleaner:

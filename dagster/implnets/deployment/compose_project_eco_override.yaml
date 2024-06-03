@@ -97,7 +97,8 @@ services:
         - "-d"
         - "/usr/src/app/"
 
-        #volumes: *vol
+        volumes:
+            - dagster-storage:/usr/src/app/storage
         depends_on:
             - dagster-postgres
         networks:
