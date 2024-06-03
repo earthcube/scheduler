@@ -1,3 +1,5 @@
+import os
+
 import dagster
 from dagster import (
     SensorResult, RunRequest,
@@ -57,7 +59,9 @@ def sources_sensor(context,  asset_event: EventLogEntry):
 # humm https://github.com/dagster-io/dagster/blob/567cb59f1da819bbb8522108fc2c2a3bace6c7b3/python_modules/dagster-test/dagster_test/toys/schedules.py#L41
 
 #     #  so this needs to be a schedule, and we handle the cron by ourselves.)
-@schedule(job=summon_asset_job, cron_schedule="@weekly",
+sched = os.environ.get("GLEANERIO_DEFAULT_SCHEDULE", "@weekly")
+sched_timezone = os.environ.get("GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE", "America/Los_Angeles")
+@schedule(job=summon_asset_job, cron_schedule=sched,execution_timezone=sched_timezone,
         default_status=DefaultScheduleStatus.RUNNING,
           )
 def sources_schedule(context):
