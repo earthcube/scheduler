@@ -37,13 +37,7 @@ There are three workflows
 * tasks weekly task
 * ecrr - loads Earthcube Resource Registry
 
-#### basic deployment
 
-1. information for environment variables is created
-2. The configuration files are created and loaded to s3, and docker/config
-2. a docker stack is created, and the environment variables are added.
-3. portainer deploys containers
-4. when ingest and tasks are executed, they read
 
 ```mermaid
 ---
@@ -59,10 +53,13 @@ flowchart LR
          subgraph s3
             gleanconfig[gleanerconfig.yaml]
             tenant[tenant.yaml]
+            
         end
         
         subgraph Dagster/Config
             workflow[ eco-wf ]
+            container-config-gleaner[gleanerio contaianer config]
+            container-config-nabu[gleanerio container config for nabu]
         end
         env['environment variables']
 
@@ -98,6 +95,14 @@ flowchart LR
     dagster--uses-->postgres
     
 ```
+#### basic deployment
+
+1. information for environment variables is created
+2. The configuration files are created and loaded to s3, and docker/config
+2. a docker stack is created, and the environment variables are added.
+3. portainer deploys containers
+4. when ingest and tasks are executed, they read
+
 
 #### Ingest Workflow
 ```mermaid
@@ -111,7 +116,9 @@ sequenceDiagram
     participant Graph
     S3->>Ingest: read sources from scheduler/configs/gleanerconfig.yaml
     S3->>Ingest: read tenant from scheduler/configs/tenant.yaml
+    Ingest-->Ingest: create gleanerio container
     Ingest->>Portainer: run gleanerio 
+    Portainer-->Portainer: docker configs mounted in gleanerio container
     Portainer-->Portainer: summon for sources
     Portainer->>S3: jsonld  to s3
     Portainer->>Ingest:  logs returned
@@ -253,13 +260,14 @@ To deploy in portainer, use the deployment/compose_project.yaml docker stack.
 | gleanerconfig.yaml | s3:{bucket}/scheduler/configs/gleanerconfigs.yaml | | ingest workflow needs to be in minio/s3  
 | tenant.yaml        | s3:{bucket}/scheduler/configs/enant.yaml          |  | ingest workflow needs to be in minio/s3  
 
-these may still be needed:
+[Docker Configs for gleanerio containers ](https://github.com/earthcube/scheduler/issues/106) are still needed:
 
 | file                | local                                                     | stack | note                                  |
 |---------------------|-----------------------------------------------------------| ------ |---------------------------------------|
 | gleanerconfig.yaml  | configs/PROJECT/gleanerconfigs.yaml                       | env () | generated code needs to be in ~~portainer~~          |
 | nabuconfig.yaml | configs/PROJECT/nabuconfigs.yaml                          | env () | generated codeneeds to be in ~~portainer~~ |
-2) when the containers are running in a  stack, on portainer, there will need to
+2) 
+3) when the containers are running in a  stack, on portainer, there will need to
    be updated by pulling from dockerhub. The ENV variables may need to be updated for the CONTAINER*_TAG
 
 
@@ -275,6 +283,7 @@ these may still be needed:
 ### updating config
 You can update a config, and a sensor should pick up the changes.
 1) Upload changed file to s3
+   2) note, if this is a new source, you need to add it to the docker config (gleaner-PROJECT). 
 2) go to overview, ![overview](images/overview_sensors_tab.png)
 3) go to  s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
  ![sensor](images/sources_sensor.png).
