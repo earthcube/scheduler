@@ -1,4 +1,4 @@
-# Dagster
+# Scheduler, AKA Dagster
 
 
 ## About
@@ -51,11 +51,11 @@ The production 'containers' are built with a github action, or using a makefile.
 This describes the local and container deployment
 We use portainer to manage our docker deployments.
 
-1) move to the the deployment directory
-2) copy the envFile.env to .env 
-3) edit the entries.
-4) for local, `./dagster_localrun.sh`
-5) go to http://localhost:3000/
+1. move to  the deployment directory
+2.  copy the envFile.env to .env 
+3. edit the entries.
+4. for local, `./dagster_localrun.sh`
+5. go to http://localhost:3000/
 
 To deploy in portainer, use the deployment/compose_project.yaml docker stack.
 
@@ -67,7 +67,9 @@ To deploy in portainer, use the deployment/compose_project.yaml docker stack.
 | workspace          | configs/PROJECT/worksapce.yaml      | env () | used by dagster          |
 | gleanerconfig.yaml | configs/PROJECT/gleanerconfigs.yaml | env () | needs to be in portainer |
 | nabuconfig.yaml    | configs/PROJECT/nabuconfigs.yaml    | env () | needs to be in portainer |
-2) 
+
+2) when the containers are running in a  stack, on portainer, there will need to
+   be updated by pulling from dockerhub. The ENV variables may need to be updated for the CONTAINER*_TAG
 
 ## Editing Template
 
@@ -80,7 +82,7 @@ then deploy with
 If you are running using dagster_localrun.sh 
 1) go to the deployment at http://localhost:3000/locations
 2) click 'reload on gleaner@project_grpc'
-3) then if code is correct, then you will be able run the changed [workflows](http://localhost:3000/overview/jobs)
+3) then if code is correct, then you will be able to run the changed [workflows](http://localhost:3000/overview/jobs)
 
 (TODO NEEDS MORE
 )
@@ -129,12 +131,12 @@ GLEANERIO_WORKSPACE_CONFIG_PATH=/usr/src/app/workspace.yaml
 GLEANERIO_WORKSPACE_DOCKER_CONFIG=workspace-eco
 
 
-# NETWORK is needed for headless rendering
-# gleaner
-
-
 DEBUG=False
+GLEANERIO_CONTAINER_WAIT_SECONDS=300
+# debuggin set to 5 or 10 seconds
 PROJECT=eco
+CONTAINER_CODE_TAG=latest
+CONTAINER_DAGSTER_TAG=latest
 #PROJECT=iow
 #PROJECT=oih
 HOST=localhost
@@ -142,7 +144,13 @@ PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 # port is required: https://portainer.{HOST}:443/api/endpoints/2/docker/
 PORTAINER_URL=
 PORTAINER_KEY=
-
+# if running dagster-dev, then this needs to be set ,
+#       defaults to "/scheduler/gleanerconfig.yaml" which is path to config mounted in containers
+# when debugging generated code "../../../configs/eco/gleanerconfig.yaml"
+# when debugging code in workflows "../../configs/eco/gleanerconfig.yaml"
+# DAGSTER_GLEANER_CONFIG_PATH=../../../configs/eco/gleanerconfig.yaml
+GLEANERIO_CONTAINER_WAIT_SECONDS=3600
+#GLEANERIO_CONTAINER_WAIT_SECONDS=30
 # Network
 GLEANERIO_HEADLESS_NETWORK=headless_gleanerio
 
@@ -150,20 +158,14 @@ GLEANERIO_HEADLESS_NETWORK=headless_gleanerio
 GLEANERIO_GLEANER_IMAGE=nsfearthcube/gleaner:latest
 GLEANERIO_NABU_IMAGE=nsfearthcube/nabu:latest
 
-
-
 ##
 # path where configs are deployed/mounted
 ####
 GLEANERIO_GLEANER_CONFIG_PATH=/gleaner/gleanerconfig.yaml
 GLEANERIO_NABU_CONFIG_PATH=/nabu/nabuconfig.yaml
 ###
-
-
-
-
-
-#GLEANERIO_LOG_PREFIX=scheduler/logs/
+#path in s3 for docker log files
+GLEANERIO_LOG_PREFIX=scheduler/logs/
 
 GLEANERIO_MINIO_ADDRESS=
 GLEANERIO_MINIO_PORT=80
@@ -173,12 +175,14 @@ GLEANERIO_MINIO_ACCESS_KEY=
 GLEANERIO_MINIO_SECRET_KEY=
 GLEANERIO_HEADLESS_ENDPOINT=http://headless:9222
 
-
-
 # just the base address, no namespace https://graph.geocodes-aws-dev.earthcube.org/blazegraph
 GLEANERIO_GRAPH_URL=
 GLEANERIO_GRAPH_NAMESPACE=
 
+# example: https://graph.geocodes.ncsa.illinois.edu/blazegraph/namespace/yyearthcube2/sparql
+#graph endpoint will be GLEANERIO_GRAPH_URL
+GLEANERIO_SUMMARY_GRAPH_NAMESPACE=
+GLEANERIO_SUMMARIZE_GRAPH=True
 
 ```
 

@@ -1,6 +1,6 @@
 context:
   cache: true
-  strict: true
+  strict: false
 contextmaps:
   - prefix: "https://schema.org/"
     file: "/assets/schemaorg-current-https.jsonld"  # wget http://schema.org/docs/jsonldcontext.jsonld
@@ -44,7 +44,7 @@ sources:
     identifierpath: ""
     apipagelimit: 0
     identifiertype: identifiersha
-    fixcontextoption: 0
+    fixcontextoption: 1
     acceptcontenttype: application/ld+json, text/html
     jsonprofile: application/ld+json
   - sourcetype: sitegraph
@@ -164,7 +164,7 @@ sources:
   - sourcetype: sitemap
     name: ecrr_examples
     logo: https://www.earthcube.org/sites/default/files/doc-repository/logo_earthcube_full_horizontal.png
-    url: https://raw.githubusercontent.com/earthcube/ecrro/master/Examples/sitemap.xml
+    url: https://earthcube.github.io/ecrro/Examples/sitemap.xml
     headless: false
     pid: http://www.earthcube.org/resourceregistry/examples
     propername: Earthcube Resource Registry Examples
@@ -561,16 +561,16 @@ sources:
     acceptcontenttype: application/ld+json, text/html
     jsonprofile: application/ld+json
   - sourcetype: sitemap
-    name: wifire
-    logo: https://wifire-data.sdsc.edu/uploads/admin/2021-04-22-203649.712143WIFIRECOMMONSSMRES12.png
-    url: https://wifire-data.sdsc.edu/sitemap.xml
+    name: glim
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/glim.xml
     headless: false
-    pid: https://wifire-data.sdsc.edu/
-    propername: WIFIRE Commons
-    domain: https://wifire-data.sdsc.edu/
+    pid: https://github.com/earthcube/GeoCODES-Metadata/
+    propername: GLiM
+    domain: https://doi.pangaea.de/10.1594/PANGAEA.788537
     active: true
     credentialsfile: ""
-    other: { }
+    other: {}
     headlesswait: 0
     delay: 0
     identifierpath: ""
@@ -579,4 +579,136 @@ sources:
     fixcontextoption: 0
     acceptcontenttype: application/ld+json, text/html
     jsonprofile: application/ld+json
-
+  - sourcetype: sitemap
+    name: gpp
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/gpp.xml
+    headless: false
+    pid: https://doi.pangaea.de/10.1594/PANGAEA.879560
+    propername: Global GPP
+    domain: https://doi.pangaea.de/10.1594/PANGAEA.879560
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
+  - sourcetype: sitemap
+    name: nitrogen
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/nitrogen.xml
+    headless: false
+    pid: https://doi.pangaea.de/10.1594/PANGAEA.861203
+    propername: Nitrogen Fertilizer
+    domain: https://doi.pangaea.de/10.1594/PANGAEA.861203
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
+  - sourcetype: sitemap
+    name: nitrogen2
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/pangaea/sitemaps/nitrogen2.xml
+    headless: false
+    pid: https://doi.pangaea.de/10.1594/PANGAEA.871980
+    propername: Manure Nitrogen
+    domain: https://doi.pangaea.de/10.1594/PANGAEA.871980
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
+  - sourcetype: sitemap
+    name: hydrography90m
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/communityCollections/master/collection/hydrography90m/sitemaps/hydrography90m.xml
+    headless: false
+    pid: https://hydrography.org/hydrography90m/hydrography90m_layers
+    propername: Hydrography90m
+    domain: https://hydrography.org/hydrography90m/hydrography90m_layers
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
+  - sourcetype: sitemap
+    name: neon4cast
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/stacIndexer/yl_dv/data/output/sitemap/sitemap_neon4cast.xml
+    headless: false
+    pid: https://projects.ecoforecast.org/neon4cast-ci/
+    propername: NEON Ecological Forecast Challenge
+    domain: https://projects.ecoforecast.org/neon4cast-ci/
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
+  - sourcetype: sitemap
+    name: usgsrc4cast
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/stacIndexer/yl_dv/data/output/sitemap/sitemap_usgsrc4cast.xml
+    headless: false
+    pid: https://github.com/eco4cast/usgsrc4cast-ci
+    propername: Ecological Forecasting Initiative (EFI) and U.S. Geological Survey (USGS) River Chlorophyll Forecasting Challenge
+    domain: https://github.com/eco4cast/usgsrc4cast-ci
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
+  - sourcetype: sitemap
+    name: vera4cast
+    logo: ""
+    url: https://raw.githubusercontent.com/earthcube/stacIndexer/yl_dv/data/output/sitemap/sitemap_vera4cast.xml
+    headless: false
+    pid: https://github.com/LTREB-reservoirs/vera4cast
+    propername: Virginia Ecoforecast Reservoir Analysis (VERA) Ecological Forecasting Challenge
+    domain: https://github.com/LTREB-reservoirs/vera4cast
+    active: true
+    credentialsfile: ""
+    other: {}
+    headlesswait: 0
+    delay: 0
+    identifierpath: ""
+    apipagelimit: 0
+    identifiertype: identifiersha
+    fixcontextoption: 0
+    acceptcontenttype: application/ld+json, text/html
+    jsonprofile: application/ld+json
