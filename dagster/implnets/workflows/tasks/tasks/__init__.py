@@ -51,6 +51,9 @@ minio=gleanerS3Resource(
 )
 triplestore=BlazegraphResource(
             GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
+            GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
+            GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+            GLEANERIO_GRAPH_SUMMARIZE=EnvVar('GLEANERIO_GRAPH_SUMMARIZE'),
               s3=minio,
         )
 
