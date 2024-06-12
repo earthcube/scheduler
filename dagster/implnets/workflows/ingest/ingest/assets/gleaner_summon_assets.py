@@ -30,12 +30,13 @@ class HarvestOpConfig(Config):
 # )
 
 def getSource(context, source_name):
-    sources = context.repository_def.load_asset_value(AssetKey("sources_all"))
+    sources = context.repository_def.load_asset_value(AssetKey(["ingest","sources_all"]))
     source = list(filter(lambda t: t["name"]==source_name, sources))
     return source[0]
 
 @asset(group_name="load",
-      deps=[ "sources_names_active"],
+key_prefix="ingest",
+      deps=[AssetKey(["ingest","sources_names_active"]) ],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
  #   , backfill_policy=BackfillPolicy.single_run()
        )
@@ -53,6 +54,7 @@ def gleanerio_run(context ) -> Output[Any]:
 
     return Output(gleaner, metadata=metadata)
 @asset(group_name="load",
+key_prefix="ingest",
        deps=[gleanerio_run],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
   #     ,backfill_policy=BackfillPolicy.single_run()
@@ -79,7 +81,8 @@ And how many made it into milled (this is how good the conversion at a single js
 '''
 
 @asset(
-    #group_name="load",
+key_prefix="ingest",
+    group_name="load",
        deps=[gleanerio_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
   #  , backfill_policy=BackfillPolicy.single_run()
 )
@@ -117,7 +120,8 @@ It then compares what identifiers are in the S3 store (summon path), and the Nam
 '''
 
 @asset(
-    #group_name="load",
+key_prefix="ingest",
+    group_name="load",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
   #  , backfill_policy=BackfillPolicy.single_run()
 )
@@ -149,7 +153,8 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
-@asset(group_name="load",name="release_summarize",
+@asset(group_name="load",key_prefix="ingest",
+       name="release_summarize",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
    # , backfill_policy=BackfillPolicy.single_run()
        )
@@ -212,7 +217,8 @@ def release_summarize(context) :
 
     return
 
-@asset(group_name="load",deps=[gleanerio_run],
+@asset(group_name="load",key_prefix="ingest",
+       deps=[gleanerio_run],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
    # , backfill_policy=BackfillPolicy.single_run()
        )
@@ -240,7 +246,8 @@ def identifier_stats(context):
     get_dagster_logger().info(f"identifer stats report  returned  {r} ")
     return
 
-@asset(group_name="load",deps=[gleanerio_run],
+@asset(group_name="load",key_prefix="ingest",
+       deps=[gleanerio_run],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
    # , backfill_policy=BackfillPolicy.single_run()
        )
@@ -276,7 +283,8 @@ def bucket_urls(context):
 #     bucket = GLEANER_MINIO_BUCKET
 #     release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
 #     return release_url
-@asset(group_name="load",deps=[release_nabu_run],
+@asset(group_name="load",key_prefix="ingest",
+       deps=[release_nabu_run],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
    # , backfill_policy=BackfillPolicy.single_run()
        )

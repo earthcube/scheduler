@@ -21,7 +21,7 @@ from ..assets import tenant_partitions_def
 # now we do need to build tenants when a new tenant is added.
 # this should just handle the cretion of namespaces, and adding the UI's
 
-@asset_sensor( asset_key=AssetKey("tenant_names"),
+@asset_sensor( asset_key=AssetKey(["ingest","tenant_names"]),
                default_status=DefaultSensorStatus.RUNNING,
 #default_status=DefaultScheduleStatus.RUNNING,
                job=tenant_namespaces_job,
@@ -34,7 +34,7 @@ def tenant_names_sensor(context,  asset_event: EventLogEntry):
     context.log.info(f"asset_key: {asset_event.dagster_event.asset_key}")
 # well this is a pain. but it works. Cannot just pass it like you do in ops
     # otherwise it's just an AssetDefinition.
-    tenants = context.repository_def.load_asset_value(AssetKey("tenant_names"))
+    tenants = context.repository_def.load_asset_value(AssetKey(["ingest","tenant_names"]))
     new_tenants = [
         tenant
         for tenant in tenants
@@ -63,7 +63,7 @@ def tenant_names_sensor(context,  asset_event: EventLogEntry):
         ],
     )
 
-@asset_sensor( asset_key=AssetKey("tenant_names"),
+@asset_sensor( asset_key=AssetKey(["ingest","tenant_names"]),
                default_status=DefaultSensorStatus.RUNNING,
 #default_status=DefaultScheduleStatus.RUNNING,
          #      job=tenant_namespaces_job,
@@ -75,7 +75,7 @@ def tenant_names_sensor_v2(context,  asset_event: EventLogEntry):
 
 # well this is a pain. but it works. Cannot just pass it like you do in ops
     # otherwise it's just an AssetDefinition.
-    tenants = context.repository_def.load_asset_value(AssetKey("tenant_names"))
+    tenants = context.repository_def.load_asset_value(AssetKey(["ingest","tenant_names"]))
     new_tenants = [
         tenant
         for tenant in tenants

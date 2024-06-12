@@ -24,7 +24,7 @@ from ..resources.graph import BlazegraphResource
 
 tenant_asset_job = define_asset_job(
     name="tenant_config_updated_job",
-    selection=AssetSelection.assets(AssetKey("tenant_names")).required_multi_asset_neighbors(),
+    selection=AssetSelection.assets(AssetKey(["ingest","tenant_names"])).required_multi_asset_neighbors(),
     partitions_def=sources_partitions_def,
 )
 

@@ -17,7 +17,7 @@ from ..jobs.summon_assets import summon_asset_job
 # the sources_schedule_sensor will add to the weekly schedule
 
 # note on removal of partitions https://github.com/dagster-io/dagster/issues/14026
-@asset_sensor(default_status=DefaultSensorStatus.RUNNING, asset_key=AssetKey("sources_names_active"), job=summon_asset_job
+@asset_sensor(default_status=DefaultSensorStatus.RUNNING, asset_key=AssetKey(["ingest","sources_names_active"]), job=summon_asset_job
    # , minimum_interval_seconds=600
                )
 def sources_sensor(context,  asset_event: EventLogEntry):
@@ -26,7 +26,7 @@ def sources_sensor(context,  asset_event: EventLogEntry):
     context.log.info(f"asset_key {asset_event.dagster_event.asset_key}")
 # well this is a pain. but it works. Cannot just pass it like you do in ops
     # otherwise it's just an AssetDefinition.
-    sources = context.repository_def.load_asset_value(AssetKey("sources_names_active"))
+    sources = context.repository_def.load_asset_value(AssetKey(["ingest","sources_names_active"]))
     new_sources = [
         source
         for source in sources

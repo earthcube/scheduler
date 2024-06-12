@@ -40,7 +40,7 @@ from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 ######
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/asset-sensors#when-all-partitions-have-new-materializations
 ########
-@asset_sensor(asset_key=AssetKey("release_summarize"),
+@asset_sensor(asset_key=AssetKey(["ingest","release_summarize"]),
        #       default_status=DefaultSensorStatus.RUNNING,
               job=release_asset_job, required_resource_keys={"gleanerio"},
             #  minimum_interval_seconds=3600
@@ -75,7 +75,7 @@ def release_file_sensor(context,config: TenantConfig
     run_requests = [RunRequest(run_key=s3_key, run_config={}) for s3_key in new_s3_keys]
     context.update_cursor(last_key)
     return run_requests
-@asset_sensor(asset_key=AssetKey("release_summarize"),
+@asset_sensor(asset_key=AssetKey(["ingest","release_summarize"]),
               default_status=DefaultSensorStatus.RUNNING,
               job=release_asset_job, required_resource_keys={"gleanerio"},
             #  minimum_interval_seconds=3600

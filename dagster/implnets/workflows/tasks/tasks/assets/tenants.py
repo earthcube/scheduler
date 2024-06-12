@@ -31,7 +31,8 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
               ,"access_key": GLEANER_MINIO_ACCESS_KEY
               ,"secret_key": GLEANER_MINIO_SECRET_KEY
                }
-@asset(required_resource_keys={"triplestore"})
+@asset(group_name="community",key_prefix="task",
+       required_resource_keys={"triplestore"})
 def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
 
@@ -47,7 +48,9 @@ def task_tenant_sources(context) ->Any:
         #         # The `MetadataValue` class has useful static methods to build Metadata
         #     }
         # )
-@asset(name='task_tenant_names',required_resource_keys={"triplestore"})
+@asset(group_name="community",key_prefix="task",
+       #name='task_tenant_names',
+       required_resource_keys={"triplestore"})
 def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
 
     tenants = task_tenant_sources['tenant']
@@ -66,14 +69,14 @@ def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
 
 community_partitions_def = DynamicPartitionsDefinition(name="tenantsPartition")
 tenant_task_job = define_asset_job(
-    "tenant_job", AssetSelection.keys("loadstatsCommunity"), partitions_def=community_partitions_def
+    "tenant_job", AssetSelection.keys(AssetKey(["task","loadstatsCommunity"])), partitions_def=community_partitions_def
 )
 #@sensor(job=tenant_job)
-@asset_sensor(asset_key=AssetKey("task_tenant_names"),
+@asset_sensor(asset_key=AssetKey(["task","task_tenant_names"]),
                default_status=DefaultSensorStatus.RUNNING,
      job=tenant_task_job)
 def community_sensor(context):
-    tenants = context.repository_def.load_asset_value(AssetKey("task_tenant_names"))
+    tenants = context.repository_def.load_asset_value(AssetKey(["task","task_tenant_names"]))
     new_community = [
         community
         for community in tenants
@@ -124,8 +127,9 @@ def getName(name):
 
 #@asset( group_name="load")
 @asset(partitions_def=community_partitions_def,
-     #  deps=[task_tenant_sources],
+      deps=[AssetKey(["task","task_tenant_sources"])],
        group_name="community",
+        key_prefix="task",
        required_resource_keys={"triplestore"} )
 def loadstatsCommunity(context, task_tenant_sources) -> str:
     prefix="history"

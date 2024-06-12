@@ -57,7 +57,7 @@ def _graphSummaryEndpoint(community, graph_resoruce):
     else:
         url = f"{graph_resoruce.GLEANERIO_GRAPH_URL}/namespace/{community}_summary/sparql"
     return url
-@asset(group_name="graph", required_resource_keys={"triplestore"})
+@asset(group_name="graph",key_prefix="task", required_resource_keys={"triplestore"})
 def sos_types(context ):
     s3_resource = context.resources.triplestore.s3
     graph_resource = context.resources.triplestore
@@ -78,7 +78,7 @@ def sos_types(context ):
     bucketname, objectname = s3Minio.putReportFile(s3_resource.GLEANERIO_MINIO_BUCKET,"all","sos_types.csv",report_csv)
     return bucketname, objectname, report_csv
 
-#@asset(group_name="graph", required_resource_keys={"triplestore"})
+#@asset(group_name="graph",key_prefix="task", required_resource_keys={"triplestore"})
 def all_report_stats(context, task_tenant_names):
     s3_resource = context.resources.triplestore.s3
     graph_resource = context.resources.triplestore

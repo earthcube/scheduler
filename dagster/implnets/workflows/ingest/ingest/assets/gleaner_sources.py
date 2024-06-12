@@ -22,7 +22,7 @@ tenant_partitions_def = DynamicPartitionsDefinition(name="tenant_names_parititio
 
 @asset(
     #group_name="configs",
-        name="org_names",required_resource_keys={"gs3"})
+        name="org_names",key_prefix="ingest",required_resource_keys={"gs3"})
 def gleanerio_orgs(context ):
     s3_resource = context.resources.gs3
     source="orgs_list_from_a_s3_bucket"
@@ -41,11 +41,13 @@ def gleanerio_orgs(context ):
     return orgs
 #@asset(group_name="configs",name="tenant_names",required_resource_keys={"gs3"})
 @multi_asset(
-    #group_name="configs",
+
     outs=
              {
-                 "tenant_all": AssetOut(),
-                 "tenant_names": AssetOut(),
+                 "tenant_all": AssetOut(key_prefix="ingest",
+   group_name="configs",),
+                 "tenant_names": AssetOut(key_prefix="ingest",
+   group_name="configs",),
              }
     ,required_resource_keys={"gs3"}
              )
@@ -78,11 +80,13 @@ def gleanerio_tenants(context):
     # this is used for partitioning, so let it pickle (aka be a python list)
     return tenant_obj, tenants
 @multi_asset(
-    #group_name="configs",
+
              outs=
              {
-                 "sources_all": AssetOut(),
-                 "sources_names_active": AssetOut(),
+                 "sources_all": AssetOut(key_prefix="ingest",
+   group_name="configs",),
+                 "sources_names_active": AssetOut(key_prefix="ingest",
+   group_name="configs",),
              }
     ,required_resource_keys={"gs3"})
 def gleanerio_sources(context ):

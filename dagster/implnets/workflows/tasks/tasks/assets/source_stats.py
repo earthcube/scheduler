@@ -34,7 +34,7 @@ def _pythonMinioUrl(url):
 
 def getName(name):
     return name.replace("orgs/","").replace(".nq","")
-@asset(group_name="load")
+@asset(group_name="load",key_prefix="task",)
 def source_list() -> List[Any]:
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     orglist = s3Minio.listPath(GLEANER_MINIO_BUCKET, ORG_PATH,recursive=False)
@@ -51,8 +51,8 @@ def source_list() -> List[Any]:
 
 # set a prefix so we can have some named stats file
 
-#@asset( group_name="load")
-@asset(group_name="load")
+#@asset( group_name="load",key_prefix="task",)
+@asset(group_name="load",key_prefix="task",)
 def loadstatsHistory(context,source_list) -> str:
     prefix="history"
     logger = get_dagster_logger()
