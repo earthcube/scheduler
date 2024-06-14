@@ -501,6 +501,16 @@ Run from directory where workspace.yaml is.
 dagit --host 192.168.202.159
 ```
 
+### Handle Multiple Organizations
+
+thoughts... 
+
+* Each organization can be in a container with its own code workflow. 
+   *  in the workflows directory: `dagster project projectname`
+   * it think
+* If we can standardize the loading and transforming workflows as much as possible, then the graph loading workflows 
+ should be more customizable
+* to add a container, you need to edit the workflows.yaml in an organizations configuration
 
 ## Cron Notes
 
