@@ -27,6 +27,9 @@ def _awsEndpointAddress(url, port=None, use_ssl=True):
         return  f"{protocol}://{url}"
 
 all_assets = load_assets_from_modules([assets])
+# as noted: https://docs.dagster.io/concepts/assets/software-defined-assets#from-assets-in-a-sub-module
+# tried to use load_assets_from_modules([assets] , key_prefix=["tasks"])
+# this meant that the prefix had to included in the code... so, just add it individually
 weekly_data_schedule=[ weekly_sch.loadstats_schedule, weekly_sch.all_graph_stats_schedule]
 s3 = S3Resource(
     endpoint_url=_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(),
