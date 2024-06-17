@@ -70,7 +70,8 @@ def sources_schedule(context):
     return [
         RunRequest(
             partition_key=partition_key,
-            run_key=f"{context.scheduled_execution_time}_{partition_key}"
+         #   run_key=f"{context.scheduled_execution_time}_{partition_key}"
+          run_key=f"summon_asset_{partition_key}"
         )
         for partition_key in partition_keys
     ]
