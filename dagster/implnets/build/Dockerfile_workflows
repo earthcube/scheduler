@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # this file no longer needs to generate code. It will just include the base
 # it will run ingest by default
