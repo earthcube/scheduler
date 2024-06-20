@@ -31,3 +31,11 @@ will run just the task, and in editable form, i think.
 ## Some articles to review
 
 [Medium on Dagster with configurable API and asset examples](https://medium.com/@alexandreguitton_12701/notes-1-2-dagster-data-orchestrator-hands-on-2af6772b13d9)
+
+## Troubleshooting.
+Keep the python versions in the DOCKER definitions in sync. GRPCC can be finicky
+
+aka:
+
+`FROM python:3.11-slim`
+

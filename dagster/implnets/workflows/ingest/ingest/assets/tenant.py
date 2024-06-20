@@ -91,7 +91,7 @@ def upload_summary(context):
     #context.log.info(config.source_name)
     source_name = context.asset_partition_key_for_output()
     context.log.info(f"tennant_name {source_name} ")
-    tenants_all = context.repository_def.load_asset_value(AssetKey("tenant_all"))['tenant']
+    tenants_all = context.repository_def.load_asset_value(AssetKey(["ingest","tenant_all"]))['tenant']
 
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
