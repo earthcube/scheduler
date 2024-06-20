@@ -26,7 +26,7 @@
       </ENTRIES>
     </EXTENSION>
     <option name="SCRIPT_NAME" value="dagster" />
-    <option name="PARAMETERS" value="asset materialize  -m tasks --select sos_types" />
+    <option name="PARAMETERS" value="asset materialize  -m tasks --select tasks/sos_types" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />

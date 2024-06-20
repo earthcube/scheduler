@@ -99,7 +99,11 @@ def _awsEndpointAddress(url, port=None, use_ssl=True):
         return  f"{protocol}://{url}"
 
 s3=S3Resource(
-    endpoint_url =_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(), port=EnvVar('GLEANERIO_MINIO_PORT').get_value()),
+    endpoint_url =_awsEndpointAddress(
+        EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(),
+        port=EnvVar('GLEANERIO_MINIO_PORT').get_value(),
+        use_ssl=EnvVar('GLEANERIO_MINIO_USE_SSL').get_value()
+        ),
     aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
 )
