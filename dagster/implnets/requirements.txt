@@ -16,7 +16,7 @@ notebook
 pydash
 pyyaml
 orjson
-nympy~=1.26.4
+numpy~=1.26.4
 earthcube-utilities>=0.1.25
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@6a53759#subdirectory=earthcube_utilities
 # if we want to use an non-released branch 2c1dcab is the commit
