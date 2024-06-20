@@ -1,17 +1,17 @@
 
-dagit>=1.7.7
-dagster-postgres>=0.23.6
-dagster>=1.7.7
-dagster-graphql>=1.7.7
-dagster-webserver>=1.7.7
-dagster-docker>=0.23.7
-dagster-aws>=0.23.7
-dagster_slack>=0.23.7
+dagit>=1.7.10
+dagster-postgres>=0.23.10
+dagster>=1.7.10
+dagster-graphql>=1.7.10
+dagster-webserver>=1.7.10
+dagster-docker>=0.23.10
+dagster-aws>=0.23.10
+dagster_slack>=0.23.10
 ipython-genutils==0.2.0
 advertools==0.13.2
 minio==7.1.13
 docker>=6.1.0
-dagstermill>=0.23.7
+dagstermill>=0.23.10
 notebook
 pydash
 pyyaml
