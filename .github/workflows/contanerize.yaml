@@ -10,6 +10,8 @@ on:
       - main
       - dev
       - dev_101_ingest_sources_wf
+      - dev_eco
+      - v0_generated_code
     tags:
       - "v*.*.*"
 
