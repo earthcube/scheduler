@@ -52,7 +52,7 @@ def release_file_sensor(context,config: TenantConfig
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
     since_key = context.cursor or None
-    get_dagster_logger().info(f"sinceKey: {since_key}")
+    context.log.info(f"sinceKey: {since_key}")
     #new_s3_keys = get_s3_keys(gleaner_s3.GLEANERIO_MINIO_BUCKET, prefix=SUMMARY_PATH, since_key=since_key)
     if since_key is None:
         new_s3_keys = s3_resource.get_client().list_objects_v2(
@@ -92,27 +92,11 @@ def release_file_sensor_v2(context,asset_event: EventLogEntry
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
-    # since_key = context.cursor or None
-    # get_dagster_logger().info(f"sinceKey: {since_key}")
-    # #new_s3_keys = get_s3_keys(gleaner_s3.GLEANERIO_MINIO_BUCKET, prefix=SUMMARY_PATH, since_key=since_key)
-    # if since_key is None:
-    #     new_s3_keys = s3_resource.get_client().list_objects_v2(
-    #         Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET,
-    #         Prefix=SUMMARY_PATH
-    #     )
-    # else:
-    #     new_s3_keys = s3_resource.get_client().list_objects_v2(
-    #     Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET,
-    #     Prefix=SUMMARY_PATH,
-    #     StartAfter=since_key
-    #     )
-    # new_s3_keys = list(new_s3_keys)
-    # get_dagster_logger().info(f"keys: {new_s3_keys}")
-    # if not new_s3_keys:
-    #     return SkipReason(f"No new s3 files found for bucket {gleaner_s3.GLEANERIO_MINIO_BUCKET}.")
-    # get_dagster_logger().info(f"new key len: {len(new_s3_keys)}")
-    # last_key = new_s3_keys[-1]
+    since_key = context.cursor or None
+    context.log.info(f"sinceKey: {since_key}")
 
-    run_requests = [RunRequest(partition_key=source_name,run_key=f"{source_name}_upload_release", run_config={})]
-    #context.update_cursor(last_key)
+    run_requests = [RunRequest(partition_key=source_name,run_key=f"{source_name}_upload_release_{since_key}", run_config={})]
+    #context.update_cursor(since_key+1)
+    context.update_cursor(since_key)
+    context.log.info(f"sinceKey: {context.cursor}")
     return run_requests
