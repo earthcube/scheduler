@@ -7,6 +7,13 @@ run_coordinator:
   module: dagster.core.run_coordinator
   class: QueuedRunCoordinator
   config:
-    max_concurrent_runs: 2
+    max_concurrent_runs: 6
+    # getting tags by copying from UI
+    tag_concurrency_limits:
+      - key: "dagster/schedule_name:sources_schedule"
+        limit: 2
+      - key: "dagster/sensor_name:release_file_sensor_v2"
+        limit: 2
+
 telemetry:
   enabled: false
