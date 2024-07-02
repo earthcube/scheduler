@@ -10,10 +10,10 @@ run_coordinator:
     max_concurrent_runs: 6
     # getting tags by copying from UI
     tag_concurrency_limits:
-      - key: "dagster/schedule_name:sources_schedule"
+      - key: "ingest"
         limit: 2
-      - key: "dagster/sensor_name:release_file_sensor_v2"
-        limit: 2
+      - key: "graph"
+        limit: 1
 
 telemetry:
   enabled: false
