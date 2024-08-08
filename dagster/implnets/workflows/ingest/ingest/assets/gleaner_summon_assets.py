@@ -6,12 +6,12 @@ import pandas as pd
 import csv
 
 from dagster import (
-    asset, Config, Output,AssetKey,
+    asset,op, Config, Output,AssetKey,
     define_asset_job, AssetSelection,
 get_dagster_logger,BackfillPolicy
 )
 from ec.datastore import s3 as utils_s3
-
+from ec.sitemap import Sitemap
 from .gleaner_sources import sources_partitions_def
 from ..utils import PythonMinioAddress
 
@@ -34,9 +34,22 @@ def getSource(context, source_name):
     source = list(filter(lambda t: t["name"]==source_name, sources))
     return source[0]
 
+@asset(
+    group_name="load",
+    key_prefix="ingest",
+      deps=[AssetKey(["ingest","sources_names_active"]) ],
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+ #   , backfill_policy=BackfillPolicy.single_run()
+       )
+def validate_sitemap_url(context):
+    source_name = context.asset_partition_key_for_output()
+    source = getSource(context, source_name)
+    sm = Sitemap(source['url'], no_progress_bar=True)
+    return sm.validUrl()
+
 @asset(group_name="load",
 key_prefix="ingest",
-      deps=[AssetKey(["ingest","sources_names_active"]) ],
+      deps=[ validate_sitemap_url  ],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
  #   , backfill_policy=BackfillPolicy.single_run()
        )
