@@ -17,6 +17,7 @@ summon_asset_job = define_asset_job(
                                     ),
     partitions_def=sources_partitions_def,
    #tags={"dagster/concurrency_key": 'ingest'},
+tags={"ingest": 'docker'},
 )
 # so can use command line to limit: https://docs.dagster.io/guides/limiting-concurrency-in-data-pipelines#limiting-opasset-concurrency-across-runs
 # value is ingest
