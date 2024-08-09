@@ -4,6 +4,7 @@ from typing import Any
 import json
 import pandas as pd
 import csv
+from urllib.error import HTTPError
 
 from dagster import (
     asset,op, Config, Output,AssetKey,
@@ -45,7 +46,11 @@ def validate_sitemap_url(context):
     source_name = context.asset_partition_key_for_output()
     source = getSource(context, source_name)
     sm = Sitemap(source['url'], no_progress_bar=True)
-    return sm.validUrl()
+    if sm.validUrl():
+        return source['url']
+    else:
+        context.log.error(f"source: {source['name']} bad url: {source['url']}")
+        raise HTTPError(f"Bad URL ource: {source['name']} bad url: {source['url']}" )
 
 @asset(group_name="load",
 key_prefix="ingest",
