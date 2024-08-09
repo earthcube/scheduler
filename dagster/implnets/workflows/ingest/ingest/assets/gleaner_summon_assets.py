@@ -54,7 +54,7 @@ def validate_sitemap_url(context):
                         code=404,
                         hdrs=None,
                         fp=None,
-                        mesg=f"Bad URL ource: {source['name']} bad url: {source['url']}" )
+                        msg=f"Bad URL ource: {source['name']} bad url: {source['url']}" )
 
 @asset(group_name="load",
 key_prefix="ingest",
