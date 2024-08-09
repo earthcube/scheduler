@@ -53,6 +53,7 @@ def validate_sitemap_url(context):
         raise HTTPError(url=source['url'],
                         code=404,
                         headers=None,
+                        fp=None,
                         mesg=f"Bad URL ource: {source['name']} bad url: {source['url']}" )
 
 @asset(group_name="load",
