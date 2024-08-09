@@ -180,7 +180,22 @@ services:
             - dagster-postgres:/var/lib/postgresql/data
         networks:
            - dagster_host
+   # this will restart headless daily at 11 pm
+    headless-restarter:
+      image: docker:cli
+      restart: unless-stopped
+      volumes: [ "/var/run/docker.sock:/var/run/docker.sock" ]
+      entrypoint: [ "/bin/sh","-c" ]
+      command:
+        - |
+          while true; do
+            if [ "$$(date +'%H:%M')" = '23:00' ]; then
+              docker restart headless
+            fi
+            sleep 60
+          done
     headless:
+      container_name: headless
       # image: chromedp/headless-shell:stable
       # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
       image: chromedp/headless-shell:105.0.5195.127
