@@ -52,7 +52,7 @@ def validate_sitemap_url(context):
         context.log.error(f"source: {source['name']} bad url: {source['url']}")
         raise HTTPError(url=source['url'],
                         code=404,
-                        headers=None,
+                        hdrs=None,
                         fp=None,
                         mesg=f"Bad URL ource: {source['name']} bad url: {source['url']}" )
 
