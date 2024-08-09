@@ -50,7 +50,10 @@ def validate_sitemap_url(context):
         return source['url']
     else:
         context.log.error(f"source: {source['name']} bad url: {source['url']}")
-        raise HTTPError(f"Bad URL ource: {source['name']} bad url: {source['url']}" )
+        raise HTTPError(url=source['url'],
+                        code=404,
+                        headers=None,
+                        mesg=f"Bad URL ource: {source['name']} bad url: {source['url']}" )
 
 @asset(group_name="load",
 key_prefix="ingest",
