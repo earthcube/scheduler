@@ -20,7 +20,7 @@ from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpo
 from ec.reporting.report import missingReport, generateIdentifierRepo, generateGraphReportsRelease
 from ec.graph.release_graph import ReleaseGraph
 from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
-
+from ec.graph.manageGraph import ManageBlazegraph
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
 
@@ -199,19 +199,37 @@ def release_summarize(context) :
                                       )
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
 
-   # endpoint = triplestore.GraphEndpoint# getting data, not uploading data
+    endpoint = triplestore.GraphEndpoint(gleaner_resource.GLEANERIO_GRAPH_NAMESPACE)
+    # getting data, not uploading data
     #summary_namespace = _graphSummaryEndpoint()
 
     try:
+        temp_namespace = f"{source}_temp"
+        bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
+        try:
+            msg = bg.createNamespace(quads=True)
+            context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
-        # summarydf = get_summary4repoSubset(endpoint, source_name)
-        rg = ReleaseGraph()
-        rg.read_release(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
-                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
-                        bucket,
-                        source_name,
-                        options=gleaner_s3.MinioOptions())
-        summarydf = rg.summarize()
+        except Exception as ex:
+            context.log.error(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+
+        summarydf = get_summary4repoSubset(endpoint, source_name)
+
+        try:
+            msg = bg.deleteNamespace()
+            context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        except Exception as ex:
+            context.log.error(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        # rg = ReleaseGraph()
+        # rg.read_release(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+        #                                                   gleaner_s3.GLEANERIO_MINIO_PORT),
+        #                 bucket,
+        #                 source_name,
+        #                 options=gleaner_s3.MinioOptions())
+        # summarydf = rg.summarize()
         nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
         summaryttl = g.serialize(format='longturtle')
         # Lets always write out file to s3, and insert as a separate process
