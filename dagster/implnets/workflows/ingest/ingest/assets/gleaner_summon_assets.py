@@ -204,7 +204,7 @@ def release_summarize(context) :
     #summary_namespace = _graphSummaryEndpoint()
 
     try:
-        temp_namespace = f"{source}_temp"
+        temp_namespace = f"{source_name}_temp"
         bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
         try:
             msg = bg.createNamespace(quads=True)
