@@ -21,7 +21,7 @@ orjson
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@5d2158f#subdirectory=earthcube_utilities
 
 # if we want to use an non-released branch 2c1dcab is the commit
-earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@fc42554#subdirectory=earthcube_utilities
+earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@a3acbe4#subdirectory=earthcube_utilities
 
 
 
