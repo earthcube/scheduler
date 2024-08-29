@@ -80,7 +80,7 @@ services:
         build:
           #context: .
           context: ..
-          dockerfile: build/Dockerfile_code
+          dockerfile: build/Dockerfile_workflows
           args:
             implnet: ${PROJECT:-eco}
         # you should be able to change the source locally, without a full rebuild.

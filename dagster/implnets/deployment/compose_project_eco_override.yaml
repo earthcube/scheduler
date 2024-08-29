@@ -85,7 +85,7 @@ services:
     dagster-code-eco-ecrr:
         # you should be able to change the source locally, without a full rebuild.
        #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_DAGSTER_GLEANERIO_WORKFLOWS_TAG:-latest}
 
         environment: *env
         command:
