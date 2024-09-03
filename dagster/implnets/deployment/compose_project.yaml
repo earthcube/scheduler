@@ -125,6 +125,7 @@ services:
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
             - SLACK_TOKEN=${SLACK_TOKEN}
+            - IPLMNETS
 
         ports:
             - 3000:3000
