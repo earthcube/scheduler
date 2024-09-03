@@ -2,6 +2,7 @@ version: "3.9"
 
 # networks: production uses traefik_proxy, buth
 #  this is local testing
+# this includes the ECRR workflows
 
 
 # DO NOT START IN PYCHARM (unless you set the env variables in your runconfig

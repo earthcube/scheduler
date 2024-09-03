@@ -1,7 +1,5 @@
 version: "3.9"
 
-
-
 # DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
 # USE:
 # ./docker_eco_prod_start.h
@@ -44,8 +42,6 @@ services:
             - GLEANERIO_SOURCES_FILENAME=${GLEANERIO_SOURCES_FILENAME:-gleanerconfig.yaml}
             - GLEANERIO_TENANT_FILENAME=${GLEANERIO_TENANT_FILENAME:-tenant.yaml}
             - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}
-            - ECRR_MINIO_BUCKET=${ECRR_MINIO_BUCKET}
-            - ECRR_GRAPH_NAMESPACE=${ECRR_GRAPH_NAMESPACE}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
             - SLACK_TOKEN=${SLACK_TOKEN}
@@ -60,7 +56,7 @@ services:
 #            - "-p"
 #            - "3000"
         depends_on: &deps
-            -   dagster-code-eco-ingest
+            -   dagster-code-iow-ingest
             - dagster-code-tasks
 
     dagster-daemon:
@@ -73,14 +69,13 @@ services:
 #        - "workspace.yaml"
         depends_on:
             - dagster-postgres
-            -   dagster-code-eco-ingest
+            -   dagster-code-iow-ingest
             - dagster-code-tasks
-            - dagster-code-eco-ecrr
         networks:
             - traefik_proxy
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
-    dagster-code-eco-ingest:
+    dagster-code-iow-ingest:
 
         #        build:
         #          #context: .
@@ -112,28 +107,5 @@ services:
             - dagster-postgres
         networks:
             - dagster_host
-    dagster-code-eco-ecrr:
-        # you should be able to change the source locally, without a full rebuild.
-       #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
 
-        environment: *env
-        command:
-        - "dagster"
-        - "api"
-        - "grpc"
-        - "-h"
-        - "0.0.0.0"
-        - "-p"
-        - "4000"
-        - "-m"
-        - "workflows.ecrr.ecrr"
-        - "-d"
-        - "/usr/src/app/"
-
-        volumes: *codevol
-        depends_on:
-            - dagster-postgres
-        networks:
-            - dagster_host
 

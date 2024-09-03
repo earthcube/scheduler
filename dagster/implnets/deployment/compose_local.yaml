@@ -2,6 +2,9 @@ version: "3.9"
 
 # networks: production uses traefik_proxy, buth
 #  this is local testing
+# this includes the ingest workflows
+# in production, the workflows will be seperated into the community override file
+
 networks:
   traefik_proxy:
   #  driver: bridge
