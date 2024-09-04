@@ -220,7 +220,7 @@ def release_summarize(context) :
             context.log.error(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
             raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
         try:
-            filename = f"{PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,gleaner_s3.GLEANERIO_MINIO_PORT)}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
+            filename = f"https://{PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,gleaner_s3.GLEANERIO_MINIO_PORT)}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
             #file = gleaner_resource.gs3.getFile(path=filename)
             msg = bg.upload_nq_file(fn=filename)
             context.log.info(f"temp graph {filename}  loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
