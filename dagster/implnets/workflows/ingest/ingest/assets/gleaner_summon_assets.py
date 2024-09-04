@@ -222,7 +222,7 @@ def release_summarize(context) :
         try:
             filename = f"{RELEASE_PATH}/{source}_release.nq"
             file = gleaner_resource.gs3.getFile(path=filename)
-            msg = bg.upload_nq_file(file)
+            msg = bg.upload_nq_file(fn=file)
             context.log.info(f"temp graph loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         except Exception as ex:
