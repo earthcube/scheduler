@@ -88,11 +88,17 @@ def release_nabu_run(context) -> Output[Any]:
     gleaner_resource = context.resources.gleanerio
     source= context.asset_partition_key_for_output()
     nabu=gleaner_resource.execute(context, "release", source )
+    # get the file, count the lines
+    filename= f"{RELEASE_PATH}/{source}_release.nq"
+    context.log.info(f"release_nabu_ filename: {filename}")
+    file = gleaner_resource.gs3.getFile(filename).read().decode('utf-8')
+    line_count = len(file.split('\n'))
     metadata={
                 "source": source,  # Metadata can be any key-value pair
                 "run": "release",
                  "bucket_name": gleaner_resource.gs3.GLEANERIO_MINIO_BUCKET,  # Metadata can be any key-value pair
-                 "object_name": f"{RELEASE_PATH}{source}"
+                 "object_name": f"{RELEASE_PATH}{source}",
+                 "line_count": line_count,
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
 
@@ -213,6 +219,15 @@ def release_summarize(context) :
         except Exception as ex:
             context.log.error(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
             raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        try:
+            filename = f"{RELEASE_PATH}/{source}_release.nq"
+            file = gleaner_resource.gs3.getFile(path=filename)
+            msg = bg.upload_nq_file(file)
+            context.log.info(f"temp graph loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        except Exception as ex:
+            context.log.error(f"temp graph load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
 
         summarydf = get_summary4repoSubset(endpoint, source_name)
 
@@ -232,6 +247,7 @@ def release_summarize(context) :
         # summarydf = rg.summarize()
         nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
         summaryttl = g.serialize(format='longturtle')
+        line_count = len(summaryttl.split('\n'))
         # Lets always write out file to s3, and insert as a separate process
         # we might be able to make this an asset..., but would need to be acessible by http
         # if not stored in s3
@@ -247,6 +263,7 @@ def release_summarize(context) :
                 "run": "release_summarize",
                 "bucket_name": bucket_name,  # Metadata can be any key-value pair
                 "object_name": object_name,
+                "line_count": line_count,
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
         )
