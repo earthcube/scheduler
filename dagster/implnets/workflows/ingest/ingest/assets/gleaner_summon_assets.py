@@ -20,7 +20,7 @@ from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpo
 from ec.reporting.report import missingReport, generateIdentifierRepo, generateGraphReportsRelease
 from ec.graph.release_graph import ReleaseGraph
 from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
-
+from ec.graph.manageGraph import ManageBlazegraph
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
 
@@ -88,11 +88,17 @@ def release_nabu_run(context) -> Output[Any]:
     gleaner_resource = context.resources.gleanerio
     source= context.asset_partition_key_for_output()
     nabu=gleaner_resource.execute(context, "release", source )
+    # get the file, count the lines
+    filename= f"{RELEASE_PATH}/{source}_release.nq"
+    context.log.info(f"release_nabu_ filename: {filename}")
+    file = gleaner_resource.gs3.getFile(filename).read().decode('utf-8')
+    line_count = len(file.split('\n'))
     metadata={
                 "source": source,  # Metadata can be any key-value pair
                 "run": "release",
                  "bucket_name": gleaner_resource.gs3.GLEANERIO_MINIO_BUCKET,  # Metadata can be any key-value pair
-                 "object_name": f"{RELEASE_PATH}{source}"
+                 "object_name": f"{RELEASE_PATH}{source}",
+                 "line_count": line_count,
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
 
@@ -199,21 +205,49 @@ def release_summarize(context) :
                                       )
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
 
-   # endpoint = triplestore.GraphEndpoint# getting data, not uploading data
+    endpoint = triplestore.GraphEndpoint(gleaner_resource.GLEANERIO_GRAPH_NAMESPACE)
+    # getting data, not uploading data
     #summary_namespace = _graphSummaryEndpoint()
 
     try:
+        temp_namespace = f"{source_name}_temp"
+        bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
+        try:
+            msg = bg.createNamespace(quads=True)
+            context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
-        # summarydf = get_summary4repoSubset(endpoint, source_name)
-        rg = ReleaseGraph()
-        rg.read_release(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
-                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
-                        bucket,
-                        source_name,
-                        options=gleaner_s3.MinioOptions())
-        summarydf = rg.summarize()
+        except Exception as ex:
+            context.log.error(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        try:
+            filename = f"https://{PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,gleaner_s3.GLEANERIO_MINIO_PORT)}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
+            endpoint = triplestore.GraphEndpoint(temp_namespace)
+            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+            context.log.info(f"temp graph {filename}  loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        except Exception as ex:
+            context.log.error(f"temp graph {filename} load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph {filename}  load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+
+        summarydf = get_summary4repoSubset(endpoint, source_name)
+
+        try:
+            msg = bg.deleteNamespace()
+            context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        except Exception as ex:
+            context.log.error(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        # rg = ReleaseGraph()
+        # rg.read_release(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+        #                                                   gleaner_s3.GLEANERIO_MINIO_PORT),
+        #                 bucket,
+        #                 source_name,
+        #                 options=gleaner_s3.MinioOptions())
+        # summarydf = rg.summarize()
         nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
         summaryttl = g.serialize(format='longturtle')
+        line_count = len(summaryttl.split('\n'))
         # Lets always write out file to s3, and insert as a separate process
         # we might be able to make this an asset..., but would need to be acessible by http
         # if not stored in s3
@@ -229,6 +263,7 @@ def release_summarize(context) :
                 "run": "release_summarize",
                 "bucket_name": bucket_name,  # Metadata can be any key-value pair
                 "object_name": object_name,
+                "line_count": line_count,
                 # The `MetadataValue` class has useful static methods to build Metadata
             }
         )
