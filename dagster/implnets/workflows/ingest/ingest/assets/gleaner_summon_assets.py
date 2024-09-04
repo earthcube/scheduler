@@ -221,13 +221,13 @@ def release_summarize(context) :
             raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
         try:
             filename = f"{RELEASE_PATH}/{source}_release.nq"
-            file = gleaner_resource.gs3.getFile(path=filename)
-            msg = bg.upload_nq_file(fn=file)
-            context.log.info(f"temp graph loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+            #file = gleaner_resource.gs3.getFile(path=filename)
+            msg = bg.upload_nq_file(fn=filename)
+            context.log.info(f"temp graph {filename}  loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         except Exception as ex:
-            context.log.error(f"temp graph load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
-            raise Exception(f"temp graph load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            context.log.error(f"temp graph {filename} load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph {filename}  load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
 
         summarydf = get_summary4repoSubset(endpoint, source_name)
 
