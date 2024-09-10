@@ -1,5 +1,7 @@
 # Scheduler Developement in Dagster
 
+This is the [v0_generated_code](https://github.com/earthcube/scheduler/tree/v0_generated_code/) branch.
+
  **NOTE: originally, a set of workflows was generated for each source. These were compiled into separate 'project' containers by a github workflo
 This is no longer needed. But these were the original instructions.**
 
