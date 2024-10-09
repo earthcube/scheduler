@@ -26,6 +26,8 @@ GLEANER_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_
 GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANERIO_MINIO_SECRET_KEY')
 GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANERIO_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANERIO_MINIO_BUCKET')
+GLEANERIO_GRAPH_URL = os.environ.get('GLEANERIO_GRAPH_URL')
+GLEANERIO_GRAPH_SUMMARY_NAMESPACE = os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE')
 
 MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
 
@@ -33,17 +35,16 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
               ,"secret_key": GLEANER_MINIO_SECRET_KEY
                }
 
-def _graphSummaryEndpoint(community, graph_resoruce):
+def _graphSummaryEndpoint(community):
     if community == "all":
-        url = f"{graph_resoruce.GLEANERIO_GRAPH_URL}/namespace/{graph_resoruce.GLEANERIO_GRAPH_SUMMARY_NAMESPACE}/sparql"
+        url = f"{GLEANERIO_GRAPH_URL}/namespace/{GLEANERIO_GRAPH_SUMMARY_NAMESPACE}/sparql"
     else:
-        url = f"{graph_resoruce.GLEANERIO_GRAPH_URL}/namespace/{community}_summary/sparql"
+        url = f"{GLEANERIO_GRAPH_URL}/namespace/{community}_summary/sparql"
     return url
 @asset(group_name="community",key_prefix="task",
        required_resource_keys={"triplestore"})
 def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
-
     t=s3_resource.getTennatInfo()
     tenants = t['tenant']
     listTenants = map (lambda a: {a['community']}, tenants)
