@@ -18,6 +18,7 @@ asset_sensor, AssetKey,
 from ec.datastore import s3
 from distutils import util
 from ..resources.gleanerS3 import _pythonMinioAddress
+from ec.reporting.report import generateReportStats
 
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
@@ -31,6 +32,13 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
               ,"access_key": GLEANER_MINIO_ACCESS_KEY
               ,"secret_key": GLEANER_MINIO_SECRET_KEY
                }
+
+def _graphSummaryEndpoint(community, graph_resoruce):
+    if community == "all":
+        url = f"{graph_resoruce.GLEANERIO_GRAPH_URL}/namespace/{graph_resoruce.GLEANERIO_GRAPH_SUMMARY_NAMESPACE}/sparql"
+    else:
+        url = f"{graph_resoruce.GLEANERIO_GRAPH_URL}/namespace/{community}_summary/sparql"
+    return url
 @asset(group_name="community",key_prefix="task",
        required_resource_keys={"triplestore"})
 def task_tenant_sources(context) ->Any:
