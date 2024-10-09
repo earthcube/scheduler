@@ -144,11 +144,12 @@ def loadstatsCommunity(context, task_tenant_sources) -> str:
         ts = task_tenant_sources
         t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
         s = t[0]["sources"]
+
+        report = generateReportStats(s, GLEANER_MINIO_BUCKET, s3Minio, _graphSummaryEndpoint(community_code), community_code)
+        bucket, object = s3Minio.putReportFile(GLEANER_MINIO_BUCKET, f"tenant/{community_code}", f"report_stats.json", report)
+
         for source in s:
-
             dirs = s3Minio.listPath(GLEANER_MINIO_BUCKET,path=f"{REPORT_PATH}{source}/",recursive=False )
-
-
             for d in dirs:
                 latestpath = f"{REPORT_PATH}{source}/latest/"
                 if (d.object_name.casefold() == latestpath.casefold()) or (d.is_dir == False):
