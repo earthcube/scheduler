@@ -223,5 +223,7 @@ def loadstatsCommunity(context, task_tenant_sources) -> str:
                                  _graphSummaryEndpoint(community_code), community_code)
     bucket, object = s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}",
                                            f"report_stats.json", report)
-    
+    context.log.info(
+        f"report_stats.json uploaded using ec.datastore.putReportFile {s3_config.GLEANERIO_MINIO_BUCKET}tenant/{community_code} ")
+
     return df_csv
