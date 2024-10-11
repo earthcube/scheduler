@@ -28,6 +28,7 @@ GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANERIO_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANERIO_MINIO_BUCKET')
 GLEANERIO_GRAPH_URL = os.environ.get('GLEANERIO_GRAPH_URL')
 GLEANERIO_GRAPH_SUMMARY_NAMESPACE = os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE')
+GLEANERIO_CSV_CONFIG_URL = os.environ.get('GLEANERIO_CSV_CONFIG_URL')
 
 MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
 
@@ -154,8 +155,8 @@ def loadstatsCommunity(context, task_tenant_sources) -> str:
         t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
         s = t[0]["sources"]
 
-        report = generateReportStats(s, GLEANER_MINIO_BUCKET, s3Minio, _graphSummaryEndpoint(community_code), community_code)
-        bucket, object = s3Minio.putReportFile(GLEANER_MINIO_BUCKET, f"tenant/{community_code}", f"report_stats.json", report)
+        report = generateReportStats(GLEANERIO_CSV_CONFIG_URL, s3_config.GLEANERIO_MINIO_BUCKET, s3Minio, _graphSummaryEndpoint(community_code), community_code)
+        bucket, object = s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}", f"report_stats.json", report)
 
         for source in s:
             dirs = s3Minio.listPath(GLEANER_MINIO_BUCKET,path=f"{REPORT_PATH}{source}/",recursive=False )
