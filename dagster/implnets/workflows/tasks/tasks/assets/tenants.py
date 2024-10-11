@@ -152,8 +152,13 @@ def loadstatsCommunity(context, task_tenant_sources) -> str:
     stats = []
     try:
         ts = task_tenant_sources
+        context.log.info(f"task_tenant_sources: {task_tenant_sources} ")
         t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
+        context.log.info(f"t {t}  ")
         s = t[0]["sources"]
+        context.log.info(f"s {s}  ")
+
+        context.log.info(f"s3_config.GLEANERIO_MINIO_BUCKET {s3_config.GLEANERIO_MINIO_BUCKET}  {community_code}")
 
         report = generateReportStats(GLEANERIO_CSV_CONFIG_URL, s3_config.GLEANERIO_MINIO_BUCKET, s3Minio, _graphSummaryEndpoint(community_code), community_code)
         bucket, object = s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}", f"report_stats.json", report)
