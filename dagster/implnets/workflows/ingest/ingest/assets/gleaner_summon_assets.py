@@ -251,7 +251,7 @@ def release_summarize(context) :
         # Lets always write out file to s3, and insert as a separate process
         # we might be able to make this an asset..., but would need to be acessible by http
         # if not stored in s3
-        objectname = f"{SUMMARY_PATH}/{source_name}_release.ttl"  # needs to match that is expected by post
+        objectname = f"{SUMMARY_PATH}/{source_name}_release_summary.ttl"  # needs to match that is expected by post
         s3ObjectInfo = S3ObjectInfo()
         s3ObjectInfo.bucket_name = bucket
         s3ObjectInfo.object_name = objectname
