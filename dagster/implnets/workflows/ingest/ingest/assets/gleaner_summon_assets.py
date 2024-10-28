@@ -225,7 +225,7 @@ def release_summarize(context) :
         bucket_name, object_name =s3Minio.putTextFileToStore(summaryttl, s3ObjectInfo)
         context.add_output_metadata(
             metadata={
-                "source": source,  # Metadata can be any key-value pair
+                "source": source_name,  # Metadata can be any key-value pair
                 "run": "release_summarize",
                 "bucket_name": bucket_name,  # Metadata can be any key-value pair
                 "object_name": object_name,
