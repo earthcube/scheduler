@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
        # project: [ "eco" ]
-        project: [ "eco", "iow", "oih" ]
+        #project: [ "eco", "iow", "oih" ]
         platform: ["linux/amd64","linux/arm64"]
         #platform: ["linux/amd64"] #linux/arm64 issues with building
     steps:
@@ -60,41 +60,6 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=sha
-
-#      - name: Set up Python 3.10
-#        uses: actions/setup-python@v4
-#        with:
-#          python-version:  '3.10'
-#      - name: Install dependencies
-#        run: |
-#          python -m pip install --upgrade pip
-#          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-# long version with lint,
-#        run: |
-#          python -m pip install --upgrade pip
-#          pip install flake8 pytest
-#          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-#          pip install build
-#      - name: Lint with flake8
-#        run: |
-#          # stop the build if there are Python syntax errors or undefined names
-#          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-#          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-#          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-#      - name: Build package
-#        run: python -m build
-#      - name: Build tooling
-#        run: |
-#          cd ./tooling/cfgBuilder/${{ matrix.project }}
-#          python cfgBuilder.py -s https://foo.us/sitemap.xml
-#      - name: Generate
-#        working-directory:  dagster/implnets
-#        run: |
-#          python pygen.py -cf ./configs/${{ matrix.project }}/gleanerconfig.yaml -od /temp/generatedDocker/implnet-${{ matrix.project }}/output  -td ./templates/v1   -d 7
-#      - name: check
-#        working-directory:  dagster/implnets
-#        run: |
-#           cat ./generatedCode/implnet-${{ matrix.project }}/output/ops/implnet_ops_amgeo.py
 
       - name: Build and push
         id: build
