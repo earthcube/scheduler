@@ -1,9 +1,9 @@
 version: "3.9"
 
 # networks: production uses traefik_proxy, buth
-#  this is local testing
+#  this is LOCAL or SINGLE Org testing
 # this includes the ingest workflows
-# in production, the workflows will be seperated into the community override file
+# in production, the workflows ARE SEPARATED into the community override file
 
 networks:
   traefik_proxy:
@@ -18,15 +18,12 @@ volumes:
 #      driver: local
 # let yourself use local configuration
 configs:
-#  gleaner:
-#    name: ${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
-#    file: ../configs/${PROJECT:-eco}/gleanerconfig.yaml
-#  nabu:
-#    name: ${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
-#    file: ../configs/${PROJECT:-eco}/nabuconfig.yaml
   workspace:
     name: ${GLEANERIO_WORKSPACE_DOCKER_CONFIG:-workspace}
     file: ../configs/${PROJECT:-eco}/workspace.yaml
+  dagster:
+    name: ${GLEANERIO_DOCKER_DAGSTER_CONFIG:-dagster}
+    file: dagster.yaml
 # DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
 # USE:
 # ./docker_localstart.sh
@@ -50,16 +47,6 @@ services:
             # gid: "103"
             mode:
               0444
-#          - source: gleaner
-#            target: /scheduler/gleanerconfig.yaml
-#            mode:
-#              0444
-#          - source: nabu
-#            target: /scheduler/nabuconfig.yaml
-#            # uid: "103"
-#            # gid: "103"
-#            mode:
-#              044
         volumes: &vol
           - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
  #         - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project/${PROJECT:-eco}
@@ -113,7 +100,6 @@ services:
           - traefik_proxy
         depends_on:
             - dagster-postgres
-#            - dagster-code-project
             - dagster-code-ingest
             - dagster-code-tasks
         labels:
@@ -276,6 +262,7 @@ services:
             - dagster-postgres
         networks:
             - traefik_proxy
+# THIS IS THE ORIGINAL GENERATED CODE CONTAINER. NOT NEEDED UNLESS YOU ARE WORKING ON IT
 #    dagster-code-project:
 #
 #        platform: linux/x86_64

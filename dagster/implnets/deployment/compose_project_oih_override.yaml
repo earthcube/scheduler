@@ -7,7 +7,7 @@ services:
 
     dagster-daemon:
 
-# portainer issue, merging commandsmay need to create a combined customised on
+# portainer issue, merging commands may need to create a combined customised on
 #        command:
 #        - "dagster-daemon"
 #        - "run"
@@ -16,20 +16,12 @@ services:
         # merging rules add this
         depends_on:
             -   dagster-code-oih-ingest
+            - dagster-code-oih-tasks
         networks:
             - traefik_proxy
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
     dagster-code-oih-ingest:
-
-        #        build:
-        #          #context: .
-        #          context: ..
-        #          dockerfile: build/Dockerfile_code
-        #          args:
-        #            implnet: ${PROJECT:-eco}
-        # you should be able to change the source locally, without a full rebuild.
-        #image: dagster-${PROJECT:-eco}:latest
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
 
         environment: &env
@@ -45,7 +37,7 @@ services:
             - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
             - GLEANERIO_GLEANER_IMAGE=${OIH_GLEANER_IMAGE}
             - GLEANERIO_GRAPH_SUMMARIZE=${OIH_GRAPH_SUMMARIZE:-false}
-            - GLEANERIO_GRAPH_SUMMARY_ENDPOINT=${OIH_GRAPH_SUMMARY_ENDPOINT:-${GLEANERIO_GRAPH_URL}}
+            - GLEANERIO_GRAPH_SUMMARY_ENDPOINT=${OIH_GRAPH_SUMMARY_ENDPOINT:-${OIH_GRAPH_URL}}
             - GLEANERIO_GRAPH_SUMMARY_NAMESPACE=${OIH_GRAPH_SUMMARY_NAMESPACE}
             - GLEANERIO_GRAPH_URL=${OIH_GRAPH_URL}
             - GLEANERIO_HEADLESS_ENDPOINT=${GLEANERIO_HEADLESS_ENDPOINT}
@@ -87,4 +79,25 @@ services:
         networks:
             - dagster_host
 
+    dagster-code-oih-tasks:
+        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+        environment: *env
+        command:
+        - "dagster"
+        - "api"
+        - "grpc"
+        - "-h"
+        - "0.0.0.0"
+        - "-p"
+        - "4000"
+        - "-m"
+        - "workflows.tasks.tasks"
+        - "-d"
+        - "/usr/src/app/"
+
+        volumes: *codevol
+        depends_on:
+            - dagster-postgres
+        networks:
+            - dagster_host
 

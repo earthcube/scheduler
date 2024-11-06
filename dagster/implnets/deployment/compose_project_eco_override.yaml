@@ -6,26 +6,6 @@ version: "3.9"
 # USE:
 # ./docker_eco_prod_start.h
 services:
-    dagster-dagit:
-            # GLEANEERIO_  the environment variables for this stack, passed into containers
-            # the variables passed into the containers varies due to inconsistent standards.
-            # this there are prefixed by project aka ECRR_ for customization
-          # DO NOT RENAME THE FIRST PART, aka the container environment variable,
-          #     unless you sure what you are doing
-
-
-
- #        command:
-#            - "dagster-webserver"
-#            - "-w"
-#            - "workspace.yaml"
-#            - "-h"
-#            - "0.0.0.0"
-#            - "-p"
-#            - "3000"
-        depends_on: &deps
-            -   dagster-code-eco-ingest
-
     dagster-daemon:
 # portainer issue, merging commandsmay need to create a combined customised on
 #        command:
@@ -36,22 +16,13 @@ services:
         depends_on:
             -   dagster-code-eco-ingest
             - dagster-code-eco-ecrr
+            - dagster-code-eco-tasks
         networks:
             - traefik_proxy
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
     dagster-code-eco-ingest:
-
-        #        build:
-        #          #context: .
-        #          context: ..
-        #          dockerfile: build/Dockerfile_code
-        #          args:
-        #            implnet: ${PROJECT:-eco}
-        # you should be able to change the source locally, without a full rebuild.
-        #image: dagster-${PROJECT:-eco}:latest
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
-
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
             - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
@@ -63,9 +34,9 @@ services:
             - GLEANERIO_DOCKER_URL=${ECO_DOCKER_URL}
             - GLEANERIO_DOCKER_WORKSPACE_CONFIG=${ECO_DOCKER_WORKSPACE_CONFIG}
             - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
-            - GLEANERIO_GLEANER_IMAGE=${ECO_GLEANER_IMAGE}
+            - GLEANERIO_GLEANER_IMAGE=${GLEANERIO_GLEANER_IMAGE}
             - GLEANERIO_GRAPH_SUMMARIZE=${ECO_GRAPH_SUMMARIZE:-false}
-            - GLEANERIO_GRAPH_SUMMARY_ENDPOINT=${ECO_GRAPH_SUMMARY_ENDPOINT:-${GLEANERIO_GRAPH_URL}}
+            - GLEANERIO_GRAPH_SUMMARY_ENDPOINT=${ECO_GRAPH_SUMMARY_ENDPOINT:-${ECO_GRAPH_URL}}
             - GLEANERIO_GRAPH_SUMMARY_NAMESPACE=${ECO_GRAPH_SUMMARY_NAMESPACE}
             - GLEANERIO_GRAPH_URL=${ECO_GRAPH_URL}
             - GLEANERIO_HEADLESS_ENDPOINT=${GLEANERIO_HEADLESS_ENDPOINT}
@@ -77,15 +48,15 @@ services:
             - GLEANERIO_MINIO_SECRET_KEY=${ECO_MINIO_SECRET_KEY}
             - GLEANERIO_MINIO_USE_SSL=${ECO_MINIO_USE_SSL}
             - GLEANERIO_NABU_CONFIG_PATH=${GLEANERIO_NABU_CONFIG_PATH:-/configs/gleaner/nabuconfig.yaml}
-            - GLEANERIO_NABU_IMAGE=${ECO_NABU_IMAGE}
+            - GLEANERIO_NABU_IMAGE=${GLEANERIO_NABU_IMAGE}
             - GLEANERIO_PORTAINER_APIKEY=${ECO_PORTAINER_APIKEY}
             - GLEANERIO_DEFAULT_SCHEDULE=${ECO_DEFAULT_SCHEDULE:-@weekly}
             - GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE=${ECO_DEFAULT_SCHEDULE_TIMEZONE:-America/Los_Angeles}
             - GLEANERIO_SOURCES_FILENAME=${ECO_SOURCES_FILENAME:-gleanerconfig.yaml}
             - GLEANERIO_TENANT_FILENAME=${ECO_TENANT_FILENAME:-tenant.yaml}
             - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}
-            - ECRR_MINIO_BUCKET=${ECRR_MINIO_BUCKET}
-            - ECRR_GRAPH_NAMESPACE=${ECRR_GRAPH_NAMESPACE}
+            - ECRR_MINIO_BUCKET=${ECO_ECRR_MINIO_BUCKET}
+            - ECRR_GRAPH_NAMESPACE=${ECO_ECRR_GRAPH_NAMESPACE}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${ECO_SLACK_CHANNEL:-"#twitterfeed"}
             - SLACK_TOKEN=${ECO_SLACK_TOKEN}
@@ -109,10 +80,7 @@ services:
         networks:
             - dagster_host
     dagster-code-eco-ecrr:
-        # you should be able to change the source locally, without a full rebuild.
-       #image: dagster-${PROJECT:-eco}:latest
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
-
         environment: *env
         command:
         - "dagster"
@@ -133,3 +101,25 @@ services:
         networks:
             - dagster_host
 
+    dagster-code-eco-tasks:
+        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+
+        environment: *env
+        command:
+        - "dagster"
+        - "api"
+        - "grpc"
+        - "-h"
+        - "0.0.0.0"
+        - "-p"
+        - "4000"
+        - "-m"
+        - "workflows.tasks.tasks"
+        - "-d"
+        - "/usr/src/app/"
+
+        volumes: *codevol
+        depends_on:
+            - dagster-postgres
+        networks:
+            - dagster_host

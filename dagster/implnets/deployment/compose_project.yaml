@@ -8,7 +8,6 @@ version: "3.9"
 #            - "traefik.docker.network=traefik_proxy"
 # is even needed if the network is defined.
 
-# secrets not working... these become files, so not really working
 networks:
   traefik_proxy:
     external: true
@@ -29,23 +28,14 @@ volumes:
     driver: local
 # external so it could be shared accross docker swarms
 configs:
-#  gleaner:
-#    name: ${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
-#    external: true
-#  nabu:
-#    name: ${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
-#    external: true
+
   workspace:
     name: ${GLEANERIO_DOCKER_WORKSPACE_CONFIG:-workspace}
     external: true
   dagster:
     name: ${GLEANERIO_DOCKER_DAGSTER_CONFIG:-dagster}
     external: true
-secrets:
-  MINIO_ROOT_ACCESS_KEY:
-    external: true
-  MINIO_ROOT_SECRET_KEY:
-    external: true
+
 services:
     dagster-dagit:
         image: docker.io/nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
@@ -70,19 +60,7 @@ services:
             # gid: "103"
             mode:
               0444
-#          - source: gleaner
-#            target: /scheduler/gleanerconfig.yaml
-#            mode:
-#                044
-#          - source: nabu
-#            target: /scheduler/nabuconfig.yaml
-#            # uid: "103"
-#            # gid: "103"
-#            mode:
-#              044
-        secrets:
-          - MINIO_ROOT_ACCESS_KEY
-          - MINIO_ROOT_SECRET_KEY
+
             # GLEANEERIO_  the environment variables for this stack, passed into containers
             # the variables passed into the containers varies due to inconsistent standards.
             # this there are prefixed by project aka ECRR_ for customization
@@ -91,22 +69,12 @@ services:
         environment: &env
       # sort these in BBedit to make finding them easier
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
-            - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
             - GLEANERIO_DAGSTER_CONFIG_PATH=${GLEANERIO_DAGSTER_CONFIG_PATH:-scheduler/logs/}
             - GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=${GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT:-300}
-            - GLEANERIO_DOCKER_GLEANER_CONFIG=${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
             - GLEANERIO_DOCKER_HEADLESS_NETWORK=${GLEANERIO_DOCKER_HEADLESS_NETWORK}
-            - GLEANERIO_DOCKER_NABU_CONFIG=${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
             - GLEANERIO_DOCKER_URL=${GLEANERIO_DOCKER_URL}
             - GLEANERIO_DOCKER_WORKSPACE_CONFIG=${GLEANERIO_DOCKER_WORKSPACE_CONFIG}
-            - GLEANERIO_GLEANER_CONFIG_PATH=${GLEANERIO_GLEANER_CONFIG_PATH:-/configs/gleaner/gleanerconfig.yaml}
-            - GLEANERIO_GLEANER_IMAGE=${GLEANERIO_GLEANER_IMAGE}
-            - GLEANERIO_GRAPH_NAMESPACE=${GLEANERIO_GRAPH_NAMESPACE}
-            - GLEANERIO_GRAPH_SUMMARIZE=${GLEANERIO_GRAPH_SUMMARIZE:-false}
-            - GLEANERIO_GRAPH_SUMMARY_ENDPOINT=${GLEANERIO_GRAPH_SUMMARY_ENDPOINT:-${GLEANERIO_GRAPH_URL}}
-            - GLEANERIO_GRAPH_SUMMARY_NAMESPACE=${GLEANERIO_GRAPH_SUMMARY_NAMESPACE}
-            - GLEANERIO_GRAPH_URL=${GLEANERIO_GRAPH_URL}
-            - GLEANERIO_HEADLESS_ENDPOINT=${GLEANERIO_HEADLESS_ENDPOINT}
+            - GLEANERIO_HEADLESS_ENDPOINT=${GLEANERIO_HEADLESS_ENDPOINT:-http://headless:9222}
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX:-scheduler/logs/}
             - GLEANERIO_MINIO_ACCESS_KEY=${GLEANERIO_MINIO_ACCESS_KEY}
             - GLEANERIO_MINIO_ADDRESS=${GLEANERIO_MINIO_ADDRESS}
@@ -119,12 +87,8 @@ services:
             - GLEANERIO_PORTAINER_APIKEY=${GLEANERIO_PORTAINER_APIKEY}
             - GLEANERIO_DEFAULT_SCHEDULE=${GLEANERIO_DEFAULT_SCHEDULE:-@weekly}
             - GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE=${GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE:-America/Los_Angeles}
-            - GLEANERIO_SOURCES_FILENAME=${GLEANERIO_SOURCES_FILENAME:-gleanerconfig.yaml}
-            - GLEANERIO_TENANT_FILENAME=${GLEANERIO_TENANT_FILENAME:-tenant.yaml}
-            - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}
+
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-            - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
-            - SLACK_TOKEN=${SLACK_TOKEN}
 
         ports:
             - 3000:3000
@@ -156,9 +120,6 @@ services:
         image: docker.io/nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
         configs: *configs
 
-        secrets:
-          - MINIO_ROOT_ACCESS_KEY
-          - MINIO_ROOT_SECRET_KEY
         environment: *env
 
         command:
@@ -223,60 +184,4 @@ services:
         - dagster_host
         - headless
         # in code, use names defined in network above
-#    dagster-code-ingest:
-#
-##        build:
-##          #context: .
-##          context: ..
-##          dockerfile: build/Dockerfile_code
-##          args:
-##            implnet: ${PROJECT:-eco}
-#        # you should be able to change the source locally, without a full rebuild.
-#       #image: dagster-${PROJECT:-eco}:latest
-#        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
-#
-#        environment: *env
-#        command:
-#        - "dagster"
-#        - "api"
-#        - "grpc"
-#        - "-h"
-#        - "0.0.0.0"
-#        - "-p"
-#        - "4000"
-#        - "-m"
-#        - "workflows.ingest.ingest"
-#        - "-d"
-#        - "/usr/src/app/"
-#
-#        volumes: &codevol
-#            - dagster-storage:/usr/src/app/storage
-#        depends_on:
-#            - dagster-postgres
-#        networks:
-#            - dagster_host
-    dagster-code-tasks:
-        # you should be able to change the source locally, without a full rebuild.
-       #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
 
-        environment: *env
-        command:
-        - "dagster"
-        - "api"
-        - "grpc"
-        - "-h"
-        - "0.0.0.0"
-        - "-p"
-        - "4000"
-        - "-m"
-        - "workflows.tasks.tasks"
-        - "-d"
-        - "/usr/src/app/"
-
-        volumes: &codevol
-          - dagster-storage:/usr/src/app/storage
-        depends_on:
-            - dagster-postgres
-        networks:
-            - dagster_host
