@@ -20,7 +20,7 @@ volumes:
 configs:
   workspace:
     name: ${GLEANERIO_WORKSPACE_DOCKER_CONFIG:-workspace}
-    file: ../configs/${PROJECT:-eco}/workspace.yaml
+    file: ${GLEANERIO_WORKSPACE_LOCAL_FILE:-../configs/local/workspace.yaml}
   dagster:
     name: ${GLEANERIO_DOCKER_DAGSTER_CONFIG:-dagster}
     file: dagster.yaml
@@ -86,7 +86,7 @@ services:
             - GLEANERIO_NABU_IMAGE=${GLEANERIO_NABU_IMAGE}
             - GLEANERIO_PORTAINER_APIKEY=${GLEANERIO_PORTAINER_APIKEY}
             - GLEANERIO_DEFAULT_SCHEDULE=${GLEANERIO_DEFAULT_SCHEDULE:-@weekly}
-            - GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE=${GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE:-"America/Los_Angeles"}
+            - GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE=${GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE:-America/Los_Angeles}
             - GLEANERIO_SOURCES_FILENAME=${GLEANERIO_SOURCES_FILENAME:-gleanerconfig.yaml}
             - GLEANERIO_TENANT_FILENAME=${GLEANERIO_TENANT_FILENAME:-tenant.yaml}
             - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}

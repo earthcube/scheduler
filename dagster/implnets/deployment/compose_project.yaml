@@ -133,6 +133,7 @@ services:
             - dagster_host
     dagster-postgres:
         image: postgres:13.3
+        platform: linux/amd64
         ports:
             - 5432:5432
         environment:
@@ -145,6 +146,7 @@ services:
       # image: chromedp/headless-shell:stable
       # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
       image: chromedp/headless-shell:105.0.5195.127
+      platform: linux/amd64
       #    build:
   #      context: .
   #      shm_size: "2gb"

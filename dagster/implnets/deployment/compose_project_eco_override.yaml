@@ -23,6 +23,7 @@ services:
 # they need to compile it, so same image for all dagster-*
     dagster-code-eco-ingest:
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+        platform: linux/amd64
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
             - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
@@ -81,6 +82,7 @@ services:
             - dagster_host
     dagster-code-eco-ecrr:
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+        platform: linux/amd64
         environment: *env
         command:
         - "dagster"
@@ -103,7 +105,7 @@ services:
 
     dagster-code-eco-tasks:
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
-
+        platform: linux/amd64
         environment: *env
         command:
         - "dagster"
