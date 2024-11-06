@@ -10,6 +10,49 @@ services:
             # this there are prefixed by project aka ECRR_ for customization
           # DO NOT RENAME THE FIRST PART, aka the container environment variable,
           #     unless you sure what you are doing
+
+
+
+ #        command:
+#            - "dagster-webserver"
+#            - "-w"
+#            - "workspace.yaml"
+#            - "-h"
+#            - "0.0.0.0"
+#            - "-p"
+#            - "3000"
+        depends_on: &deps
+            -   dagster-code-iow-ingest
+            - dagster-code-tasks
+
+    dagster-daemon:
+
+# portainer issue, merging commandsmay need to create a combined customised on
+#        command:
+#        - "dagster-daemon"
+#        - "run"
+#        - "-w"
+#        - "workspace.yaml"
+        depends_on:
+            - dagster-postgres
+            -   dagster-code-iow-ingest
+            - dagster-code-tasks
+        networks:
+            - traefik_proxy
+## GRPC servers are not just serving the code
+# they need to compile it, so same image for all dagster-*
+    dagster-code-iow-ingest:
+
+        #        build:
+        #          #context: .
+        #          context: ..
+        #          dockerfile: build/Dockerfile_code
+        #          args:
+        #            implnet: ${PROJECT:-eco}
+        # you should be able to change the source locally, without a full rebuild.
+        #image: dagster-${PROJECT:-eco}:latest
+        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
             - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
@@ -45,49 +88,6 @@ services:
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${IOW_SLACK_CHANNEL:-"#twitterfeed"}
             - SLACK_TOKEN=${IOW_SLACK_TOKEN}
-
-
- #        command:
-#            - "dagster-webserver"
-#            - "-w"
-#            - "workspace.yaml"
-#            - "-h"
-#            - "0.0.0.0"
-#            - "-p"
-#            - "3000"
-        depends_on: &deps
-            -   dagster-code-iow-ingest
-            - dagster-code-tasks
-
-    dagster-daemon:
-        environment: *env
-# portainer issue, merging commandsmay need to create a combined customised on
-#        command:
-#        - "dagster-daemon"
-#        - "run"
-#        - "-w"
-#        - "workspace.yaml"
-        depends_on:
-            - dagster-postgres
-            -   dagster-code-iow-ingest
-            - dagster-code-tasks
-        networks:
-            - traefik_proxy
-## GRPC servers are not just serving the code
-# they need to compile it, so same image for all dagster-*
-    dagster-code-iow-ingest:
-
-        #        build:
-        #          #context: .
-        #          context: ..
-        #          dockerfile: build/Dockerfile_code
-        #          args:
-        #            implnet: ${PROJECT:-eco}
-        # you should be able to change the source locally, without a full rebuild.
-        #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
-
-        environment: *env
         command:
             - "dagster"
             - "api"
