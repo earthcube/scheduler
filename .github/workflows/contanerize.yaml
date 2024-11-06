@@ -9,10 +9,9 @@ on:
     branches:
       - main
       - dev
-      - dv_dev
       - dev_eco
       - v0_generated_code
-      - 133_dev_sitemaps
+      - 142_dev_docker_compose
     tags:
       - "v*.*.*"
 
