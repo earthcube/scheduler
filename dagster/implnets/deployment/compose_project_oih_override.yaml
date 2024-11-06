@@ -4,26 +4,6 @@ version: "3.9"
 # USE:
 # ./docker_eco_prod_start.h
 services:
-    dagster-dagit:
-            # GLEANEERIO_  the environment variables for this stack, passed into containers
-            # the variables passed into the containers varies due to inconsistent standards.
-            # this there are prefixed by project aka ECRR_ for customization
-          # DO NOT RENAME THE FIRST PART, aka the container environment variable,
-          #     unless you sure what you are doing
-
-
-
- #        command:
-#            - "dagster-webserver"
-#            - "-w"
-#            - "workspace.yaml"
-#            - "-h"
-#            - "0.0.0.0"
-#            - "-p"
-#            - "3000"
-        depends_on: &deps
-            -   dagster-code-oih-ingest
-            - dagster-code-tasks
 
     dagster-daemon:
 
@@ -33,10 +13,9 @@ services:
 #        - "run"
 #        - "-w"
 #        - "workspace.yaml"
+        # merging rules add this
         depends_on:
-            - dagster-postgres
             -   dagster-code-oih-ingest
-            - dagster-code-tasks
         networks:
             - traefik_proxy
 ## GRPC servers are not just serving the code

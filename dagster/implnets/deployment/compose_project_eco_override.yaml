@@ -25,7 +25,6 @@ services:
 #            - "3000"
         depends_on: &deps
             -   dagster-code-eco-ingest
-            - dagster-code-tasks
 
     dagster-daemon:
 # portainer issue, merging commandsmay need to create a combined customised on
@@ -35,9 +34,7 @@ services:
 #        - "-w"
 #        - "workspace.yaml"
         depends_on:
-            - dagster-postgres
             -   dagster-code-eco-ingest
-            - dagster-code-tasks
             - dagster-code-eco-ecrr
         networks:
             - traefik_proxy

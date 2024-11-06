@@ -23,7 +23,6 @@ services:
 #            - "3000"
         depends_on: &deps
             -   dagster-code-iow-ingest
-            - dagster-code-tasks
 
     dagster-daemon:
 
@@ -34,9 +33,7 @@ services:
 #        - "-w"
 #        - "workspace.yaml"
         depends_on:
-            - dagster-postgres
             -   dagster-code-iow-ingest
-            - dagster-code-tasks
         networks:
             - traefik_proxy
 ## GRPC servers are not just serving the code
