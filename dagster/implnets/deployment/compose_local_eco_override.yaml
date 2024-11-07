@@ -4,6 +4,11 @@ version: "3.9"
 #  this is local testing
 # this includes the ECRR workflows
 
+
+volumes:
+
+  dagster-storage:
+    driver: local
 #####
 # NOTE
 # THERE ARE NO ECO/PROJECT PREFIXES.
@@ -15,17 +20,22 @@ version: "3.9"
 # USE:
 # ./docker_localstart.sh
 services:
-    dagster-dagit:
-        volumes: &vol
-          - ../configs/${PROJECT:-eco}/workspace.yaml:/usr/src/app/workspace.yaml
-          - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
-      #    - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project/${PROJECT:-eco}
-          - ../workflows/:/usr/src/app/workflows
-            # GLEANEERIO_  the environment variables for this stack, passed into containers
-            # the variables passed into the containers varies due to inconsistent standards.
-            # this there are prefixed by project aka ECRR_ for customization
-            # DO NOT RENAME THE FIRST PART, aka the container environment variable,
-            #     unless you sure what you are doing
+
+## GRPC servers are not just serving the code
+# they need to compile it, so same image for all dagster-*
+    dagster-code-eco-ecrr:
+
+        platform: linux/x86_64
+        build:
+          #context: .
+          context: ..
+          dockerfile: build/Dockerfile_code
+          args:
+            implnet: ${PROJECT:-eco}
+        # you should be able to change the source locally, without a full rebuild.
+       #image: dagster-${PROJECT:-eco}:latest
+        image: dagster-gleanerio-local:latest
+
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
             - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
@@ -64,37 +74,6 @@ services:
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${GELANERIO_SLACK_CHANNEL:-"#twitterfeed"}
             - SLACK_TOKEN=${GELANERIO_SLACK_TOKEN}
-# caution for a portainer additional file deply
-    # portainer issue, merging commands may need to create a combined customised on
-        command: 'dagster-webserver  -w workspace.yaml  -h "0.0.0.0" -p 3000'
-        depends_on: &deps
-            - dagster-postgres
-            -   dagster-code-ingest
-            - dagster-code-tasks
-            - dagster-code-eco-ecrr
-
-    dagster-daemon:
-# caution for a portainer additional file deply
-    # portainer issue, merging commands may need to create a combined customised on
-        command: "dagster-daemon run -w workspace.yaml  "
-        depends_on: *deps
-
-## GRPC servers are not just serving the code
-# they need to compile it, so same image for all dagster-*
-    dagster-code-eco-ecrr:
-
-        platform: linux/x86_64
-        build:
-          #context: .
-          context: ..
-          dockerfile: build/Dockerfile_code
-          args:
-            implnet: ${PROJECT:-eco}
-        # you should be able to change the source locally, without a full rebuild.
-       #image: dagster-${PROJECT:-eco}:latest
-        image: dagster-gleanerio-local:latest
-
-        environment: *env
         command:
         - "dagster"
         - "api"
@@ -108,7 +87,10 @@ services:
         - "-d"
         - "/usr/src/app/"
 
-        volumes: *vol
+        volumes: &vol
+          - ../deployment/dagster.yaml:/usr/src/app/dagster.yaml
+ #         - ../generatedCode/implnet-${PROJECT:-eco}/output/:/usr/src/app/project/${PROJECT:-eco}
+          - ../workflows/:/usr/src/app/workflows
         depends_on:
             - dagster-postgres
         networks:

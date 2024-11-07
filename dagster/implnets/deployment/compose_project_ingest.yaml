@@ -15,11 +15,13 @@ volumes:
 services:
 ## GRPC servers are not just serving the code
 # they need to compile it, so same image for all dagster-*
+# for this a PROJECT IS REQUIRED to allow for multiple communities
     dagster-code-ingest:
         hostname: dagster-code-${PROJECT}-ingest
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
+            - PROJECT=${PROJECT}
             - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
             - GLEANERIO_DAGSTER_CONFIG_PATH=${GLEANERIO_DAGSTER_CONFIG_PATH:-scheduler/logs/}
             - GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=${GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT:-300}

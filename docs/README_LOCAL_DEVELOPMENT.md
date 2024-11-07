@@ -10,12 +10,12 @@ Two types:
 
 !!!  note 
     NOTE, the Dagster and the Code containers need to be the same.
-    For local development images are named ` dagster-local:latest` and code containers named dagster-gleanerio-local:latest
+    For local development images are named ` dagster-local:latest` and  code containers named `dagster-gleanerio-local:latest`
     and built in the compose_local.yaml
     for production,
       * dagster named: nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
-      * code containers  are named `nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_TAG:-latest}`
-    eg in dockerhub.com as nsfearthcube/dagster-eco:latest
+      * code containers  are named `nsfearthcube/dagster-gleanerio-workflow:${CONTAINER_TAG:-latest}`
+    
 
 ## DAGSTER DEV
 
@@ -81,7 +81,7 @@ For production environments, script, `dagster_setup_docker.sh`  should create th
 upload configuration files
 
 1) setup a project in configs directory, if one des not exist
-    2)   add gleanerconfig.yaml, nabuconfig.yaml, and workspace.yaml (NOTE NEED A TEMPLATE FOR THIS)
+    2)   add gleanerconfig.yaml, nabuconfig.yaml~~, and workspace.yaml~~ (NOTE NEED A TEMPLATE FOR THIS)
 1) copy envFile.env to .env, and edit
 2) run  ./dagster_localrun.sh
 4) go to https://loclahost:3000/
@@ -109,7 +109,7 @@ for local development three configs
 
 * configs/PROJECT/gleanerconfigs.yaml gleaner/nabu
 * configs/PROJECT/nabuconfigs.yaml - gleaner/nabu
-* configs/PROJECT/workspace.yaml -- dagster
+* configs/local/workspace.yaml -- dagster
 
 ### Editing/testing code
 
@@ -119,29 +119,32 @@ if you run pygen, then you need to regnerate code. the makefile or a pycharm run
 
 (NOTE NEED SOME MAKEFILES FOR THIS.)
 
-you need to create a compose_project_PROJECT_override.yaml
+you need to deploy a `compose_project.yaml`, and a `compose_project_ingest.yaml` 
+If a dagster scheduler is already running, you can deploy just the `compose_project_ingest.yaml` 
+In future we hope to run multiple `compose_project_ingest.yaml` 
 
-After copying fragment from `compose_local_PROJECT_override.yaml`
-1) CHANGE THE IMAGE TO `docker.io/nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_CODE_TAG:-latest}`
-2) remove the line: platform: linux/x86_64
+After creating a `compose_project_ingest.yaml` stack
+1) clone and edit a workspace.yaml to docker config (this is for an eco project)
+```yaml
+load_from:
+
+      - grpc_server:
+            host: dagster-code-eco-tasks
+            port: 4000
+            location_name: "eco-tasks"
+      - grpc_server:
+            host: dagster-code-eco-ingest
+            port: 4000
+            location_name: "eco-ingest"
+ ```
+
+2) change the env variable `GLEANERIO_DOCKER_WORKSPACE_CONFIG` to point to that config. push 'save' button
+3) push _pull and redeploy_ button
 
 
-# For portainer, 
-Create a stack, and add override file using  "additional_file" to add this to the stack
 
 
 # command line deploy
-docker compose -env .env -f compose_project.yaml -f compose_project_PROJECT_override.yaml up
+docker compose -env .env -f compose_project.yaml  up
+docker compose -env .env -f compose_project_ingest.yaml  up
 
-# system not supporting multiple configs
-If you are not using portainer, you need to create a merged config file.
-
-Then you will merge the files. Preview with: 
-
-`docker compose -f compose_project.yaml -f compose_project_PROJECT_override.yaml config  `
-
-this should show you  a merged file.
-
-`docker compose -f compose_project.yaml -f compose_project_PROJECT_override.yaml config  > compose_project_PROJECT.yaml `
-
-then start docker compose with the merged file.

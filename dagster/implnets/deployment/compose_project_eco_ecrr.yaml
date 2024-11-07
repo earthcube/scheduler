@@ -8,10 +8,12 @@ version: "3.9"
 services:
 
     dagster-code-eco-ecrr:
+        hostname: dagster-code-${PROJECT}-ecrr
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
         platform: linux/amd64
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
+            -  PROJECT=${PROJECT}
             - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
             - GLEANERIO_DAGSTER_CONFIG_PATH=${GLEANERIO_DAGSTER_CONFIG_PATH:-scheduler/logs/}
             - GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=${GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT:-300}

@@ -37,7 +37,36 @@ There are three workflows
 * tasks weekly task
 * ecrr - loads Earthcube Resource Registry
 
+```mermaid
+---
+title: Dagster Stack
+---
+flowchart LR
+ 
+    subgraph docker[docker managed by portainer]
+    
+        subgraph Stacks
+            subgraph dagster-compose-stack
+                dagit-service
+                dagster-service
+                postgres-service
+            end
+            subgraph ingest-compose-stack
+                ingest-service
+                tasks-service
+            end
+            subgraph ec-compose-stack
+                ecrr-service
+            end
+        end
+        config
+        subgraph Volumes
+            dagster-postgres
+        end
+    end
 
+    
+```
 
 ```mermaid
 ---
@@ -67,12 +96,18 @@ flowchart LR
     subgraph docker[docker managed by portainer]
     
         subgraph Containers
+            subgraph dagster-compose-stack
                 dagit
                 dagster
                 postgres
+            end
+            subgraph ingest-compose-stack
                 ingest
                 tasks
+            end
+            subgraph eco-compose-stack
                 ecrr
+            end
         end
         config
         subgraph Volumes
@@ -99,9 +134,14 @@ flowchart LR
 
 1. information for environment variables is created
 2. The configuration files are created and loaded to s3, and docker/config
-2. a docker stack is created, and the environment variables are added.
-3. portainer deploys containers
-4. when ingest and tasks are executed, they read
+2. a docker stack for dagster/scheduler created, and the environment variables are added.
+3. portainer deploys stack
+4. a docker stack for an ingest service is created, and the environment variables are added.
+3. portainer deploys stack
+3. initial configuration jobs for ingest and tasks  are executed, they read the gleaner and tenant configurations
+4. when complete, they request loading runs for the sources from gleaner
+5. when a loading run is complete, a sensor triggers, and a release is loaded to a tenant
+6. 
 
 
 #### Ingest Workflow
@@ -216,8 +256,9 @@ sequenceDiagram
 
 ## Steps to build and deploy
 
-The deployment can be tested locally. You can setup a services stack in docker to locally test, or use existing 
-services.
+The deployment can be developed locally. You can run jobs and materialize assets from the command line 
+
+You can setup a services stack in docker to locally test, or use existing services.
 
 The production 'containers' dagster, gleaner, and nabu are built with a github action. You can also use  a makefile.
 
@@ -261,7 +302,7 @@ They are installed in two places:
 
 | file               | local                                    |                                                   | note                                    |
 |--------------------|------------------------------------------|---------------------------------------------------|-----------------------------------------|
-| workspace          | configs/PROJECT/worksapce.yaml           | dockerconfig: workspace                           | docker compose: used by dagster         |
+| workspace          | configs/local/worksapce.yaml             | dockerconfig: workspace                           | docker compose: used by dagster         |
 | gleanerconfig.yaml | configs/PROJECT/gleanerconfig.yaml       | s3:{bucket}/scheduler/configs/gleanerconfigs.yaml | ingest workflow needs to be in minio/s3 
 | tenant.yaml        | configs/PROJECT/tenant.yaml              | s3:{bucket}/scheduler/configs/tenant.yaml         | ingest workflow needs to be in minio/s3 
 | dagster.yaml       | dagster/implnets/deployment/dagster.yaml | dockerconfig: dagster                             | docker compose: used by dagster  
