@@ -7,7 +7,7 @@ from dagster import asset, get_dagster_logger, define_asset_job
 from ec.datastore import s3
 from pydash import pick
 from distutils import util
-
+PROJECT=os.environ.get('PROJECT')
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
 GLEANER_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
@@ -52,7 +52,7 @@ def source_list() -> List[Any]:
 # set a prefix so we can have some named stats file
 
 #@asset( group_name="load",key_prefix="task",)
-@asset(group_name="load",key_prefix="task",)
+@asset(group_name="load",key_prefix=f"{PROJECT}_task",)
 def loadstatsHistory(context,source_list) -> str:
     prefix="history"
     logger = get_dagster_logger()

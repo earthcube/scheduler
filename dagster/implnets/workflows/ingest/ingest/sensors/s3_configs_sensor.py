@@ -23,7 +23,8 @@ from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 # This sensor needs to detect when an source has completed its' run
 # and then load the data into the client's graphstore.
 
-
+import os
+PROJECT=os.environ.get('PROJECT')
 
 # #######
 # Put the config for a tennant at the job level so we only have to define it once

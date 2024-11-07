@@ -12,7 +12,7 @@ from pydash import find
 
 log = config_app()
 
-
+PROJECT=os.environ.get('PROJECT')
 # GLEANERIO_MINIO_ADDRESS = str(os.environ.get('GLEANERIO_MINIO_ADDRESS'))
 # GLEANERIO_MINIO_PORT = str(os.environ.get('GLEANERIO_MINIO_PORT'))
 # GLEANERIO_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
@@ -57,7 +57,7 @@ def _graphSummaryEndpoint(community, graph_resoruce):
     else:
         url = f"{graph_resoruce.GLEANERIO_GRAPH_URL}/namespace/{community}_summary/sparql"
     return url
-@asset(group_name="graph",key_prefix="task", required_resource_keys={"triplestore"})
+@asset(group_name="graph",key_prefix=f"{PROJECT}_task", required_resource_keys={"triplestore"})
 def sos_types(context ):
     s3_resource = context.resources.triplestore.s3
     graph_resource = context.resources.triplestore

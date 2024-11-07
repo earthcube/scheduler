@@ -23,7 +23,8 @@ from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 # This sensor needs to detect when an source has completed its' run
 # and then load the data into the client's graphstore.
 
-
+import os
+PROJECT=os.environ.get('PROJECT')
 
 # #######
 # Put the config for a tennant at the job level so we only have to define it once
@@ -49,7 +50,7 @@ from ..assets.gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
 #               )
 @multi_asset_sensor(
     monitored_assets=[
-        AssetKey(["ingest","release_summarize"])
+        AssetKey([f"{PROJECT}_ingest","release_summarize"])
     ],
     job=release_asset_job,
     required_resource_keys={"gleanerio"}
@@ -90,7 +91,7 @@ def release_file_sensor_v2(context
                 for asset_key, materialization in materializations_by_asset.items():
                     context.advance_cursor({asset_key: materialization})
     return run_requests
-@asset_sensor(asset_key=AssetKey(["ingest","release_summarize"]),
+@asset_sensor(asset_key=AssetKey([f"{PROJECT}_ingest","release_summarize"]),
        #       default_status=DefaultSensorStatus.RUNNING,
               job=release_asset_job, required_resource_keys={"gleanerio"},
             #  minimum_interval_seconds=3600

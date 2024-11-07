@@ -20,7 +20,8 @@ from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpo
 from ec.reporting.report import missingReport, generateIdentifierRepo, generateGraphReportsRelease
 from ec.graph.release_graph import ReleaseGraph
 from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
-
+import os
+PROJECT=os.environ.get('PROJECT')
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
 
@@ -31,14 +32,14 @@ class HarvestOpConfig(Config):
 # )
 
 def getSource(context, source_name):
-    sources = context.repository_def.load_asset_value(AssetKey(["ingest","sources_all"]))
+    sources = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","sources_all"]))
     source = list(filter(lambda t: t["name"]==source_name, sources))
     return source[0]
 
 @asset(
     group_name="load",
-    key_prefix="ingest",
-      deps=[AssetKey(["ingest","sources_names_active"]) ],
+    key_prefix=f"{PROJECT}_ingest",
+      deps=[AssetKey([f"{PROJECT}_ingest","sources_names_active"]) ],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
  #   , backfill_policy=BackfillPolicy.single_run()
        )
@@ -57,7 +58,7 @@ def validate_sitemap_url(context):
                         msg=f"Bad URL ource: {source['name']} bad url: {source['url']}" )
 
 @asset(group_name="load",
-key_prefix="ingest",
+key_prefix=f"{PROJECT}_ingest",
 op_tags={"ingest": "docker"},
       deps=[ validate_sitemap_url  ],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -77,7 +78,7 @@ def gleanerio_run(context ) -> Output[Any]:
 
     return Output(gleaner, metadata=metadata)
 @asset(group_name="load",
-key_prefix="ingest",
+key_prefix=f"{PROJECT}_ingest",
 op_tags={"ingest": "docker"},
        deps=[gleanerio_run],
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -105,7 +106,7 @@ And how many made it into milled (this is how good the conversion at a single js
 '''
 
 @asset(
-key_prefix="ingest",
+key_prefix=f"{PROJECT}_ingest",
     group_name="load",
 op_tags={"ingest": "report"},
        deps=[gleanerio_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -145,7 +146,7 @@ It then compares what identifiers are in the S3 store (summon path), and the Nam
 '''
 
 @asset(
-key_prefix="ingest",
+key_prefix=f"{PROJECT}_ingest",
     group_name="load",
 op_tags={"ingest": "report"},
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -179,7 +180,7 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
-@asset(group_name="load",key_prefix="ingest",
+@asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        name="release_summarize",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
    # , backfill_policy=BackfillPolicy.single_run()
@@ -243,7 +244,7 @@ def release_summarize(context) :
 
     return
 
-@asset(group_name="load",key_prefix="ingest",
+@asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        deps=[gleanerio_run],
 op_tags={"ingest": "report"},
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -273,7 +274,7 @@ def identifier_stats(context):
     get_dagster_logger().info(f"identifer stats report  returned  {r} ")
     return
 
-@asset(group_name="load",key_prefix="ingest",
+@asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        deps=[gleanerio_run],
 op_tags={"ingest": "report"},
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -311,7 +312,7 @@ def bucket_urls(context):
 #     bucket = GLEANER_MINIO_BUCKET
 #     release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
 #     return release_url
-@asset(group_name="load",key_prefix="ingest",
+@asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        deps=[release_nabu_run],
 op_tags={"ingest": "report"},
        partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}

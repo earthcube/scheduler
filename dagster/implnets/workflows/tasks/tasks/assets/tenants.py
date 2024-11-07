@@ -18,7 +18,7 @@ asset_sensor, AssetKey,
 from ec.datastore import s3
 from distutils import util
 from ..resources.gleanerS3 import _pythonMinioAddress
-
+PROJECT=os.environ.get('PROJECT')
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
 GLEANER_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
@@ -31,7 +31,7 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
               ,"access_key": GLEANER_MINIO_ACCESS_KEY
               ,"secret_key": GLEANER_MINIO_SECRET_KEY
                }
-@asset(group_name="community",key_prefix="task",
+@asset(group_name="community",key_prefix=f"{PROJECT}_task",
        required_resource_keys={"triplestore"})
 def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
@@ -48,7 +48,7 @@ def task_tenant_sources(context) ->Any:
         #         # The `MetadataValue` class has useful static methods to build Metadata
         #     }
         # )
-@asset(group_name="community",key_prefix="task",
+@asset(group_name="community",key_prefix=f"{PROJECT}_task",
        #name='task_tenant_names',
        required_resource_keys={"triplestore"})
 def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
@@ -69,14 +69,14 @@ def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
 
 community_partitions_def = DynamicPartitionsDefinition(name="tenantsPartition")
 tenant_task_job = define_asset_job(
-    "tenant_job", AssetSelection.keys(AssetKey(["task","loadstatsCommunity"])), partitions_def=community_partitions_def
+    "tenant_job", AssetSelection.keys(AssetKey([f"{PROJECT}_task","loadstatsCommunity"])), partitions_def=community_partitions_def
 )
 #@sensor(job=tenant_job)
-@asset_sensor(asset_key=AssetKey(["task","task_tenant_names"]),
+@asset_sensor(asset_key=AssetKey([f"{PROJECT}_task","task_tenant_names"]),
                default_status=DefaultSensorStatus.RUNNING,
      job=tenant_task_job)
 def community_sensor(context):
-    tenants = context.repository_def.load_asset_value(AssetKey(["task","task_tenant_names"]))
+    tenants = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_task","task_tenant_names"]))
     new_community = [
         community
         for community in tenants
@@ -127,9 +127,9 @@ def getName(name):
 
 #@asset( group_name="load")
 @asset(partitions_def=community_partitions_def,
-      deps=[AssetKey(["task","task_tenant_sources"])],
+      deps=[AssetKey([f"{PROJECT}_task","task_tenant_sources"])],
        group_name="community",
-        key_prefix="task",
+        key_prefix=f"{PROJECT}_task",
        required_resource_keys={"triplestore"} )
 def loadstatsCommunity(context, task_tenant_sources) -> str:
     prefix="history"

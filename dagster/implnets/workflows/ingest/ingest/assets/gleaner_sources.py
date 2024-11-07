@@ -6,7 +6,8 @@ import dagster
 from dagster import get_dagster_logger, asset,multi_asset, AssetOut, In, Nothing, Config,DynamicPartitionsDefinition, sensor
 import yaml
 from ec.sitemap import Sitemap
-
+import os
+PROJECT=os.environ.get('PROJECT')
 sources_partitions_def = DynamicPartitionsDefinition(name="sources_names_active")
 #from ..resources.gleanerio import GleanerioResource
 tenant_partitions_def = DynamicPartitionsDefinition(name="tenant_names_paritition")
@@ -21,33 +22,15 @@ tenant_partitions_def = DynamicPartitionsDefinition(name="tenant_names_parititio
 # future future, store sources in (s3/googlesheets) and read them.
 
 
-@asset(
-    #group_name="configs",
-        name="org_names",key_prefix="ingest",required_resource_keys={"gs3"})
-def gleanerio_orgs(context ):
-    s3_resource = context.resources.gs3
-    source="orgs_list_from_a_s3_bucket"
-    files = s3_resource.listPath(path='orgs')
-    orgs = list(map(lambda o: o["Key"].removeprefix("orgs/").removesuffix(".nq") , files))
-    dagster.get_dagster_logger().info(str(orgs))
-    context.add_output_metadata(
-            metadata={
-                "source": source,  # Metadata can be any key-value pair
-                "run": "gleaner",
-                # The `MetadataValue` class has useful static methods to build Metadata
-            }
-        )
-    #return orjson.dumps(orgs,  option=orjson.OPT_INDENT_2)
-    # this is used for partitioning, so let it pickle (aka be a python list)
-    return orgs
-#@asset(group_name="configs",name="tenant_names",required_resource_keys={"gs3"})
+
+
 @multi_asset(
 
     outs=
              {
-                 "tenant_all": AssetOut(key_prefix="ingest",
+                 "tenant_all": AssetOut(key_prefix=f"{PROJECT}_ingest",
    group_name="configs",),
-                 "tenant_names": AssetOut(key_prefix="ingest",
+                 "tenant_names": AssetOut(key_prefix=f"{PROJECT}_ingest",
    group_name="configs",),
              }
     ,required_resource_keys={"gs3"}
@@ -102,11 +85,11 @@ def check_for_valid_sitemap( sources_active):
 
              outs=
              {
-                 "sources_all": AssetOut(key_prefix="ingest",
+                 "sources_all": AssetOut(key_prefix=f"{PROJECT}_ingest",
    group_name="configs",),
-                 "sources_names_active": AssetOut(key_prefix="ingest",
+                 "sources_names_active": AssetOut(key_prefix=f"{PROJECT}_ingest",
    group_name="configs",),
-"sources_names_invalid_sitemap": AssetOut(key_prefix="ingest",
+"sources_names_invalid_sitemap": AssetOut(key_prefix=f"{PROJECT}_ingest",
    group_name="configs",),
              }
     ,required_resource_keys={"gs3"})

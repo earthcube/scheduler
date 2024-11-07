@@ -18,13 +18,14 @@ from ..assets.tenant import create_tenant_containers, create_graph_namespaces
 from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
 from ..resources.graph import BlazegraphResource
-
+import os
+PROJECT=os.environ.get('PROJECT')
 
 
 
 tenant_asset_job = define_asset_job(
     name="tenant_config_updated_job",
-    selection=AssetSelection.assets(AssetKey(["ingest","tenant_names"])).required_multi_asset_neighbors(),
+    selection=AssetSelection.assets(AssetKey([f"{PROJECT}_ingest","tenant_names"])).required_multi_asset_neighbors(),
     partitions_def=sources_partitions_def,
     tags={"dagster/priority": "10"}
 )
