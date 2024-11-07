@@ -6,6 +6,7 @@
     <option name="PARENT_ENVS" value="true" />
     <envs>
       <env name="PYTHONUNBUFFERED" value="1" />
+      <env name="PROJECT" value="test" />
     </envs>
     <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
     <option name="SDK_NAME" value="Python 3.9 (scheduler) (2)" />
@@ -21,12 +22,12 @@
       <option name="IS_IGNORE_MISSING_FILES" value="false" />
       <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
       <ENTRIES>
-        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
         <ENTRY IS_ENABLED="true" PARSER="env" IS_EXECUTABLE="false" PATH="dagster/implnets/deployment/.env" />
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
       </ENTRIES>
     </EXTENSION>
     <option name="SCRIPT_NAME" value="dagster" />
-    <option name="PARAMETERS" value="asset materialize -m tasks --select task/source_list,task/loadstatsHistory" />
+    <option name="PARAMETERS" value="asset materialize -m tasks --select test_task/source_list,test_task/loadstatsHistory" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />

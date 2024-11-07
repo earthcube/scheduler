@@ -7,6 +7,7 @@
     <envs>
       <env name="GLEANERIO_GLEANER_CONFIG_PATH" value="$PROJECT_DIR$/dagster/implnets/configs/eco/gleanerconfig.yaml" />
       <env name="PYTHONUNBUFFERED" value="1" />
+      <env name="PROJECT" value="test" />
     </envs>
     <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
     <option name="SDK_NAME" value="Python 3.9 (scheduler) (2)" />
@@ -22,12 +23,12 @@
       <option name="IS_IGNORE_MISSING_FILES" value="false" />
       <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
       <ENTRIES>
-        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
         <ENTRY IS_ENABLED="true" PARSER="env" IS_EXECUTABLE="false" PATH="dagster/implnets/deployment/.env" />
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
       </ENTRIES>
     </EXTENSION>
     <option name="SCRIPT_NAME" value="dagster" />
-    <option name="PARAMETERS" value="asset materialize -m ingest --select eco_ingest/tenant_names,eco_ingest/tenant_all" />
+    <option name="PARAMETERS" value="asset materialize -m ingest --select test_ingest/tenant_names,test_ingest/tenant_all" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />
