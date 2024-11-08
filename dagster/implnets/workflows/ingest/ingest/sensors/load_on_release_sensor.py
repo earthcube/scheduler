@@ -49,6 +49,7 @@ PROJECT=os.environ.get('PROJECT')
 #             #  minimum_interval_seconds=3600
 #               )
 @multi_asset_sensor(
+    default_status=DefaultSensorStatus.RUNNING,
     monitored_assets=[
         AssetKey([f"{PROJECT}_ingest","release_summarize"])
     ],

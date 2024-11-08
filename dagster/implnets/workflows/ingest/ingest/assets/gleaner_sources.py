@@ -1,16 +1,19 @@
 # a test asset to see that all the resource configurations load.
 # basically runs the first step, of gleaner on geocodes demo datasets
-import orjson
+
 
 import dagster
-from dagster import get_dagster_logger, asset,multi_asset, AssetOut, In, Nothing, Config,DynamicPartitionsDefinition, sensor
+from dagster import (get_dagster_logger,
+                     asset,multi_asset, AssetOut,
+                     In, Nothing, Config,DynamicPartitionsDefinition, sensor,
+                     AutomationConditio, AutoMaterializePolicy)
 import yaml
 from ec.sitemap import Sitemap
 import os
 PROJECT=os.environ.get('PROJECT')
-sources_partitions_def = DynamicPartitionsDefinition(name="sources_names_active")
+sources_partitions_def = DynamicPartitionsDefinition(name=f"{PROJECT}sources_names_active")
 #from ..resources.gleanerio import GleanerioResource
-tenant_partitions_def = DynamicPartitionsDefinition(name="tenant_names_paritition")
+tenant_partitions_def = DynamicPartitionsDefinition(name=f"{PROJECT}tenant_names_paritition")
 ### PRESENT HACK. Using the orgs
 # really needs to read a future tenant file, and then add
 # new partions with a sensor
@@ -29,9 +32,9 @@ tenant_partitions_def = DynamicPartitionsDefinition(name="tenant_names_parititio
     outs=
              {
                  "tenant_all": AssetOut(key_prefix=f"{PROJECT}_ingest",
-   group_name="configs",),
+   group_name="configs",auto_materialize_policy=AutoMaterializePolicy.eager()),
                  "tenant_names": AssetOut(key_prefix=f"{PROJECT}_ingest",
-   group_name="configs",),
+   group_name="configs",auto_materialize_policy=AutoMaterializePolicy.eager()),
              }
     ,required_resource_keys={"gs3"}
              )
@@ -82,15 +85,14 @@ def check_for_valid_sitemap( sources_active):
             validated_sources.append(source)
     return validated_sources
 @multi_asset(
-
              outs=
              {
                  "sources_all": AssetOut(key_prefix=f"{PROJECT}_ingest",
-   group_name="configs",),
+   group_name="configs",auto_materialize_policy=AutoMaterializePolicy.eager()),
                  "sources_names_active": AssetOut(key_prefix=f"{PROJECT}_ingest",
-   group_name="configs",),
+   group_name="configs",auto_materialize_policy=AutoMaterializePolicy.eager()),
 "sources_names_invalid_sitemap": AssetOut(key_prefix=f"{PROJECT}_ingest",
-   group_name="configs",),
+   group_name="configs",auto_materialize_policy=AutoMaterializePolicy.eager()),
              }
     ,required_resource_keys={"gs3"})
 def gleanerio_sources(context ):
