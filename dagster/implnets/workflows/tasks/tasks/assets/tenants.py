@@ -10,10 +10,10 @@ from dagster import (asset,
                      Output,
                      DynamicPartitionsDefinition,
                      define_asset_job,
-                    AssetSelection,
-                    sensor,SensorResult,DefaultSensorStatus,
-                    RunRequest,
-asset_sensor, AssetKey,
+                     AssetSelection,
+                     sensor, SensorResult, DefaultSensorStatus,
+                     RunRequest,
+                     asset_sensor, AssetKey, AutoMaterializePolicy,
                      )
 from ec.datastore import s3
 from distutils import util
@@ -32,7 +32,8 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
               ,"secret_key": GLEANER_MINIO_SECRET_KEY
                }
 @asset(group_name="community",key_prefix=f"{PROJECT}_task",
-       required_resource_keys={"triplestore"})
+       required_resource_keys={"triplestore"},
+       auto_materialize_policy=AutoMaterializePolicy.eager())
 def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
 
@@ -50,7 +51,8 @@ def task_tenant_sources(context) ->Any:
         # )
 @asset(group_name="community",key_prefix=f"{PROJECT}_task",
        #name='task_tenant_names',
-       required_resource_keys={"triplestore"})
+       required_resource_keys={"triplestore"},
+       auto_materialize_policy=AutoMaterializePolicy.eager() )
 def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
 
     tenants = task_tenant_sources['tenant']
