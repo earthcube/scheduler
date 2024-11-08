@@ -6,7 +6,7 @@ import dagster
 from dagster import (get_dagster_logger,
                      asset,multi_asset, AssetOut,
                      In, Nothing, Config,DynamicPartitionsDefinition, sensor,
-                     AutomationConditio, AutoMaterializePolicy)
+                     AutomationCondition, AutoMaterializePolicy)
 import yaml
 from ec.sitemap import Sitemap
 import os
