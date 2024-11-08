@@ -5,8 +5,8 @@ If you look in the doc/README.md that description is probably better.
 
 Two types:
 
-2) dagster dev   - Dagster runs the UI in development mode
-1) Container based. This uses docker and locally deployed containers
+1. dagster dev   - Dagster runs the UI in development mode
+1. Container based. This uses docker and locally deployed containers
 
 !!!  note 
     NOTE, the Dagster and the Code containers need to be the same.
@@ -80,12 +80,12 @@ note on how to do this.
 For production environments, script, `dagster_setup_docker.sh`  should create the networks, volumes, and 
 upload configuration files
 
-1) setup a project in configs directory, if one des not exist
+1. setup a project in configs directory, if one des not exist
     2)   add gleanerconfig.yaml, nabuconfig.yaml~~, and workspace.yaml~~ (NOTE NEED A TEMPLATE FOR THIS)
-1) copy envFile.env to .env, and edit
-2) run  ./dagster_localrun.sh
-4) go to https://loclahost:3000/
-5) run a small test dataset.
+1. copy envFile.env to .env, and edit
+1. run  ./dagster_localrun.sh
+1. go to https://loclahost:3000/
+1. run a small test dataset.
 
 ```
 cd dagster/implnets/deployment
@@ -117,14 +117,14 @@ if you run pygen, then you need to regnerate code. the makefile or a pycharm run
 
 ### MOVING TO PRODUCTION
 
-(NOTE NEED SOME MAKEFILES FOR THIS.)
 
 you need to deploy a `compose_project.yaml`, and a `compose_project_ingest.yaml` 
 If a dagster scheduler is already running, you can deploy just the `compose_project_ingest.yaml` 
 In future we hope to run multiple `compose_project_ingest.yaml` 
 
 After creating a `compose_project_ingest.yaml` stack
-1) clone and edit a workspace.yaml to docker config (this is for an eco project)
+
+1. clone and edit a workspace.yaml to docker config (this is for an eco project)
 ```yaml
 load_from:
 
@@ -136,15 +136,16 @@ load_from:
             host: dagster-code-eco-ingest
             port: 4000
             location_name: "eco-ingest"
- ```
-
-2) change the env variable `GLEANERIO_DOCKER_WORKSPACE_CONFIG` to point to that config. push 'save' button
-3) push _pull and redeploy_ button
+```
+1. change the env variable `GLEANERIO_DOCKER_WORKSPACE_CONFIG` to point to that config. push 'save' button
+1. push _pull and redeploy_ button
 
 
 
 
 # command line deploy
+```
 docker compose -env .env -f compose_project.yaml  up
 docker compose -env .env -f compose_project_ingest.yaml  up
+```
 

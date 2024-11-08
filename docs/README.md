@@ -271,24 +271,26 @@ We use portainer to manage our docker deployments.
 You can test components in pycharm. Run configurations for pycgharm  are in runConfigurations (TODO: Instructions)
 use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
 ![pycharm runconfig](images/pycharm_runconfig.png)
-1) move to the  implnets/deployment directory
-2) copy the envFile.env to .env [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
-3) edit the entries to point at a portainer/traefik with running services
-4) edit configuration files in implnets/configs/PROJECT: gleanerconfig.yaml, tenant.yaml
-5) upload configuration implnets/configs/PROJECT to s3 scheduler/configs: gleanerconfig.yaml, tenant.yaml
-4) run a Pycharm runconfig 
-   5) eg dagster_ingest_debug
-4) go to http://localhost:3000/
-6) you can [test the schedules](#test-schedules) 
+
+1. move to the  implnets/deployment directory
+1. copy the envFile.env to .env [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
+1. edit the entries to point at a portainer/traefik with running services
+1. edit configuration files in implnets/configs/PROJECT: gleanerconfig.yaml, tenant.yaml
+1. upload configuration implnets/configs/PROJECT to s3 scheduler/configs: gleanerconfig.yaml, tenant.yaml
+1. run a Pycharm runconfig 
+    1. eg dagster_ingest_debug
+1. go to http://localhost:3000/
+1. you can [test the schedules](#test-schedules) 
 
 ## full stack test Run local with remote services
-1) move to the implnets/deployment directory
-2) copy the envFile.env to .env [see](#environment-files)use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
-3) edit the entries.
-4) edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
-5) upload configuration implnets/configs/PROJECT to scheduler/configs s3: gleanerconfig.yaml, tenant.yaml
-4) for local, `./dagster_localrun.sh`
-5) go to http://localhost:3000/
+
+1. move to the implnets/deployment directory
+1. copy the envFile.env to .env [see](#environment-files)use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
+1. edit the entries.
+1. edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
+1. upload configuration implnets/configs/PROJECT to scheduler/configs s3: gleanerconfig.yaml, tenant.yaml
+1. for local, `./dagster_localrun.sh`
+1. go to http://localhost:3000/
 
 To deploy in portainer, use the deployment/compose_project.yaml docker stack.
 
@@ -317,7 +319,7 @@ They are installed in two places:
 | gleanerconfig.yaml  | configs/PROJECT/gleanerconfigs.yaml                       | env () | generated code needs to be in ~~portainer~~          |
 | nabuconfig.yaml | configs/PROJECT/nabuconfigs.yaml                          | env () | generated codeneeds to be in ~~portainer~~ |
 
-3) when the containers are running in a  stack, on portainer, there will need to
+1. when the containers are running in a  stack, on portainer, there will need to
    be updated by pulling from dockerhub. The ENV variables may need to be updated for the CONTAINER*_TAG
 
 
@@ -332,27 +334,27 @@ They are installed in two places:
 
 ### updating config
 You can update a config, and a sensor should pick up the changes.
-1) Upload changed file to s3
+1. Upload changed file to s3
    2) note, if this is a new source, you need to add it to the docker config (gleaner-PROJECT). 
-2) go to overview, ![overview](images/overview_sensors_tab.png)
-3) go to  s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
+1. go to overview, ![overview](images/overview_sensors_tab.png)
+1. go to  s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
  ![sensor](images/sources_sensor.png).
-4) at some point, a run should occur.  ![run](images/runs.png).
-5) then go to the sources_sensor, or tenant sensor 
+1. at some point, a run should occur.  ![run](images/runs.png).
+1. then go to the sources_sensor, or tenant sensor 
 if job does not run, you can do a backfill.
 #### new sources:
-6)  so to job tab, and run summon_and_release with the 'partitions' aka 'sources' that are recent.
-7) click materialize_all, and in the backfill dialog be sure only the added partition is selected.  ![backfill](images/materialize.png).
-8) go to runs, and see that a job with a partition with that name is queued/running
-9) run tenant_release_job with same partition name to load data to tenants
+1.  so to job tab, and run summon_and_release with the 'partitions' aka 'sources' that are recent.
+1. click materialize_all, and in the backfill dialog be sure only the added partition is selected.  ![backfill](images/materialize.png).
+1. go to runs, and see that a job with a partition with that name is queued/running
+1. run tenant_release_job with same partition name to load data to tenants
 ###
 #### new tenants:
 There are two jobs that need to run to move data to a tenant. (third will be needed for UI)
-6)  so to job tab, and run tenant_namespaces_job with the 'partitions' aka 'tenant' that are recent.'
-7) click materialize_all, and be sure only the added partition is selected
-8) go to runs, and see that a job with a partition with that name is queded,/running
-6)  so to job tab, and run tenant_release_job with the 'partitions' aka 'sources' for that tenant
-7) click materialize_all, The data will be pushed to all tenant namespaces
+1.  so to job tab, and run tenant_namespaces_job with the 'partitions' aka 'tenant' that are recent.'
+1. click materialize_all, and be sure only the added partition is selected
+1. go to runs, and see that a job with a partition with that name is queded,/running
+1.  so to job tab, and run tenant_release_job with the 'partitions' aka 'sources' for that tenant
+1. click materialize_all, The data will be pushed to all tenant namespaces
 
 ## test schedules
  
@@ -362,9 +364,9 @@ There are two jobs that need to run to move data to a tenant. (third will be nee
 ![schedules test](images/schedules_test.png)
 ### Environment files
 
-1) cp deployment/envFile.env .env
-2) edit
-3) `export $(cat .env | xargs)`
+1. cp deployment/envFile.env .env
+1. edit
+1. `export $(cat .env | xargs)`
 export $(cat .env | xargs)
 ```yaml
 ######
@@ -465,61 +467,6 @@ SLACK_TOKEN=
 
 ```
 
-# Implementation Networks
-
-This ([https://github.com/sharmasagar25/dagster-docker-example](https://github.com/sharmasagar25/dagster-docker-example)) 
-is an example on how to structure a [Dagster] project in order to organize
-the jobs, repositories, schedules, and ops. The example also contains
-examples on unit-tests and a docker-compose deployment file that utilizes a
-Postgresql database for the run, event_log and schedule storage.
-
-This example should in no way be considered suitable for production and is
-merely my own example of a possible file structure. I personally felt that it
-was difficult to put the Dagster concepts to use since the projects own examples
-had widely different structure and was difficult to overview as a beginner.
-
-The example is based on the official [tutorial].
-
-## Folders
-
-* build:  build directives for the docker containers
-* configs
-* src
-* tooling
-
-## Running 
-
-There is an example on how to run a single pipeline in `src/main.py`. First
-install the dependencies in an isolated Python environment.
-
-```bash
-pip install -r requirements
-```
-
-The code built above can be run locally, though your templates may be set up 
-to reference services and other resources not present on your dev machine.  For 
-complex examples like these, it can be problematic.  
-
-If you are looking for some simple examples of Dagster, check out the directory
-examples for some smaller self-contained workflows.  There are good for testing
-things like sensors and other approaches. 
-
-If you wish to still try the generated code cd into the output directory
-you specified in the pygen command.
-
-
-
-# Appendix
-
-## Setup
-
-
-![orchestration](images/orchestrationInit.svg)
-
-## Docker API sequence
-
-![sequence](../docs/images/sequence.svg)
-
 
 ## Appendix
 
@@ -530,11 +477,7 @@ at the documentation for [Accessing the Portainer API](https://docs.portainer.io
 
 ## Notes
 
-Single file testing run
 
-```bash
- dagit -h ghost.lan -f test1.py
-```
 
 * Don't forget to set the DAGSTER_HOME dir like in 
 
@@ -542,25 +485,15 @@ Single file testing run
  export DAGSTER_HOME=/home/fils/src/Projects/gleaner.io/scheduler/python/dagster
 ```
 
-```
-dagster-daemon run
-```
 
-Run from directory where workspace.yaml is.
-```
-dagit --host 192.168.202.159
-```
 
 ### Handle Multiple Organizations
 
 thoughts... 
 
-* Each organization can be in a container with its own code workflow. 
-   *  in the workflows directory: `dagster project projectname`
-   * it think
-* If we can standardize the loading and transforming workflows as much as possible, then the graph loading workflows 
- should be more customizable
-* to add a container, you need to edit the workflows.yaml in an organizations configuration
+* Each organization can run a docker-compose stack with containers with its own code workflow. 
+
+* to add a stack, you need to edit the workflows.yaml in an organizations configuration
 
 ## Cron Notes
 
