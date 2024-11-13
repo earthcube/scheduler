@@ -111,7 +111,7 @@ def upload_summary(context):
            # bg.upload_nq_file()
             namespace = tenant['graph']['summary_namespace']
             endpoint = triplestore.GraphEndpoint(namespace)
-            triplestore.post_to_graph(source_name, path=SUMMARY_PATH,extension="ttl", graphendpoint=endpoint)
+            triplestore.post_to_graph(source_name, path=SUMMARY_PATH,extension="ttl", graphendpoint=endpoint, suffix="release_summary")
             context.log.info(f"load summary for {source_name} to tenant  {tenant['community']}   {endpoint}")
         except Exception as ex:
             context.log.error(f"load to tenant failed {source_name}  {endpoint} {ex}")
