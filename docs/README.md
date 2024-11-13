@@ -17,7 +17,7 @@ The key elements are:
 
 * sources to configuration  to load into the Gleaner and Nabu tools, and push to the triplestore. These are now stored in
 an s3 location
-  * gleaner configuration. a list of sources to load
+  * gleaner configuration. a list of sources to load. (NOTE: This is also a docker config that needs to be updated to match to make things work)
   * tenant configuration. a list communities, and which sources they load
 * The Dagster set which loads three containers to support workflow operations
 * The Gleaner Architecture images which loads three or more containers to support 
@@ -25,10 +25,7 @@ an s3 location
   * graph database (triplestore)
   * headless chrome for page rendering to support dynamically inserted JSON-LD
   * any other support packages like text, semantic or spatial indexes
-* The GleanerIO tools which loads two containers  as services (Gleaner and Nabu) that are run 
-and removed by the Dagster workflow
 
-![upper level](images/gleanerDagster.svg)
 
 ### WORKFLOWS
 
@@ -311,6 +308,7 @@ They are installed in two places:
 | gleanerconfig.yaml | configs/PROJECT/gleanerconfig.yaml       | dockerconfig: gleaner                             | mounted in gleaner docker container     
 | nabuconfig.yaml | configs/PROJECT/nabuconfig.yaml          | dockerconfig: nabu                                | mounted in gleaner docker container     
 
+(NOTE: This is also a gleaner config (below in runtime configuration) that needs to be updated to mactch to make things work)
 
 [Docker Configs for gleanerio containers ](https://github.com/earthcube/scheduler/issues/106) are still needed:
 
@@ -468,6 +466,8 @@ SLACK_TOKEN=
 ```
 
 
+
+
 ## Appendix
 
 ### Portainer API setup
@@ -491,9 +491,42 @@ at the documentation for [Accessing the Portainer API](https://docs.portainer.io
 
 thoughts... 
 
-* Each organization can run a docker-compose stack with containers with its own code workflow. 
+* Each organization can be in a container with its own code workflow. 
+   *  in the workflows directory: `dagster project projectname`
+* If we can standardize the loading and transforming workflows as much as possible, then the graph loading workflows 
+ should be [standardized](https://github.com/earthcube/scheduler/issues/142). We could just define an additional container in a compose file, and add that to the workflows
 
-* to add a stack, you need to edit the workflows.yaml in an organizations configuration
+```
+load_from:
+#      - python_file:
+#          relative_path: "project/eco/repositories/repository.py"
+#          location_name: project
+#          working_directory: "./project/eco/"
+#      - python_file:
+#          relative_path: "workflows/ecrr/repositories/repository.py"
+#          working_directory: "./workflows/ecrr/"
+      # module starting out with the definitions api
+     # - python_module: "workflows.tasks.tasks"
+
+      - grpc_server:
+            host: dagster-code-tasks
+            port: 4000
+            location_name: "tasks"
+      - grpc_server:
+            host: dagster-code-eco-ingest
+            port: 4000
+            location_name: "ingest"
+      - grpc_server:
+            host: dagster-code-ios-ingest
+            port: 4000
+            location_name: "ingest"
+      - grpc_server:
+            host: dagster-code-eco-ecrr
+            port: 4000
+            location_name: "ecrr"
+```
+
+* to add a container, you need to edit the workflows.yaml in an organizations configuration
 
 ## Cron Notes
 
@@ -531,7 +564,4 @@ We can then use the docker approach
 
 to run indexes on specific sources in these configuration files.  
 
-## References
-
-* [Simple Dagster example](https://bakerwho.github.io/posts/datascience/Deployable-Dagster-MVP/)
 

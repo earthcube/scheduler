@@ -72,7 +72,7 @@ class GraphResource(ConfigurableResource):
         return url
 
 
-    def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None):
+    def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None, suffix='release'):
         if graphendpoint is None:
             graphendpoint = self.GraphEndpoint()
         # revision of EC utilities, will have a insertFromURL
@@ -85,7 +85,7 @@ class GraphResource(ConfigurableResource):
         port = self.gs3.GLEANERIO_MINIO_PORT
         address = PythonMinioAddress(self.gs3.GLEANERIO_MINIO_ADDRESS, self.gs3.GLEANERIO_MINIO_PORT)
         bucket = self.gs3.GLEANERIO_MINIO_BUCKET
-        release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
+        release_url = f"{proto}://{address}/{bucket}/{path}/{source}_{suffix}.{extension}"
         # BLAZEGRAPH SPECIFIC
         # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
         # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
