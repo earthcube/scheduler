@@ -10,7 +10,6 @@ services:
     dagster-code-eco-ecrr:
         hostname: dagster-code-${PROJECT}-ecrr
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
-        platform: linux/amd64
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
             -  PROJECT=${PROJECT}
