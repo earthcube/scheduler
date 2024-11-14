@@ -25,6 +25,13 @@ At the top level (dagster/implents) you can run
 
 You need to set the environment based on dagster/implnets/deployment/envFile.env
 
+For local development, these environment variable needs to be set
+
+```
+DAGSTER_HOME=dagster/dagster_home
+DAGSTER_LOCAL_ARTIFACT_STORAGE_DIR=/Users/valentin/development/dev_earthcube/scheduler/dagster/dagster_home/
+```
+
 It should run workflows/tasks/tasks
 
 defined in the pyproject.toml
