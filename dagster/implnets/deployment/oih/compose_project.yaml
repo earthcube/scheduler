@@ -9,8 +9,8 @@
 
 # secrets not working... these become files, so not really working
 networks:
-    traefik_proxy:
-        external: true
+#    traefik_proxy:
+#        external: true
     headless:
         external: true
         name: ${GLEANERIO_HEADLESS_NETWORK:-headless_gleanerio}
@@ -18,8 +18,8 @@ networks:
         driver: overlay
         # using project name is a bit tricky from dagster code, and needs to be external for a
         # container to use them
-        #name: dagster-${PROJECT:-eco}
-        name: dagster_host
+        name: dagster-${PROJECT:-eco}
+#        name: dagster_host
         attachable: true
 volumes:
     dagster-postgres:
@@ -28,26 +28,23 @@ volumes:
         driver: local
 # external so it could be shared accross docker swarms
 configs:
-    #  gleaner:
-    #    name: ${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
-    #    external: true
-    #  nabu:
-    #    name: ${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
-    #    external: true
+    gleaner:
+        name: ${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
+        external: true
+    nabu:
+        name: ${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
+        external: true
     workspace:
         name: ${GLEANERIO_DOCKER_WORKSPACE_CONFIG:-workspace}
         external: true
-    dagster:
-        name: ${GLEANERIO_DOCKER_DAGSTER_CONFIG:-dagster}
-        external: true
-secrets:
-    MINIO_ROOT_ACCESS_KEY:
-        external: true
-    MINIO_ROOT_SECRET_KEY:
-        external: true
+#    dagster:
+#        name: ${GLEANERIO_DOCKER_DAGSTER_CONFIG:-dagster}
+#        external: true
+
 services:
     dagster-dagit:
         image: docker.io/nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
+#        image: docker.io/fils/dagster-gleanerio:latest
         command: ["dagster-webserver", "-w", "${GLEANERIO_WORKSPACE_CONFIG_PATH:-/usr/src/app/workspace.yaml}", "-h", "0.0.0.0", "-p", "3000"]
           #        command:
           #  - "dagster-webserver"
@@ -63,24 +60,19 @@ services:
               # uid: "103"
               # gid: "103"
               mode: 0444
-            - source: dagster
-              target: /usr/src/app/dagster.yaml
+#            - source: dagster
+#              target: /usr/src/app/dagster.yaml
               # uid: "103"
               # gid: "103"
+#              mode: 0444
+            - source: gleaner
+              target: /scheduler/gleanerconfig.yaml
               mode: 0444
-        #          - source: gleaner
-        #            target: /scheduler/gleanerconfig.yaml
-        #            mode:
-        #                044
-        #          - source: nabu
-        #            target: /scheduler/nabuconfig.yaml
-        #            # uid: "103"
-        #            # gid: "103"
-        #            mode:
-        #              044
-        secrets:
-            - MINIO_ROOT_ACCESS_KEY
-            - MINIO_ROOT_SECRET_KEY
+            - source: nabu
+              target: /scheduler/nabuconfig.yaml
+            # uid: "103"
+            # gid: "103"
+              mode: 0444
               # GLEANEERIO_  the environment variables for this stack, passed into containers
               # the variables passed into the containers varies due to inconsistent standards.
               # this there are prefixed by project aka ECRR_ for customization
@@ -123,12 +115,15 @@ services:
             # - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
             # - SLACK_TOKEN=${SLACK_TOKEN}
         ports:
-            - 3000:3000
+            - "3000:3000"
         networks:
-            # - traefik_proxy
+#            - traefik_proxy
             - dagster_host
+#            - host
         depends_on:
             - dagster-postgres
+            - dagster-code-ingest
+            - dagster-code-tasks
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.sched-${PROJECT:-eco}.entrypoints=http"
@@ -150,13 +145,9 @@ services:
             - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.addvaryheader=true"
     dagster-daemon:
         image: docker.io/nsfearthcube/dagster-gleanerio:${CONTAINER_DAGSTER_TAG:-latest}
+#        image: docker.io/fils/dagster-gleanerio:latest
         configs: *configs
-
-        secrets:
-            - MINIO_ROOT_ACCESS_KEY
-            - MINIO_ROOT_SECRET_KEY
         environment: *env
-
         command:
             - "dagster-daemon"
             - "run"
@@ -164,12 +155,15 @@ services:
             - "${GLEANERIO_WORKSPACE_CONFIG_PATH:-/usr/src/app/workspace.yaml}"
         depends_on:
             - dagster-postgres
+            - dagster-code-ingest
+            - dagster-code-tasks
         networks:
             - dagster_host
     dagster-postgres:
+#        hostname: "dagster-postgres"
         image: postgres:13.3
         ports:
-            - 5432:5432
+            - "5432:5432"
         environment:
             - POSTGRES_PASSWORD=secret
         volumes:
@@ -183,8 +177,8 @@ services:
         #    build:
         #      context: .
         #      shm_size: "2gb"
-        restart: unless-stopped
-        shm_size: 1gb
+#        restart: unless-stopped
+#        shm_size: 1gb
         labels:
             - "traefik.enable=false"
             - "traefik.backend=headlesschrome"
@@ -203,7 +197,7 @@ services:
             - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=9222"
             - "traefik.docker.network=traefik_proxy"
         ports:
-            - 9222:9222
+            - "9222:9222"
         environment:
             - SERVICE_PORTS=9222
             # method to get a bigger shm space, since shm_size does not work on a swarm
@@ -229,6 +223,7 @@ services:
         # you should be able to change the source locally, without a full rebuild.
         #image: dagster-${PROJECT:-eco}:latest
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+#        image: docker.io/fils/dagster-gleanerio-workflows:latest
 
         environment: *env
         command:
@@ -254,6 +249,7 @@ services:
         # you should be able to change the source locally, without a full rebuild.
         #image: dagster-${PROJECT:-eco}:latest
         image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
+#        image: docker.io/fils/dagster-gleanerio-workflows:latest
 
         environment: *env
         command:
@@ -278,6 +274,7 @@ services:
         # you should be able to change the source locally, without a full rebuild.
         #image: dagster-${PROJECT:-eco}:latest
         image: docker.io/nsfearthcube/dagster-gleanerio-${PROJECT:-eco}:${CONTAINER_CODE_TAG:-latest}
+#        image: docker.io/fils/dagster-gleanerio-oih:sha-65638f7
         environment: *env
         command:
             - "dagster"
