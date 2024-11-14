@@ -2,7 +2,7 @@ version: "3.9"
 networks:
   dagster_host:
     external: true
-    name: dagster_host
+    name: ${GLEANERIO_DAGSTER_NETWORK:-dagster_host}
 
 volumes:
 

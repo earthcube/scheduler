@@ -11,16 +11,13 @@
 networks:
   traefik_proxy:
     external: true
+    name: ${GLEANERIO_PROXY_NETWORK:-traefik_proxy}
   headless:
     external: true
     name: ${GLEANERIO_HEADLESS_NETWORK:-headless_gleanerio}
   dagster_host:
-    driver: overlay
-    # using project name is a bit tricky from dagster code, and needs to be external for a
-    # container to use them
-    #name: dagster-${PROJECT:-eco}
-    name: dagster_host
-    attachable: true
+    external: true
+    name: ${GLEANERIO_DAGSTER_NETWORK:-dagster_host}
 volumes:
   dagster-postgres:
         driver: local
