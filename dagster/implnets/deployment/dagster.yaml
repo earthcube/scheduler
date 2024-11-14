@@ -1,3 +1,11 @@
+retention:
+  schedule:
+    purge_after_days: 90 # sets retention policy for schedule ticks of all types
+  sensor:
+    purge_after_days:
+      skipped: 7
+      failure: 30
+      success: 180 # -1 is keep success ticks indefinitely
 run_storage:
   module: dagster_postgres.run_storage
   class: PostgresRunStorage
