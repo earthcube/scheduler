@@ -16,15 +16,15 @@ basic view and doesn't present any scaling or fail over elements.
 The key elements are:
 
 * sources to configuration  to load into the Gleaner and Nabu tools, and push to the triplestore. These are now stored in
-an s3 location
-  * gleaner configuration. a list of sources to load. (NOTE: This is also a docker config that needs to be updated to match to make things work)
-  * tenant configuration. a list communities, and which sources they load
+a s3 location
+    * gleaner configuration. a list of sources to load. (NOTE: This is also a docker config that needs to be updated to match to make things work)
+    * tenant configuration. a list communities, and which sources they load
 * The Dagster set which loads three containers to support workflow operations
 * The Gleaner Architecture images which loads three or more containers to support 
-  * s3 object storage
-  * graph database (triplestore)
-  * headless chrome for page rendering to support dynamically inserted JSON-LD
-  * any other support packages like text, semantic or spatial indexes
+    * s3 object storage
+    * graph database (triplestore)
+    * headless chrome for page rendering to support dynamically inserted JSON-LD
+    * any other support packages like text, semantic or spatial indexes
 
 
 ### WORKFLOWS
@@ -32,7 +32,7 @@ an s3 location
 There are three workflows
 * ingest works to load sources
 * tasks weekly task
-* ecrr - loads Earthcube Resource Registry
+* custom - ecrr - loads Earthcube Resource Registry
 
 ```mermaid
 ---
@@ -255,9 +255,9 @@ sequenceDiagram
 
 The deployment can be developed locally. You can run jobs and materialize assets from the command line 
 
-You can setup a services stack in docker to locally test, or use existing services.
+You can set up a services stack in docker to locally test, or use existing services.
 
-The production 'containers' dagster, gleaner, and nabu are built with a github action. You can also use  a makefile.
+The production 'containers' dagster, gleaner, and nabu are built with a GitHub action. You can also use  a makefile.
 
 This describes the local and container deployment
 We use portainer to manage our docker deployments.
@@ -270,8 +270,8 @@ use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
 ![pycharm runconfig](images/pycharm_runconfig.png)
 
 1. move to the  implnets/deployment directory
-1. copy the envFile.env to .env [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
-1. edit the entries to point at a portainer/traefik with running services
+1. copy the [envFile.env](../dagster/implnets/deployment/envFile.env) to .env [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
+    1. edit the entries to point at a portainer/traefik with running services
 1. edit configuration files in implnets/configs/PROJECT: gleanerconfig.yaml, tenant.yaml
 1. upload configuration implnets/configs/PROJECT to s3 scheduler/configs: gleanerconfig.yaml, tenant.yaml
 1. run a Pycharm runconfig 
@@ -509,21 +509,25 @@ load_from:
      # - python_module: "workflows.tasks.tasks"
 
       - grpc_server:
-            host: dagster-code-tasks
+            host: dagster-code-eco-tasks
             port: 4000
-            location_name: "tasks"
+            location_name: "eco-tasks"
       - grpc_server:
             host: dagster-code-eco-ingest
             port: 4000
-            location_name: "ingest"
+            location_name: "eco-ingest"
       - grpc_server:
-            host: dagster-code-ios-ingest
+            host: dagster-code-oih--tasks
             port: 4000
-            location_name: "ingest"
+            location_name: "oih-tasks"
+      - grpc_server:
+            host: dagster-code-oih-ingest
+            port: 4000
+            location_name: "oih-ingest"
       - grpc_server:
             host: dagster-code-eco-ecrr
             port: 4000
-            location_name: "ecrr"
+            location_name: "eco-ecrr"
 ```
 
 * to add a container, you need to edit the workflows.yaml in an organizations configuration

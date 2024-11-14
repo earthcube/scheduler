@@ -39,8 +39,8 @@ dagster-project -- has --> nabuConfig.yaml
 ## Deploy
 
 ### Deploy Dagster in Portainer
-You will need to deploy dagster contiainers to portainer, for a docker swarm
-0. get the portatinaer url, and auth token 
+You will need to deploy dagster containers to portainer, for a docker swarm
+0. get the portainer url, and auth token 
 0.  SSH to the  make hosting the docker.
 
 1. Pull scheduler repo
@@ -57,7 +57,7 @@ PROJECT=eco
 ```
 5. as noted as noted in (Compose, Environment and Docker API Assets), deploy the configuration to s3. 
 6. ~~create network and volumes needed `dagster_setup_docker.sh`~~
-7. modify workflows to reference project ingest containers
+7. modify workflows to reference project ingest containers. MANUALLY CHANGE THE PROJECT TO THE PROJECT,
 ```
 load_from:
       # module starting out with the definitions api

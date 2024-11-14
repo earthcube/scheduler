@@ -4,8 +4,8 @@
 Dagster needs a docker instance to run Gleanerio. We usually do this in a remote container.
 Basically, you can run a single workflow with the UI from that workflows directory with a `dagster run`
 
-You will need to deploy dagster contiainers to portainer, for a docker swarm
-0. get the portatinaer url, and auth token 
+You will need to deploy dagster containers to portainer, for a docker swarm
+0. get the portainer url, and auth token 
 0.  SSH to the  make hosting the docker.
 
 1. Pull scheduler repo
@@ -27,7 +27,7 @@ You will need to deploy dagster contiainers to portainer, for a docker swarm
 7. add configs to S3/Minio. 
    8. scheduler/configs/gleanerconfig.yml
    9. scheduler/configs/tenant.yml
-8. then you can run a command. in runCOnfigs there are PyCharm run files
+8. then you can run a command. in runConfigs there are PyCharm run files (duplicate, then edit). This is the basic command line below
    9. set ENV
    10. GLEANERIO_GLEANER_CONFIG_PATH=/Users/valentin/development/dev_earthcube/scheduler/dagster/implnets/configs/eco/gleanerconfig.yaml
    11. `cd dagster/implnets/workflows/ingest`
