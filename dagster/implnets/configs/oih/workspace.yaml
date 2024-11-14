@@ -1,5 +1,13 @@
 load_from:
     - grpc_server:
+          host: dagster-code-oih-tasks
+          port: 4000
+          location_name: "oih-tasks"
+    - grpc_server:
+          host: dagster-code-oih-ingest
+          port: 4000
+          location_name: "oih-ingest"
+    - grpc_server:
           host: dagster-code-tasks
           port: 4000
           location_name: "tasks"

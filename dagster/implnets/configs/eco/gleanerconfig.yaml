@@ -1,7 +1,7 @@
 context:
   cache: true
   strict: false
-contextmaps:
+    contextmaps:
   - prefix: "https://schema.org/"
     file: "/assets/schemaorg-current-https.jsonld"  # wget http://schema.org/docs/jsonldcontext.jsonld
   - prefix: "http://schema.org/"

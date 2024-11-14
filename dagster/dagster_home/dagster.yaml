@@ -2,7 +2,8 @@ local_artifact_storage:
   module: dagster.core.storage.root
   class: LocalArtifactStorage
   config:
-    base_dir: /home/fils/src/Projects/earthcube/scheduler/dagster/dagster_home/
+    base_dir:
+      env: DAGSTER_LOCAL_ARTIFACT_STORAGE_DIR
 run_coordinator:
   module: dagster.core.run_coordinator
   class: QueuedRunCoordinator
