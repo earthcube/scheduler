@@ -1,6 +1,12 @@
 version: "3.9"
-
-
+networks:
+  dagster_host:
+    external: true
+    name: ${GLEANERIO_DAGSTER_NETWORK:-dagster_host}
+volumes:
+  dagster-storage:
+    driver: local
+    name: ${GLEANERIO_DAGSTER_STORAGE:-dagster_storage}
 
 # DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
 # USE:
