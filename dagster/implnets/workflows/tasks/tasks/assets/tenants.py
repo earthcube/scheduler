@@ -46,7 +46,7 @@ def _graphSummaryEndpoint(community):
     else:
         url = f"{GLEANERIO_GRAPH_URL}/namespace/{community}_summary/sparql"
     return url
-@asset(group_name="community",key_prefix="task",
+@asset(group_name="community",key_prefix=f"{PROJECT}_task",
        required_resource_keys={"triplestore"})
 def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
@@ -147,6 +147,8 @@ def getName(name):
         key_prefix=f"{PROJECT}_task",
        required_resource_keys={"triplestore"} )
 def loadstatsCommunity(context, task_tenant_sources) -> str:
+    if GLEANERIO_CSV_CONFIG_URL is None:
+        raise Exception("GLEANERIO_CSV_CONFIG_URL is not defined")
     prefix="history"
     logger = get_dagster_logger()
     s3_config = context.resources.triplestore.s3

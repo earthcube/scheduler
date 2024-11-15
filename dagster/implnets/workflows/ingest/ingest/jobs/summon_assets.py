@@ -14,7 +14,7 @@ PROJECT=os.environ.get('PROJECT')
 
 # disabling load_graph report until we can move it to tenant build runs.
 summon_asset_job = define_asset_job(
-    name="summon_and_release_job",
+    name=f"{PROJECT}_summon_and_release_job",
     selection=AssetSelection.assets(validate_sitemap_url, gleanerio_run, release_nabu_run, load_report_s3,
                                     release_summarize, identifier_stats, bucket_urls,
                                     graph_stats_report #, upload_release
@@ -26,7 +26,7 @@ tags={"ingest": 'docker'},
 # so can use command line to limit: https://docs.dagster.io/guides/limiting-concurrency-in-data-pipelines#limiting-opasset-concurrency-across-runs
 # value is ingest
 sources_asset_job = define_asset_job(
-    name="sources_config_updated_job",
+    name=f"{PROJECT}_sources_config_updated_job",
     selection=AssetSelection.assets(AssetKey([f"{PROJECT}_ingest","sources_names_active"])).required_multi_asset_neighbors(),
     partitions_def=sources_partitions_def,
     tags={"dagster/priority": "11"}
