@@ -59,7 +59,27 @@ You need to set the environment based on dagster/implnets/deployment/envFile.env
 
 will run just the task, and in editable form, i think.
 
+### testing by materializing assets
+#### Env variables:
 
+```yaml
+DAGSTER_LOCAL_ARTIFACT_STORAGE_DIR=/Users/valentin/development/dev_earthcube/scheduler/dagster/dagster_home/
+GLEANERIO_GLEANER_CONFIG_PATH=/Users/valentin/development/dev_earthcube/scheduler/dagster/implnets/configs/eco/gleanerconfig.yaml
+PROJECT=test
+```
+
+To materialize an asset from teh command line, you will probably need to materialize the assets it uses (at least the first time)
+(might need test_task... )
+
+`python -m dagster asset materialize -m tasks --select task/task_tenant_sources,task/loadstatsCommunity --partition dev `
+
+`python -m dagster asset materialize -m tasks --select task/source_list,task/loadstatsHistory` 
+
+jobs:
+https://docs.dagster.io/concepts/ops-jobs-graphs/job-execution#dagster-ui
+`python -m dagster job list` 
+
+`dagster dagster job execute eco_summon_and_release_job --partition geocodes_demo_data`
 
 ## TESTING CONTAINERS
 
