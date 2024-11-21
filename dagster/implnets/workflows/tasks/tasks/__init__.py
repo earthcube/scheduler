@@ -1,6 +1,6 @@
 import os
 from distutils.util import strtobool
-from dagster import Definitions, load_assets_from_modules, EnvVar
+from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext
 from dagster_aws.s3 import  S3Resource
 #from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from . import assets
@@ -12,9 +12,17 @@ from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerS3 import gleanerS3Resource
 
 from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
+def slack_message_fn(context: RunFailureSensorContext) -> str:
+    return (
+        f"Partition for Source *[{context.partition_key}]*  failed!"
+        f"Error: {context.failure_event.message}"
+    )
+
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
-    os.getenv("SLACK_TOKEN")
+    os.getenv("SLACK_TOKEN"),
+    webserver_base_url=f'https://{os.getenv("SCHED_HOSTNAME")}.{os.getenv("HOST")}/',
+    text_fn=slack_message_fn,
 )
 def _awsEndpointAddress(url, port=None, use_ssl=True):
     if use_ssl:

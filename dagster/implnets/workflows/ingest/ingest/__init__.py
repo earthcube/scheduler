@@ -16,7 +16,7 @@
 
 import os
 
-from dagster import Definitions, load_assets_from_modules, EnvVar
+from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext
 from dagster_aws.s3.resources import S3Resource
 from dagster_aws.s3.ops import S3Coordinate
 from dagster import (
@@ -68,10 +68,16 @@ release_file_sensor_v2,
     tenant_s3_sensor,
 #tenant_names_sensor_v2
 )
-
+def slack_message_fn(context: RunFailureSensorContext) -> str:
+    return (
+        f"Partition for Source *[{context.partition_key}]* failed! "
+        f"Error: {context.failure_event.message}"
+    )
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
-    os.getenv("SLACK_TOKEN")
+    os.getenv("SLACK_TOKEN"),
+    webserver_base_url=f'https://{os.getenv("SCHED_HOSTNAME")}.{os.getenv("HOST")}/',
+    text_fn=slack_message_fn
 )
 all_sensors = [
     slack_on_run_failure,
