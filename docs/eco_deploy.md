@@ -9,12 +9,13 @@ flowchart TB
 Postgres_Container-- defined by --> compose_project
 Dagit_UI_Container-- defined by --> compose_project
 Dagster_Container  -- defined by --> compose_project
-Headless_Container -- defined by --> compose_project
-configs_volume_Container -- defined by --> compose_project
+volume_Containers -- defined external --> compose_project
+networks -- defined external --> compose_project 
 compose_project -- deployed to --> docker_portainer
+compose_project_ingest -- deployed to --> docker_portainer
 
-Gleaner_container -- image manual add --> docker_portainer
-Nabu_container -- image manual add --> docker_portainer
+Gleaner_container -- image  fetched by dagster --> docker_portainer
+Nabu_container -- image  fetched by dagster --> docker_portainer
 
 Gleaner_container -- deployed by --> Dagster_Container
 Nabu_container -- deployed by --> Dagster_Container
@@ -23,16 +24,17 @@ Gleaner_container--  deployed to --> docker_portainer
 Nabu_container--  deployed to --> docker_portainer
 
 Dagit_UI_Container -- Created by --> Github_action
-Dagster_Cotnainer -- Created by --> Github_action
+Dagster_workspace_container -- Created by --> Github_action
 
-NabuConfig.tgz -- Archive to --> Nabu_container
-GleanerConfig.tfz -- Archive to --> Gleaner_container
+workspace.yaml -- Stored in docker config  --> docker_portainer
 
-NabuConfig.tgz -- Stored in s3 --> s3
-GleanerConfig.tfz -- Stored in s3 --> s3
+NabuConfig.yaml -- Stored in s3 /scheduler/configs/CONFIG --> s3
+GleanerConfig.yaml -- Stored in s3 /scheduler/configs/CONFIG --> s3
+tenant.yaml -- Stored in s3 /scheduler/configs/CONFIG --> s3
 
 configs_volume_Container -- populates volume --> dagster-project
 dagster-project -- has --> gleanerConfig.yaml
+dagster-project -- has --> nabuConfig.yaml
 dagster-project -- has --> nabuConfig.yaml
 ```
 
