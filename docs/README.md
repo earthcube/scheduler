@@ -284,8 +284,8 @@ use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
 1. move to the implnets/deployment directory
 1. copy the envFile.env to .env [see](#environment-files)use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
 1. edit the entries.
-1. edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
-1. upload configuration implnets/configs/PROJECT to scheduler/configs s3: gleanerconfig.yaml, tenant.yaml
+1. edit configuration files in scheduler/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
+1. upload configuration scheduler/configs/PROJECT to scheduler/configs s3: gleanerconfig.yaml, tenant.yaml
 1. for local, `./dagster_localrun.sh`
 1. go to http://localhost:3000/
 

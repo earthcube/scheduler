@@ -93,14 +93,58 @@ load_from:
    - compose files: dagster/implnets/deployment/compose_project.yaml
 ```
 8. create  ingest stack,
+Name of the project is: eco
 ```
    - gtibub repo: https://github.com/earthcube/scheduler.git
    - branch: dev
    - compose files: dagster/implnets/deployment/compose_project_ingest.yaml
 ```
+so workspace might look like:
+```
+load_from:
+      # module starting out with the definitions api
+     # - python_module: "workflows.tasks.tasks"
 
+      - grpc_server:
+            host: dagster-code-eco-tasks
+            port: 4000
+            location_name: "eco-tasks"
+      - grpc_server:
+            host: dagster-code-eco-ingest
+            port: 4000
+            location_name: "eco-ingest"
+```
 
+8. if dev, create a second stack
+CHANGE THE NAME OF THE PROJECT to test for the env variables
+```
+   - gtibub repo: https://github.com/earthcube/scheduler.git
+   - branch: dev
+   - compose files: dagster/implnets/deployment/compose_project_ingest.yaml
+```
+so workspace might look like:
+```
+load_from:
+      # module starting out with the definitions api
+     # - python_module: "workflows.tasks.tasks"
 
+      - grpc_server:
+            host: dagster-code-eco-tasks
+            port: 4000
+            location_name: "eco-tasks"
+      - grpc_server:
+            host: dagster-code-eco-ingest
+            port: 4000
+            location_name: "eco-ingest
+      - grpc_server:
+            host: dagster-code-test-tasks
+            port: 4000
+            location_name: "test-tasks"
+      - grpc_server:
+            host: dagster-code-test-ingest
+            port: 4000
+            location_name: "test-ingest
+```
 
 
 
