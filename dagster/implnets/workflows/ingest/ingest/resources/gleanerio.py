@@ -76,6 +76,8 @@ from .gleanerS3 import gleanerS3Resource
 # SUMMARY_PATH = 'graphs/summary'
 # RELEASE_PATH = 'graphs/latest'
 
+import os
+PROJECT=os.environ.get('PROJECT')
 # this will probably need to handle the client, and the
 class GleanerioResource(ConfigurableResource):
 
@@ -132,7 +134,7 @@ class GleanerioResource(ConfigurableResource):
 
     def _get_client(self, docker_container_context: DockerContainerContext):
         headers = {'X-API-Key': self.GLEANERIO_PORTAINER_APIKEY}
-        client = docker.DockerClient(base_url=self.GLEANERIO_DOCKER_URL, version="1.43")
+        client = docker.DockerClient(base_url=self.GLEANERIO_DOCKER_URL, version="1.43") # my build needs 1.47, make a .env entry?
         # client = docker.APIClient(base_url=URL, version="1.35")
         get_dagster_logger().info(f"create docker client")
         if (client.api._general_configs):
@@ -161,7 +163,7 @@ class GleanerioResource(ConfigurableResource):
 
     ):
         env_vars = dict([parse_env_var(env_var) for env_var in container_context.env_vars])
-        get_dagster_logger().info(f"create docker service for {name}")
+        get_dagster_logger().info(f"create docker service for {PROJECT} {name}")
         ## thoguhts
         # return service, container, since there is one
         restart_policy = RestartPolicy(condition='none')
@@ -253,7 +255,7 @@ class GleanerioResource(ConfigurableResource):
 
            # ARGS = f"gleaner --cfg/gleaner/gleanerconfig.yaml -source {source} --rude"
             ARGS = ["--cfg", self.GLEANERIO_GLEANER_CONFIG_PATH,"-source", source, "--rude"]
-            NAME = f"sch_{source}_{str(mode)}"
+            NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/gleaner/"
             #Entrypoint = ["/gleaner/gleaner", "--cfg", "/gleaner/gleanerconfig.yaml", "-source", source, "--rude"]
             # LOGFILE = 'log_gleaner.txt'  # only used for local log file writing
@@ -261,7 +263,7 @@ class GleanerioResource(ConfigurableResource):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
             ARGS = ["--cfg", self.GLEANERIO_NABU_CONFIG_PATH, "prune", "--prefix", "summoned/" + source]
-            NAME = f"sch_{source}_{str(mode)}"
+            NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
             # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -269,7 +271,7 @@ class GleanerioResource(ConfigurableResource):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
             ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "prov/" + source]
-            NAME = f"sch_{source}_{str(mode)}"
+            NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
             # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -277,7 +279,7 @@ class GleanerioResource(ConfigurableResource):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
             ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "orgs"]
-            NAME = f"sch_{source}_{str(mode)}"
+            NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
             # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
@@ -285,7 +287,7 @@ class GleanerioResource(ConfigurableResource):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
             ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "release", "--prefix", "summoned/" + source]
-            NAME = f"sch_{source}_{str(mode)}"
+            NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
             # LOGFILE = 'log_nabu.txt'  # only used for local log file writing

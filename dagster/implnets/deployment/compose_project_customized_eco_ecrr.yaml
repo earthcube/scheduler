@@ -1,21 +1,24 @@
 version: "3.9"
-
-# networks: production uses traefik_proxy, buth
-#  this is local testing
-
+networks:
+  dagster_host:
+    external: true
+    name: ${GLEANERIO_DAGSTER_NETWORK:-dagster_host}
+volumes:
+  dagster-storage:
+    driver: local
+    name: ${GLEANERIO_DAGSTER_STORAGE:-dagster_storage}
 
 # DO NOT START IN PYCHARM (unless you set the env variables in your runconfig
 # USE:
-# ./docker_localstart.sh
+# ./docker_eco_prod_start.h
 services:
-    dagster-dagit:
-            # GLEANEERIO_  the environment variables for this stack, passed into containers
-            # the variables passed into the containers varies due to inconsistent standards.
-            # this there are prefixed by project aka ECRR_ for customization
-          # DO NOT RENAME THE FIRST PART, aka the container environment variable,
-          #     unless you sure what you are doing
+
+    dagster-code-eco-ecrr:
+        hostname: dagster-code-${PROJECT}-ecrr
+        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
+            -  PROJECT=${PROJECT}
             - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
             - GLEANERIO_DAGSTER_CONFIG_PATH=${GLEANERIO_DAGSTER_CONFIG_PATH:-scheduler/logs/}
             - GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=${GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT:-300}
@@ -46,49 +49,11 @@ services:
             - GLEANERIO_SOURCES_FILENAME=${GLEANERIO_SOURCES_FILENAME:-gleanerconfig.yaml}
             - GLEANERIO_TENANT_FILENAME=${GLEANERIO_TENANT_FILENAME:-tenant.yaml}
             - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}
-            - GLEANERIO_CSV_CONFIG_URL=${GLEANERIO_CSV_CONFIG_URL:-https://docs.google.com/spreadsheets/d/e/2PACX-1vTt_45dYd5LMFK9Qm_lCg6P7YxG-ae0GZEtrHMZmNbI-y5tVDd8ZLqnEeIAa-SVTSztejfZeN6xmRZF/pub?gid=1340502269&single=true&output=csv}
-            - ECRR_MINIO_BUCKET=${ECRR_MINIO_BUCKET}
-            - ECRR_GRAPH_NAMESPACE=${ECRR_GRAPH_NAMESPACE}
+            - ECRR_MINIO_BUCKET=${GLEANERIO_ECRR_MINIO_BUCKET}
+            - ECRR_GRAPH_NAMESPACE=${GLEANERIO_ECRR_GRAPH_NAMESPACE}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-            - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
-            - SLACK_TOKEN=${SLACK_TOKEN}
-
-
- #        command:
-#            - "dagster-webserver"
-#            - "-w"
-#            - "workspace.yaml"
-#            - "-h"
-#            - "0.0.0.0"
-#            - "-p"
-#            - "3000"
-        depends_on: &deps
-            -   dagster-code-ingest
-            - dagster-code-tasks
-
-    dagster-daemon:
-        environment: *env
-# portainer issue, merging commandsmay need to create a combined customised on
-#        command:
-#        - "dagster-daemon"
-#        - "run"
-#        - "-w"
-#        - "workspace.yaml"
-        depends_on:
-            - dagster-postgres
-            -   dagster-code-ingest
-            - dagster-code-tasks
-            - dagster-code-eco-ecrr
-        networks:
-            - traefik_proxy
-## GRPC servers are not just serving the code
-# they need to compile it, so same image for all dagster-*
-    dagster-code-eco-ecrr:
-        # you should be able to change the source locally, without a full rebuild.
-       #image: dagster-${PROJECT:-eco}:latest
-        image: docker.io/nsfearthcube/dagster-gleanerio-workflows:${CONTAINER_CODE_TAG:-latest}
-
-        environment: *env
+            - SLACK_CHANNEL=${GLEANERIO_SLACK_CHANNEL:-"#twitterfeed"}
+            - SLACK_TOKEN=${GLEANERIO_SLACK_TOKEN}
         command:
         - "dagster"
         - "api"
@@ -102,10 +67,11 @@ services:
         - "-d"
         - "/usr/src/app/"
 
-        volumes:
+        volumes: &codevol
             - dagster-storage:/usr/src/app/storage
         depends_on:
             - dagster-postgres
         networks:
             - dagster_host
+
 

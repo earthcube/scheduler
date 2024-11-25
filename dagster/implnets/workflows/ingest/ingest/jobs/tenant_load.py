@@ -18,19 +18,20 @@ from ..assets.tenant import create_tenant_containers, create_graph_namespaces
 from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
 from ..resources.graph import BlazegraphResource
-
+import os
+PROJECT=os.environ.get('PROJECT')
 
 
 
 tenant_asset_job = define_asset_job(
-    name="tenant_config_updated_job",
-    selection=AssetSelection.assets(AssetKey(["ingest","tenant_names"])).required_multi_asset_neighbors(),
+    name=f"{PROJECT}_tenant_config_updated_job",
+    selection=AssetSelection.assets(AssetKey([f"{PROJECT}_ingest","tenant_names"])).required_multi_asset_neighbors(),
     partitions_def=sources_partitions_def,
     tags={"dagster/priority": "10"}
 )
 
 release_asset_job = define_asset_job(
-    name="tenant_release_job",
+    name=f"{PROJECT}_tenant_release_job",
     selection=AssetSelection.assets(upload_release,upload_summary),
     partitions_def=sources_partitions_def,
     tags={"dagster/priority": "3", "ingest": "graph"}
@@ -40,7 +41,7 @@ release_asset_job = define_asset_job(
 #File "/usr/local/lib/python3.11/site-packages/dagster/_daemon/sensor.py", line 471, in _process_tick_generator
 
 tenant_namespaces_job = define_asset_job(
-    name="tenant_namespaces_job",
+    name=f"{PROJECT}_tenant_namespaces_job",
     selection=AssetSelection.assets(create_tenant_containers, create_graph_namespaces),
     partitions_def=tenant_partitions_def,
      tags={"dagster/priority": "20"}

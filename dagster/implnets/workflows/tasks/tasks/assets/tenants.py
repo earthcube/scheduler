@@ -10,16 +10,17 @@ from dagster import (asset,
                      Output,
                      DynamicPartitionsDefinition,
                      define_asset_job,
-                    AssetSelection,
-                    sensor,SensorResult,DefaultSensorStatus,
-                    RunRequest,
-asset_sensor, AssetKey,
+                     AssetSelection,
+                     sensor, SensorResult, DefaultSensorStatus,
+                     RunRequest,
+                     asset_sensor, AssetKey, AutoMaterializePolicy,
                      )
 from ec.datastore import s3
 from distutils import util
 from ..resources.gleanerS3 import _pythonMinioAddress
 from ec.reporting.report import generateReportStats
 
+PROJECT=os.environ.get('PROJECT')
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
 GLEANER_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
@@ -36,14 +37,16 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
               ,"secret_key": GLEANER_MINIO_SECRET_KEY
                }
 
-def _graphSummaryEndpoint(community):
-    if community == "all":
+
+def _graphSummaryEndpoint(community_summary):
+    if community_summary == "all":
         url = f"{GLEANERIO_GRAPH_URL}/namespace/{GLEANERIO_GRAPH_SUMMARY_NAMESPACE}/sparql"
     else:
-        url = f"{GLEANERIO_GRAPH_URL}/namespace/{community}_summary/sparql"
+        url = f"{GLEANERIO_GRAPH_URL}/namespace/{community_summary}/sparql"
     return url
-@asset(group_name="community",key_prefix="task",
-       required_resource_keys={"triplestore"})
+@asset(group_name="community",key_prefix=f"{PROJECT}_task",
+       required_resource_keys={"triplestore"},
+       auto_materialize_policy=AutoMaterializePolicy.eager())
 def task_tenant_sources(context) ->Any:
     s3_resource = context.resources.triplestore.s3
     t=s3_resource.getTennatInfo()
@@ -58,9 +61,10 @@ def task_tenant_sources(context) ->Any:
         #         # The `MetadataValue` class has useful static methods to build Metadata
         #     }
         # )
-@asset(group_name="community",key_prefix="task",
+@asset(group_name="community",key_prefix=f"{PROJECT}_task",
        #name='task_tenant_names',
-       required_resource_keys={"triplestore"})
+       required_resource_keys={"triplestore"},
+       auto_materialize_policy=AutoMaterializePolicy.eager() )
 def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
 
     tenants = task_tenant_sources['tenant']
@@ -79,14 +83,14 @@ def task_tenant_names(context, task_tenant_sources) -> Output[Any]:
 
 community_partitions_def = DynamicPartitionsDefinition(name="tenantsPartition")
 tenant_task_job = define_asset_job(
-    "tenant_job", AssetSelection.keys(AssetKey(["task","loadstatsCommunity"])), partitions_def=community_partitions_def
+    "tenant_job", AssetSelection.keys(AssetKey([f"{PROJECT}_task","loadstatsCommunity"])), partitions_def=community_partitions_def
 )
 #@sensor(job=tenant_job)
-@asset_sensor(asset_key=AssetKey(["task","task_tenant_names"]),
+@asset_sensor(asset_key=AssetKey([f"{PROJECT}_task","task_tenant_names"]),
                default_status=DefaultSensorStatus.RUNNING,
      job=tenant_task_job)
 def community_sensor(context):
-    tenants = context.repository_def.load_asset_value(AssetKey(["task","task_tenant_names"]))
+    tenants = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_task","task_tenant_names"]))
     new_community = [
         community
         for community in tenants
@@ -137,11 +141,13 @@ def getName(name):
 
 #@asset( group_name="load")
 @asset(partitions_def=community_partitions_def,
-      deps=[AssetKey(["task","task_tenant_sources"])],
+      deps=[AssetKey([f"{PROJECT}_task","task_tenant_sources"])],
        group_name="community",
-        key_prefix="task",
+        key_prefix=f"{PROJECT}_task",
        required_resource_keys={"triplestore"} )
 def loadstatsCommunity(context, task_tenant_sources) -> str:
+    if GLEANERIO_CSV_CONFIG_URL is None:
+        raise Exception("GLEANERIO_CSV_CONFIG_URL is not defined")
     prefix="history"
     logger = get_dagster_logger()
     s3_config = context.resources.triplestore.s3
@@ -150,10 +156,14 @@ def loadstatsCommunity(context, task_tenant_sources) -> str:
  #   sourcelist = list(s3Minio.listPath(GLEANER_MINIO_BUCKET, ORG_PATH,recursive=False))
     community_code= context.asset_partition_key_for_output()
     stats = []
+    ts = task_tenant_sources
+    t = list(filter(lambda a: a['community'] == community_code, ts["tenant"]))
+    s = t[0]["sources"]
+    g = t[0]['graph']
     try:
-        ts = task_tenant_sources
-        t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
-        s = t[0]["sources"]
+        # ts = task_tenant_sources
+        # t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
+        # s = t[0]["sources"]
 
         for source in s:
             dirs = s3Minio.listPath(GLEANER_MINIO_BUCKET,path=f"{REPORT_PATH}{source}/",recursive=False )
@@ -220,9 +230,9 @@ def loadstatsCommunity(context, task_tenant_sources) -> str:
     #return df_csv # now checking return types
 
     context.log.info(f"GLEANERIO_CSV_CONFIG_URL {GLEANERIO_CSV_CONFIG_URL}  ")
-
+    graphendpoint = g['summary_namespace']
     report = generateReportStats(GLEANERIO_CSV_CONFIG_URL, s3_config.GLEANERIO_MINIO_BUCKET, s3Minio,
-                                 _graphSummaryEndpoint(community_code), community_code)
+                                _graphSummaryEndpoint(graphendpoint) , community_code)
     bucket, object = s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}",
                                            f"report_stats.json", report)
     context.log.info(

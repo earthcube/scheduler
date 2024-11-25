@@ -1,8 +1,17 @@
+retention:
+  schedule:
+    purge_after_days: 7 # sets retention policy for schedule ticks of all types
+  sensor:
+    purge_after_days:
+      skipped: 3
+      failure: 3
+      success: 7 # -1 is keep success ticks indefinitely
 local_artifact_storage:
   module: dagster.core.storage.root
   class: LocalArtifactStorage
   config:
-    base_dir: /Users/valentin/development/dev_earthcube/scheduler/dagster/dagster_home/
+    base_dir:
+      env: DAGSTER_LOCAL_ARTIFACT_STORAGE_DIR
 run_coordinator:
   module: dagster.core.run_coordinator
   class: QueuedRunCoordinator

@@ -1,3 +1,5 @@
+# THIS LOADS AN ADDITIONAL CONTAINER THAT SHOULD BE IN compose_local_example_override.yaml
+
 load_from:
 #      - python_file:
 #          relative_path: "project/eco/repositories/repository.py"
@@ -14,13 +16,9 @@ load_from:
             port: 4000
             location_name: "tasks"
       - grpc_server:
-            host: dagster-code-eco-ingest
+            host: dagster-code-ingest
             port: 4000
             location_name: "ingest"
-#      - grpc_server:
-#            host: dagster-code-project
-#            port: 4000
-#            location_name: "project_grpc"
       - grpc_server:
             host: dagster-code-eco-ecrr
             port: 4000

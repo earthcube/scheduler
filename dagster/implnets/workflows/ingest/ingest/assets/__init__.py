@@ -1,4 +1,4 @@
-from .gleaner_geocdoes_demo import gleanerio_demo
+
 from .gleaner_summon_assets import (
     gleanerio_run, release_nabu_run, release_summarize,
     load_report_s3,load_report_graph,validate_sitemap_url,
@@ -7,7 +7,7 @@ from .gleaner_summon_assets import (
     SUMMARY_PATH,RELEASE_PATH
 )
 from .gleaner_sources import (
-    gleanerio_orgs, gleanerio_tenants,
+     gleanerio_tenants,
     gleanerio_sources,
     tenant_partitions_def
     , sources_partitions_def

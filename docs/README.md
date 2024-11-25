@@ -16,15 +16,15 @@ basic view and doesn't present any scaling or fail over elements.
 The key elements are:
 
 * sources to configuration  to load into the Gleaner and Nabu tools, and push to the triplestore. These are now stored in
-an s3 location
-  * gleaner configuration. a list of sources to load. (NOTE: This is also a docker config that needs to be updated to mactch to make things work)
-  * tenant configuration. a list communities, and which sources they load
+a s3 location
+    * gleaner configuration. a list of sources to load. (NOTE: This is also a docker config that needs to be updated to match to make things work)
+    * tenant configuration. a list communities, and which sources they load
 * The Dagster set which loads three containers to support workflow operations
 * The Gleaner Architecture images which loads three or more containers to support 
-  * s3 object storage
-  * graph database (triplestore)
-  * headless chrome for page rendering to support dynamically inserted JSON-LD
-  * any other support packages like text, semantic or spatial indexes
+    * s3 object storage
+    * graph database (triplestore)
+    * headless chrome for page rendering to support dynamically inserted JSON-LD
+    * any other support packages like text, semantic or spatial indexes
 
 
 ### WORKFLOWS
@@ -32,9 +32,38 @@ an s3 location
 There are three workflows
 * ingest works to load sources
 * tasks weekly task
-* ecrr - loads Earthcube Resource Registry
+* custom - ecrr - loads Earthcube Resource Registry
 
+```mermaid
+---
+title: Dagster Stack
+---
+flowchart LR
+ 
+    subgraph docker[docker managed by portainer]
+    
+        subgraph Stacks
+            subgraph dagster-compose-stack
+                dagit-service
+                dagster-service
+                postgres-service
+            end
+            subgraph ingest-compose-stack
+                ingest-service
+                tasks-service
+            end
+            subgraph ec-compose-stack
+                ecrr-service
+            end
+        end
+        config
+        subgraph Volumes
+            dagster-postgres
+        end
+    end
 
+    
+```
 
 ```mermaid
 ---
@@ -64,12 +93,18 @@ flowchart LR
     subgraph docker[docker managed by portainer]
     
         subgraph Containers
+            subgraph dagster-compose-stack
                 dagit
                 dagster
                 postgres
+            end
+            subgraph ingest-compose-stack
                 ingest
                 tasks
+            end
+            subgraph eco-compose-stack
                 ecrr
+            end
         end
         config
         subgraph Volumes
@@ -96,9 +131,14 @@ flowchart LR
 
 1. information for environment variables is created
 2. The configuration files are created and loaded to s3, and docker/config
-2. a docker stack is created, and the environment variables are added.
-3. portainer deploys containers
-4. when ingest and tasks are executed, they read
+2. a docker stack for dagster/scheduler created, and the environment variables are added.
+3. portainer deploys stack
+4. a docker stack for an ingest service is created, and the environment variables are added.
+3. portainer deploys stack
+3. initial configuration jobs for ingest and tasks  are executed, they read the gleaner and tenant configurations
+4. when complete, they request loading runs for the sources from gleaner
+5. when a loading run is complete, a sensor triggers, and a release is loaded to a tenant
+6. 
 
 
 #### Ingest Workflow
@@ -213,10 +253,11 @@ sequenceDiagram
 
 ## Steps to build and deploy
 
-The deployment can be tested locally. You can setup a services stack in docker to locally test, or use existing 
-services.
+The deployment can be developed locally. You can run jobs and materialize assets from the command line 
 
-The production 'containers' dagster, gleaner, and nabu are built with a github action. You can also use  a makefile.
+You can set up a services stack in docker to locally test, or use existing services.
+
+The production 'containers' dagster, gleaner, and nabu are built with a GitHub action. You can also use  a makefile.
 
 This describes the local and container deployment
 We use portainer to manage our docker deployments.
@@ -227,24 +268,26 @@ We use portainer to manage our docker deployments.
 You can test components in pycharm. Run configurations for pycgharm  are in runConfigurations (TODO: Instructions)
 use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
 ![pycharm runconfig](images/pycharm_runconfig.png)
-1) move to the  implnets/deployment directory
-2) copy the envFile.env to .env [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
-3) edit the entries to point at a portainer/traefik with running services
-4) edit configuration files in implnets/configs/PROJECT: gleanerconfig.yaml, tenant.yaml
-5) upload configuration implnets/configs/PROJECT to s3 scheduler/configs: gleanerconfig.yaml, tenant.yaml
-4) run a Pycharm runconfig 
-   5) eg dagster_ingest_debug
-4) go to http://localhost:3000/
-6) you can [test the schedules](#test-schedules) 
+
+1. move to the  implnets/deployment directory
+1. copy the [envFile.env](../dagster/implnets/deployment/envFile.env) to .env [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile)
+    1. edit the entries to point at a portainer/traefik with running services
+1. edit configuration files in implnets/configs/PROJECT: gleanerconfig.yaml, tenant.yaml
+1. upload configuration implnets/configs/PROJECT to s3 scheduler/configs: gleanerconfig.yaml, tenant.yaml
+1. run a Pycharm runconfig 
+    1. eg dagster_ingest_debug
+1. go to http://localhost:3000/
+1. you can [test the schedules](#test-schedules) 
 
 ## full stack test Run local with remote services
-1) move to the implnets/deployment directory
-2) copy the envFile.env to .env [see](#environment-files)use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
-3) edit the entries.
-4) edit configuration files in implnets/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
-5) upload configuration implnets/configs/PROJECT to scheduler/configs s3: gleanerconfig.yaml, tenant.yaml
-4) for local, `./dagster_localrun.sh`
-5) go to http://localhost:3000/
+
+1. move to the implnets/deployment directory
+1. copy the envFile.env to .env [see](#environment-files)use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) [see](#environment-files)  use the [ENVFIle plugin.](https://plugins.jetbrains.com/plugin/7861-envfile) 
+1. edit the entries.
+1. edit configuration files in scheduler/configs/PROJECT to s3: gleanerconfig.yaml, tenant.yaml
+1. upload configuration scheduler/configs/PROJECT to scheduler/configs s3: gleanerconfig.yaml, tenant.yaml
+1. for local, `./dagster_localrun.sh`
+1. go to http://localhost:3000/
 
 To deploy in portainer, use the deployment/compose_project.yaml docker stack.
 
@@ -258,7 +301,7 @@ They are installed in two places:
 
 | file               | local                                    |                                                   | note                                    |
 |--------------------|------------------------------------------|---------------------------------------------------|-----------------------------------------|
-| workspace          | configs/PROJECT/worksapce.yaml           | dockerconfig: workspace                           | docker compose: used by dagster         |
+| workspace          | configs/local/worksapce.yaml             | dockerconfig: workspace                           | docker compose: used by dagster         |
 | gleanerconfig.yaml | configs/PROJECT/gleanerconfig.yaml       | s3:{bucket}/scheduler/configs/gleanerconfigs.yaml | ingest workflow needs to be in minio/s3 
 | tenant.yaml        | configs/PROJECT/tenant.yaml              | s3:{bucket}/scheduler/configs/tenant.yaml         | ingest workflow needs to be in minio/s3 
 | dagster.yaml       | dagster/implnets/deployment/dagster.yaml | dockerconfig: dagster                             | docker compose: used by dagster  
@@ -274,7 +317,7 @@ They are installed in two places:
 | gleanerconfig.yaml  | configs/PROJECT/gleanerconfigs.yaml                       | env () | generated code needs to be in ~~portainer~~          |
 | nabuconfig.yaml | configs/PROJECT/nabuconfigs.yaml                          | env () | generated codeneeds to be in ~~portainer~~ |
 
-3) when the containers are running in a  stack, on portainer, there will need to
+1. when the containers are running in a  stack, on portainer, there will need to
    be updated by pulling from dockerhub. The ENV variables may need to be updated for the CONTAINER*_TAG
 
 
@@ -289,27 +332,27 @@ They are installed in two places:
 
 ### updating config
 You can update a config, and a sensor should pick up the changes.
-1) Upload changed file to s3
+1. Upload changed file to s3
    2) note, if this is a new source, you need to add it to the docker config (gleaner-PROJECT). 
-2) go to overview, ![overview](images/overview_sensors_tab.png)
-3) go to  s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
+1. go to overview, ![overview](images/overview_sensors_tab.png)
+1. go to  s3_config_source_sensor  for gleanerconfig.yaml changes, and s3_config_tenant_sensor for tenant.yaml changes
  ![sensor](images/sources_sensor.png).
-4) at some point, a run should occur.  ![run](images/runs.png).
-5) then go to the sources_sensor, or tenant sensor 
+1. at some point, a run should occur.  ![run](images/runs.png).
+1. then go to the sources_sensor, or tenant sensor 
 if job does not run, you can do a backfill.
 #### new sources:
-6)  so to job tab, and run summon_and_release with the 'partitions' aka 'sources' that are recent.
-7) click materialize_all, and in the backfill dialog be sure only the added partition is selected.  ![backfill](images/materialize.png).
-8) go to runs, and see that a job with a partition with that name is queued/running
-9) run tenant_release_job with same partition name to load data to tenants
+1.  so to job tab, and run summon_and_release with the 'partitions' aka 'sources' that are recent.
+1. click materialize_all, and in the backfill dialog be sure only the added partition is selected.  ![backfill](images/materialize.png).
+1. go to runs, and see that a job with a partition with that name is queued/running
+1. run tenant_release_job with same partition name to load data to tenants
 ###
 #### new tenants:
 There are two jobs that need to run to move data to a tenant. (third will be needed for UI)
-6)  so to job tab, and run tenant_namespaces_job with the 'partitions' aka 'tenant' that are recent.'
-7) click materialize_all, and be sure only the added partition is selected
-8) go to runs, and see that a job with a partition with that name is queded,/running
-6)  so to job tab, and run tenant_release_job with the 'partitions' aka 'sources' for that tenant
-7) click materialize_all, The data will be pushed to all tenant namespaces
+1.  so to job tab, and run tenant_namespaces_job with the 'partitions' aka 'tenant' that are recent.'
+1. click materialize_all, and be sure only the added partition is selected
+1. go to runs, and see that a job with a partition with that name is queded,/running
+1.  so to job tab, and run tenant_release_job with the 'partitions' aka 'sources' for that tenant
+1. click materialize_all, The data will be pushed to all tenant namespaces
 
 ## test schedules
  
@@ -319,9 +362,9 @@ There are two jobs that need to run to move data to a tenant. (third will be nee
 ![schedules test](images/schedules_test.png)
 ### Environment files
 
-1) cp deployment/envFile.env .env
-2) edit
-3) `export $(cat .env | xargs)`
+1. cp deployment/envFile.env .env
+1. edit
+1. `export $(cat .env | xargs)`
 export $(cat .env | xargs)
 ```yaml
 ######
@@ -435,6 +478,15 @@ at the documentation for [Accessing the Portainer API](https://docs.portainer.io
 ## Notes
 
 
+
+* Don't forget to set the DAGSTER_HOME dir like in 
+
+```bash
+ export DAGSTER_HOME=/home/fils/src/Projects/gleaner.io/scheduler/python/dagster
+```
+
+
+
 ### Handle Multiple Organizations
 
 thoughts... 
@@ -457,21 +509,25 @@ load_from:
      # - python_module: "workflows.tasks.tasks"
 
       - grpc_server:
-            host: dagster-code-tasks
+            host: dagster-code-eco-tasks
             port: 4000
-            location_name: "tasks"
+            location_name: "eco-tasks"
       - grpc_server:
             host: dagster-code-eco-ingest
             port: 4000
-            location_name: "ingest"
+            location_name: "eco-ingest"
       - grpc_server:
-            host: dagster-code-ios-ingest
+            host: dagster-code-oih--tasks
             port: 4000
-            location_name: "ingest"
+            location_name: "oih-tasks"
+      - grpc_server:
+            host: dagster-code-oih-ingest
+            port: 4000
+            location_name: "oih-ingest"
       - grpc_server:
             host: dagster-code-eco-ecrr
             port: 4000
-            location_name: "ecrr"
+            location_name: "eco-ecrr"
 ```
 
 * to add a container, you need to edit the workflows.yaml in an organizations configuration

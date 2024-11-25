@@ -26,8 +26,8 @@
 * post s3 check, as an approval check. 
     * do these not contain JSONLD
     * store as asset, or maybe have file we publish as 'approved/expected non-summoned
-* sitemap check
-    * just run a sitemap head to see that url work, and exist, weekly.
-    * publish as paritioned data in s3 ;)
+* ~~sitemap check~~
+    * ~~just run a sitemap head to see that url work, and exist, weekly.
+    * publish as paritioned data in s3 ;)~~
 * shacl... should we shacl releases.
     * if so, then maybe teach dagster to watch the graph/latest for changes.

@@ -22,7 +22,7 @@ summoner:
   mode: full  # full || diff:  If diff compare what we have currently in gleaner to sitemap, get only new, delete missing
   threads: 5
   delay:  # milliseconds (1000 = 1 second) to delay between calls (will FORCE threads to 1)
-  headless: http://headless:9222  # URL for headless see docs/headless
+  headless: http://workstation.lan:9222  # URL for headless see docs/headless
 millers:
   graph: true
 sources:

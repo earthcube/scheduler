@@ -1,6 +1,6 @@
 import os
 from distutils.util import strtobool
-from dagster import Definitions, load_assets_from_modules, EnvVar
+from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext
 from dagster_aws.s3 import  S3Resource
 #from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from . import assets
@@ -12,9 +12,17 @@ from .resources.graph import BlazegraphResource, GraphResource
 from .resources.gleanerS3 import gleanerS3Resource
 
 from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
+def slack_message_fn(context: RunFailureSensorContext) -> str:
+    return (
+        f"Partition for Source *[{context.partition_key}]*  failed!"
+        f"Error: {context.failure_event.message}"
+    )
+
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
-    os.getenv("SLACK_TOKEN")
+    os.getenv("SLACK_TOKEN"),
+    webserver_base_url=f'https://{os.getenv("SCHED_HOSTNAME")}.{os.getenv("HOST")}/',
+    text_fn=slack_message_fn,
 )
 def _awsEndpointAddress(url, port=None, use_ssl=True):
     if use_ssl:
@@ -43,20 +51,20 @@ minio=gleanerS3Resource(
     # GLEANER_MINIO_ADDRESS=EnvVar('GLEANER_MINIO_ADDRESS'),
     # GLEANER_MINIO_PORT=EnvVar('GLEANER_MINIO_PORT'),
 
-    GLEANERIO_MINIO_BUCKET=EnvVar('GLEANERIO_MINIO_BUCKET'),
-    GLEANERIO_MINIO_ADDRESS=EnvVar('GLEANERIO_MINIO_ADDRESS'),
-    GLEANERIO_MINIO_PORT=EnvVar('GLEANERIO_MINIO_PORT'),
+    GLEANERIO_MINIO_BUCKET=os.environ.get('GLEANERIO_MINIO_BUCKET'),
+    GLEANERIO_MINIO_ADDRESS=os.environ.get('GLEANERIO_MINIO_ADDRESS'),
+    GLEANERIO_MINIO_PORT=os.environ.get('GLEANERIO_MINIO_PORT'),
     GLEANERIO_MINIO_ACCESS_KEY=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
-    GLEANERIO_CONFIG_PATH=EnvVar('GLEANERIO_CONFIG_PATH'),
-    GLEANERIO_TENANT_FILENAME=EnvVar('GLEANERIO_TENANT_FILENAME')
+    GLEANERIO_CONFIG_PATH=os.environ.get('GLEANERIO_CONFIG_PATH'),
+    GLEANERIO_TENANT_FILENAME=os.environ.get('GLEANERIO_TENANT_FILENAME')
 
 )
 triplestore=BlazegraphResource(
-            GLEANERIO_GRAPH_URL=EnvVar('GLEANERIO_GRAPH_URL'),
-            GLEANERIO_GRAPH_NAMESPACE=EnvVar('GLEANERIO_GRAPH_NAMESPACE'),
-            GLEANERIO_GRAPH_SUMMARY_NAMESPACE=EnvVar('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
-            GLEANERIO_GRAPH_SUMMARIZE=EnvVar('GLEANERIO_GRAPH_SUMMARIZE'),
+            GLEANERIO_GRAPH_URL=os.environ.get('GLEANERIO_GRAPH_URL'),
+            GLEANERIO_GRAPH_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_NAMESPACE'),
+            GLEANERIO_GRAPH_SUMMARY_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+            GLEANERIO_GRAPH_SUMMARIZE=os.environ.get('GLEANERIO_GRAPH_SUMMARIZE'),
               s3=minio,
         )
 
