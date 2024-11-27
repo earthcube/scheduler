@@ -3,7 +3,8 @@ networks:
   dagster_host:
     external: true
     name: ${GLEANERIO_DAGSTER_NETWORK:-dagster_host}
-
+  headless:
+    name: headless-${PROJECT}
 volumes:
 
   dagster-storage:
@@ -27,7 +28,7 @@ services:
             - GLEANERIO_DAGSTER_CONFIG_PATH=${GLEANERIO_DAGSTER_CONFIG_PATH:-scheduler/logs/}
             - GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=${GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT:-300}
             - GLEANERIO_DOCKER_GLEANER_CONFIG=${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
-            - GLEANERIO_DOCKER_HEADLESS_NETWORK=${GLEANERIO_DOCKER_HEADLESS_NETWORK}
+
             - GLEANERIO_DOCKER_NABU_CONFIG=${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
             - GLEANERIO_DOCKER_URL=${GLEANERIO_DOCKER_URL}
             - GLEANERIO_DOCKER_WORKSPACE_CONFIG=${GLEANERIO_DOCKER_WORKSPACE_CONFIG}
@@ -38,7 +39,7 @@ services:
             - GLEANERIO_GRAPH_SUMMARY_NAMESPACE=${GLEANERIO_GRAPH_SUMMARY_NAMESPACE}
             - GLEANERIO_GRAPH_URL=${GLEANERIO_GRAPH_URL}
             - GLEANERIO_GRAPH_NAMESPACE=${GLEANERIO_GRAPH_NAMESPACE}
-            - GLEANERIO_HEADLESS_ENDPOINT=${GLEANERIO_HEADLESS_ENDPOINT}
+
             - GLEANERIO_LOG_PREFIX=${GLEANERIO_LOG_PREFIX:-scheduler/logs/}
             - GLEANERIO_MINIO_ACCESS_KEY=${GLEANERIO_MINIO_ACCESS_KEY}
             - GLEANERIO_MINIO_ADDRESS=${GLEANERIO_MINIO_ADDRESS}
@@ -54,6 +55,8 @@ services:
             - GLEANERIO_SOURCES_FILENAME=${GLEANERIO_SOURCES_FILENAME:-gleanerconfig.yaml}
             - GLEANERIO_TENANT_FILENAME=${GLEANERIO_TENANT_FILENAME:-tenant.yaml}
             - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}
+            - GLEANERIO_DOCKER_HEADLESS_NETWORK=headless-${PROJECT}
+            - GLEANERIO_HEADLESS_ENDPOINT=http://dagster-headless-${PROJECT}:9222
             - GLEANERIO_CSV_CONFIG_URL=${GLEANERIO_CSV_CONFIG_URL:-https://docs.google.com/spreadsheets/d/e/2PACX-1vTt_45dYd5LMFK9Qm_lCg6P7YxG-ae0GZEtrHMZmNbI-y5tVDd8ZLqnEeIAa-SVTSztejfZeN6xmRZF/pub?gid=1340502269&single=true&output=csv}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 # these SLACK_ are evn variables used by the Dagster slack library
@@ -78,6 +81,7 @@ services:
             - dagster-postgres
         networks:
             - dagster_host
+            - headless
 
     dagster-code-tasks:
         hostname:  dagster-code-${PROJECT}-tasks
@@ -101,3 +105,46 @@ services:
             - dagster-postgres
         networks:
             - dagster_host
+            - headless
+    headless:
+      hostname:  dagster-headless-${PROJECT}
+      # image: chromedp/headless-shell:stable
+      # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
+      image: chromedp/headless-shell:105.0.5195.127
+      #    build:
+  #      context: .
+  #      shm_size: "2gb"
+      restart: unless-stopped
+      shm_size: 1gb
+
+      environment:
+        - SERVICE_PORTS=9222
+        # method to get a bigger shm space, since shm_size does not work on a swarm
+      tmpfs:
+        - /tmp:size=512M
+      volumes:
+        - type: tmpfs
+          target: /dev/shm
+
+      # adding the "bridge" network does not work to give access to the 'gleaner and nabu' containers started
+      # by this process. There is no name resolution on that network.
+      networks:
+        - headless
+# for some reason, the script does not work. ${COMPOSE_PROJECT_NAME} is empty
+#    restarter:
+#      image: docker:cli
+#      restart: unless-stopped
+#      volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+#      entrypoint: ["/bin/sh","-c"]
+#      environment:
+#        - CONTAINER_NAME=${COMPOSE_PROJECT_NAME}_headless
+#      command:
+#        - |
+#          while true; do
+#            if [ "$$(date +'%H:%M')" = '22:00' ]; then
+#              env
+#              docker restart $$CONTAINER_NAME
+#              echo restarted
+#            fi
+#            sleep 60
+#          done

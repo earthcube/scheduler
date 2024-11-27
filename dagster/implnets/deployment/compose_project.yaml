@@ -137,47 +137,47 @@ services:
             - dagster-postgres:/var/lib/postgresql/data
         networks:
            - dagster_host
-    headless:
-      # image: chromedp/headless-shell:stable
-      # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
-      image: chromedp/headless-shell:105.0.5195.127
-      #    build:
-  #      context: .
-  #      shm_size: "2gb"
-      restart: unless-stopped
-      shm_size: 1gb
-      labels:
-        -  "traefik.enable=false"
-        - "traefik.backend=headlesschrome"
-        - "traefik.port=9222"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.entrypoints=http"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.priority=13"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
-        - "traefik.http.middlewares.headlesschrome-https-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.middlewares=sched-https-redirect"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.entrypoints=https"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.priority=12"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls=true"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls.certresolver=httpresolver"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.service=headlesschrome-${PROJECT}"
-        - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=9222"
-        - "traefik.docker.network=traefik_proxy"
-      ports:
-        - 9222:9222
-      environment:
-        - SERVICE_PORTS=9222
-        # method to get a bigger shm space, since shm_size does not work on a swarm
-      tmpfs:
-        - /tmp:size=512M
-      volumes:
-        - type: tmpfs
-          target: /dev/shm
-
-      # adding the "bridge" network does not work to give access to the 'gleaner and nabu' containers started
-      # by this process. There is no name resolution on that network.
-      networks:
-        - dagster_host
-        - headless
+#    headless:
+#      # image: chromedp/headless-shell:stable
+#      # stable after 105 causes "devtool: CreateURL: Using unsafe HTTP verb GET to invoke /json/new. This action supports only PUT verb.",
+#      image: chromedp/headless-shell:105.0.5195.127
+#      #    build:
+#  #      context: .
+#  #      shm_size: "2gb"
+#      restart: unless-stopped
+#      shm_size: 1gb
+#      labels:
+#        -  "traefik.enable=false"
+#        - "traefik.backend=headlesschrome"
+#        - "traefik.port=9222"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.entrypoints=http"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.priority=13"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
+#        - "traefik.http.middlewares.headlesschrome-https-redirect.redirectscheme.scheme=https"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.middlewares=sched-https-redirect"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.entrypoints=https"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.priority=12"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls=true"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls.certresolver=httpresolver"
+#        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.service=headlesschrome-${PROJECT}"
+#        - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=9222"
+#        - "traefik.docker.network=traefik_proxy"
+#      ports:
+#        - 9222:9222
+#      environment:
+#        - SERVICE_PORTS=9222
+#        # method to get a bigger shm space, since shm_size does not work on a swarm
+#      tmpfs:
+#        - /tmp:size=512M
+#      volumes:
+#        - type: tmpfs
+#          target: /dev/shm
+#
+#      # adding the "bridge" network does not work to give access to the 'gleaner and nabu' containers started
+#      # by this process. There is no name resolution on that network.
+#      networks:
+#        - dagster_host
+#        - headless
         # in code, use names defined in network above
 
