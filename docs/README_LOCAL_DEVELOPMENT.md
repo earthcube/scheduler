@@ -92,10 +92,7 @@ There are a set of required files:
 * docker compose file
 * docker networks and volumes for the compose files
 *  three files uploaded to docker as configs
-    * gleanerconfigs.yaml gleaner/nabu
-    * nabuconfigs.yaml - gleaner/nabu
     * workspace.yaml -- dagster
-* (opptional/advanced) add a compose_project_PROJECT_override.yaml file with additional containers
 
 ## PORTAINER API KEY
 

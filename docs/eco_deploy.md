@@ -76,17 +76,14 @@ load_from:
 ```
 8. manually add configs
 ```
-  gleaner-{project}
-   - nabu-{project}
-   - workspace-{project}
-   - tenant-{project}
+    - workspace-{project}
    - dagster from:dagster/implnets/deployment/dagster.yaml
 ```  
 7. add configs to S3/Minio. 
 ```
    - scheduler/configs/gleanerconfig.yml
+   - scheduler/configs/nabuconfig.yml
    - scheduler/configs/tenant.yml
-   - 
 ```
 8. create a dagster stack,
 ```
@@ -101,20 +98,20 @@ Name of the project is: eco
    - branch: dev
    - compose files: dagster/implnets/deployment/compose_project_ingest.yaml
 ```
-so workspace might look like:
+so workspace might look like, if your project is test
 ```
 load_from:
       # module starting out with the definitions api
      # - python_module: "workflows.tasks.tasks"
 
       - grpc_server:
-            host: dagster-code-eco-tasks
+            host: dagster-code-test-tasks
             port: 4000
-            location_name: "eco-tasks"
+            location_name: "test-tasks"
       - grpc_server:
-            host: dagster-code-eco-ingest
+            host: dagster-code-test-ingest
             port: 4000
-            location_name: "eco-ingest"
+            location_name: "test-ingest"
 ```
 
 8. if dev, create a second stack
