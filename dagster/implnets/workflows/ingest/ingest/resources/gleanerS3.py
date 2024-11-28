@@ -24,6 +24,8 @@ class gleanerS3Resource(ConfigurableResource):
          description="GLEANERIO_TENANT_FILENAME.", default="tenant.yaml")
     GLEANERIO_SOURCES_FILENAME: str =  Field(
          description="GLEANERIO_SOURCES_FILENAME.", default="gleanerconfig.yaml")
+    GLEANERIO_NABU_FILENAME: str =  Field(
+         description="GLEANERIO_SOURCES_FILENAME.", default="nabuconfig.yaml")
     # now using the boto s3 embedded in dagster_aws, but just in case we need them
     GLEANERIO_MINIO_ACCESS_KEY: str = Field(
         description="GLEANERIO_MINIO_ACCESS_KEY")
@@ -85,3 +87,15 @@ class gleanerS3Resource(ConfigurableResource):
         except Exception as ex:
             get_dagster_logger().info(f"sources_path {path} not found ")
      #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)
+    def s3ConfigUrl(self, filename):
+        if self.GLEANERIO_MINIO_USE_SSL:
+            proto="https"
+        else:
+            proto="http"
+        url = f'{proto}://{self.GLEANERIO_MINIO_ADDRESS}:{self.GLEANERIO_MINIO_PORT}/{self.GLEANERIO_MINIO_BUCKET}/{self.GLEANERIO_CONFIG_PATH}{filename}'
+        return url
+
+    def s3ConfigGleaner(self):
+        return self.s3ConfigUrl(self.GLEANERIO_SOURCES_FILENAME)
+    def s3ConfigNabu(self):
+        return self.s3ConfigUrl(self.GLEANERIO_NABU_FILENAME)

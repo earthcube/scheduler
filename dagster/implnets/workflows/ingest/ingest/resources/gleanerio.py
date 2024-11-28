@@ -183,9 +183,9 @@ class GleanerioResource(ConfigurableResource):
         else:
             raise Exception(f"docker config '{self.GLEANERIO_DOCKER_NABU_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
         get_dagster_logger().info(f"create docker service for {name}")
-        gleaner = ConfigReference(gleanerconfig[0].id, self.GLEANERIO_DOCKER_GLEANER_CONFIG, self.GLEANERIO_GLEANER_CONFIG_PATH)
-        nabu = ConfigReference(nabuconfig[0].id, self.GLEANERIO_DOCKER_NABU_CONFIG, self.GLEANERIO_NABU_CONFIG_PATH)
-        configs = [gleaner, nabu]
+       # gleaner = ConfigReference(gleanerconfig[0].id, self.GLEANERIO_DOCKER_GLEANER_CONFIG, self.GLEANERIO_GLEANER_CONFIG_PATH)
+       # nabu = ConfigReference(nabuconfig[0].id, self.GLEANERIO_DOCKER_NABU_CONFIG, self.GLEANERIO_NABU_CONFIG_PATH)
+       # configs = [gleaner, nabu]
         # name = name if len(name) else _get_container_name(op_context.run_id, op_context.op.name, op_context.retry_number),
         service = client.services.create(
             image,
@@ -196,7 +196,7 @@ class GleanerioResource(ConfigurableResource):
             restart_policy=restart_policy,
             mode=serivce_mode,
             workdir=workingdir,
-            configs=configs
+        #    configs=configs
         )
         wait_count = 0
         while True:
@@ -250,11 +250,15 @@ class GleanerioResource(ConfigurableResource):
         returnCode = 0
         get_dagster_logger().info(f"Gleanerio mode: {str(mode)}")
         date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        gleaner_url = self.gs3.s3ConfigGleaner()
+        nabu_url = self.gs3.s3ConfigNabu()
+        get_dagster_logger().info(f"gleanerurl: {gleaner_url} ")
+        get_dagster_logger().info(f"nabu_url: {nabu_url} ")
         if str(mode) == "gleaner":
             IMAGE =self.GLEANERIO_GLEANER_IMAGE
-
            # ARGS = f"gleaner --cfg/gleaner/gleanerconfig.yaml -source {source} --rude"
-            ARGS = ["--cfg", self.GLEANERIO_GLEANER_CONFIG_PATH,"-source", source, "--rude"]
+            #ARGS = ["--cfg", self.GLEANERIO_GLEANER_CONFIG_PATH,"-source", source, "--rude"]
+            ARGS = ["--cfgURL", gleaner_url, "-source", source, "--rude"]
             NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/gleaner/"
             #Entrypoint = ["/gleaner/gleaner", "--cfg", "/gleaner/gleanerconfig.yaml", "-source", source, "--rude"]
@@ -262,7 +266,8 @@ class GleanerioResource(ConfigurableResource):
         elif (str(mode) == "prune"):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
-            ARGS = ["--cfg", self.GLEANERIO_NABU_CONFIG_PATH, "prune", "--prefix", "summoned/" + source]
+            #ARGS = ["--cfg", self.GLEANERIO_NABU_CONFIG_PATH, "prune", "--prefix", "summoned/" + source]
+            ARGS = ["--cfgURL", nabu_url, "prune", "--prefix", "summoned/" + source]
             NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
@@ -270,7 +275,9 @@ class GleanerioResource(ConfigurableResource):
         elif (str(mode) == "prov"):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
-            ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "prov/" + source]
+            #ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "prov/" + source]
+            ARGS = ["--cfgURL",  nabu_url, "prefix", "--prefix", "prov/" + source]
+
             NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
@@ -278,7 +285,8 @@ class GleanerioResource(ConfigurableResource):
         elif (str(mode) == "orgs"):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
-            ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "orgs"]
+            #ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "prefix", "--prefix", "orgs"]
+            ARGS = ["--cfgURL",  nabu_url, "prefix", "--prefix", "orgs"]
             NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
@@ -286,7 +294,8 @@ class GleanerioResource(ConfigurableResource):
         elif (str(mode) == "release"):
             IMAGE = self.GLEANERIO_NABU_IMAGE
 
-            ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "release", "--prefix", "summoned/" + source]
+            #ARGS = ["--cfg",  self.GLEANERIO_NABU_CONFIG_PATH, "release", "--prefix", "summoned/" + source]
+            ARGS = ["--cfgURL",  nabu_url, "release", "--prefix", "summoned/" + source]
             NAME = f"sch_{PROJECT}_{source}_{str(mode)}"
             WorkingDir = "/nabu/"
             Entrypoint = "nabu"
