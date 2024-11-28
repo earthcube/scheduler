@@ -105,8 +105,8 @@ class GleanerioResource(ConfigurableResource):
         description="GLEANERIO_HEADLESS_NETWORK.", default="http://headless:9000/")
 
 # location where config file will be mounted in container
-    GLEANERIO_GLEANER_CONFIG_PATH: str = Field(
-        description="GLEANERIO_DOCKER_GLEANER_CONFIG_PATH.")
+#     GLEANERIO_GLEANER_CONFIG_PATH: str = Field(
+#         description="GLEANERIO_DOCKER_GLEANER_CONFIG_PATH.")
 #
 #     GLEANERIO_NABU_CONFIG_PATH: str = Field(
 #         description="GLEANERIO_DOCKER_NABU_CONFIG_PATH.")
