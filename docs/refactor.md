@@ -12,9 +12,9 @@
 
 
 ### Handle Multiple Organizations
-* Each organization can be in a container with its own code workflow.
-* If we can standardize the loading and transforming workflows as much as possible, then the graph loading workflows 
- should be more customizable
+* ~~Each organization can be in a container with its own code workflow.~~
+* ~~If we can standardize the loading and transforming workflows as much as possible, then the graph loading workflows 
+ should be more customizable~~
 * to add a container, you need to edit the workflows.yaml in an organizations configuration
   
 ### possible workflows
@@ -27,7 +27,7 @@
     * do these not contain JSONLD
     * store as asset, or maybe have file we publish as 'approved/expected non-summoned
 * ~~sitemap check~~
-    * ~~just run a sitemap head to see that url work, and exist, weekly.
-    * publish as paritioned data in s3 ;)~~
+    * ~~just run a sitemap head to see that url work, and exist, weekly.~~
+    * ~~publish as paritioned data in s3 ;)~~
 * shacl... should we shacl releases.
     * if so, then maybe teach dagster to watch the graph/latest for changes.

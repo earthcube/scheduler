@@ -19,6 +19,7 @@ The key elements are:
 a s3 location
     * gleaner configuration. a list of sources to load. (NOTE: This is also a docker config that needs to be updated to match to make things work)
     * tenant configuration. a list communities, and which sources they load
+    * nabu configuration
 * The Dagster set which loads three containers to support workflow operations
 * The Gleaner Architecture images which loads three or more containers to support 
     * s3 object storage
@@ -79,7 +80,7 @@ flowchart LR
          subgraph s3
             gleanconfig[gleanerconfig.yaml]
             tenant[tenant.yaml]
-            
+            nabu[nabuconfig.yaml]
         end
         
         subgraph Dagster/Config
@@ -305,8 +306,8 @@ They are installed in two places:
 | gleanerconfig.yaml | configs/PROJECT/gleanerconfig.yaml       | s3:{bucket}/scheduler/configs/gleanerconfigs.yaml | ingest workflow needs to be in minio/s3 
 | tenant.yaml        | configs/PROJECT/tenant.yaml              | s3:{bucket}/scheduler/configs/tenant.yaml         | ingest workflow needs to be in minio/s3 
 | dagster.yaml       | dagster/implnets/deployment/dagster.yaml | dockerconfig: dagster                             | docker compose: used by dagster  
-| gleanerconfig.yaml | configs/PROJECT/gleanerconfig.yaml       | dockerconfig: gleaner                             | mounted in gleaner docker container     
-| nabuconfig.yaml | configs/PROJECT/nabuconfig.yaml          | dockerconfig: nabu                                | mounted in gleaner docker container     
+| gleanerconfig.yaml | configs/PROJECT/gleanerconfig.yaml       |                             | read from  s3url by gleaner     
+| nabuconfig.yaml | configs/PROJECT/nabuconfig.yaml          |                                 | read from s3 url by nabu     
 
 (NOTE: This is also a gleaner config (below in runtime configuration) that needs to be updated to mactch to make things work)
 
@@ -314,8 +315,8 @@ They are installed in two places:
 
 | file                | local                                                     | stack | note                                  |
 |---------------------|-----------------------------------------------------------| ------ |---------------------------------------|
-| gleanerconfig.yaml  | configs/PROJECT/gleanerconfigs.yaml                       | env () | generated code needs to be in ~~portainer~~          |
-| nabuconfig.yaml | configs/PROJECT/nabuconfigs.yaml                          | env () | generated codeneeds to be in ~~portainer~~ |
+| gleanerconfig.yaml  | configs/PROJECT/gleanerconfigs.yaml                       | env () |           |
+| nabuconfig.yaml | configs/PROJECT/nabuconfigs.yaml                          | env () | |
 
 1. when the containers are running in a  stack, on portainer, there will need to
    be updated by pulling from dockerhub. The ENV variables may need to be updated for the CONTAINER*_TAG
@@ -328,7 +329,8 @@ They are installed in two places:
 | file               | local                                             |  | note                                  |
 |--------------------|---------------------------------------------------| ------ |---------------------------------------|
 | gleanerconfig.yaml | s3:{bucket}/scheduler/configs/gleanerconfigs.yaml | | ingest workflow needs to be in minio/s3  
-| tenant.yaml        | s3:{bucket}/scheduler/configs/enant.yaml          |  | ingest workflow needs to be in minio/s3  
+| nabuconfig.yaml    | s3:{bucket}/scheduler/configs/nabuconfig.yaml     |  | ingest workflow needs to be in minio/s3  
+| tenant.yaml        | s3:{bucket}/scheduler/configs/tenant.yaml         |  | ingest workflow needs to be in minio/s3  
 
 ### updating config
 You can update a config, and a sensor should pick up the changes.
@@ -367,14 +369,21 @@ There are two jobs that need to run to move data to a tenant. (third will be nee
 1. `export $(cat .env | xargs)`
 export $(cat .env | xargs)
 ```yaml
-######
-# Nabu and Gleaner configs need to be in docker configs
-## docker config name GLEANER_GLEANER_DOCKER_CONFIG
-## docker config name GLEANER_NABU_DOCKER_CONFIG
-#        suggested DOCKER_CONFIG NAMING PATTERN (nabu||gleaner)-{PROJECT}
-########
-GLEANERIO_DOCKER_GLEANER_CONFIG=gleaner-eco
-GLEANERIO_DOCKER_NABU_CONFIG=nabu-eco
+# DAGSTER_ FOR LOCAL DEVELOPMENT
+DAGSTER_HOME=dagster/dagster_home
+DAGSTER_LOCAL_ARTIFACT_STORAGE_DIR=/Users/valentin/development/dev_earthcube/scheduler/dagster/dagster_home/
+
+# dagster network and volume
+#GLEANERIO_DAGSTER_STORAGE=dagster_storage
+#GLEANERIO_DAGSTER_NETWORK=dagster_host
+
+## PROJECT -- default 'eco' this is a 'TRAEFIK router name' use to run multiple copies of scheduler on a server
+#     originally used to generate code for a specific project
+#PROJECT=test
+
+#PROJECT=eco
+#PROJECT=iow
+#PROJECT=oih
 
 # ###
 # workspace for dagster
@@ -382,7 +391,7 @@ GLEANERIO_DOCKER_NABU_CONFIG=nabu-eco
 GLEANERIO_WORKSPACE_CONFIG_PATH=/usr/src/app/workspace.yaml
 GLEANERIO_DOCKER_WORKSPACE_CONFIG=workspace-eco
 
-
+GLEANERIO_DOCKER_DAGSTER_CONFIG=dagster
 
 DEBUG_CONTAINER=false
 
@@ -398,17 +407,22 @@ SCHED_HOSTNAME=sched
 GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=300
 # debugging set to 10 - 30 seconds
 
+# DEFAULT SCHEDULE
+# as defined by https://docs.dagster.io/concepts/partitions-schedules-sensors/schedules#basic-schedules
+#  "@hourly", "@daily", "@weekly", and "@monthly"
+#GLEANERIO_DEFAULT_SCHEDULE=@weekly
+#GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE=America/Los_Angeles
+# the above a used as hard coded os.getenv(), so when changed, service needs to be restarted.
 
-PROJECT=eco
-#PROJECT=iow
-#PROJECT=oih
+
 # tags for docker compose
 CONTAINER_CODE_TAG=latest
 CONTAINER_DAGSTER_TAG=latest
 
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-# port is required: https://portainer.{HOST}:443/api/endpoints/2/docker/
-GLEANERIO_DOCKER_URL=https://portainer.{HOST}:443/api/endpoints/2/docker/
+# port is required: https://portainer.{HOST}:443/api/endpoints/9/docker/
+# 9 is dataloader, 2 is aws-dev
+GLEANERIO_DOCKER_URL=https://portainer.{HOST}:443/api/endpoints/9/docker/
 GLEANERIO_PORTAINER_APIKEY=
 # if running dagster-dev, then this needs to be set ,
 #       defaults to "/scheduler/gleanerconfig.yaml" which is path to config mounted in containers
@@ -423,11 +437,7 @@ GLEANERIO_DOCKER_HEADLESS_NETWORK=headless_gleanerio
 GLEANERIO_GLEANER_IMAGE=nsfearthcube/gleaner:dev_ec
 GLEANERIO_NABU_IMAGE=nsfearthcube/nabu:dev_eco
 
-##
-# path where configs are deployed/mounted
-####
-GLEANERIO_GLEANER_CONFIG_PATH=/gleaner/gleanerconfig.yaml
-GLEANERIO_NABU_CONFIG_PATH=/nabu/nabuconfig.yaml
+
 ###
 #path in s3 for docker log files
 GLEANERIO_LOG_PREFIX=scheduler/logs/
@@ -438,30 +448,27 @@ GLEANERIO_MINIO_USE_SSL=false
 GLEANERIO_MINIO_BUCKET=
 GLEANERIO_MINIO_ACCESS_KEY=
 GLEANERIO_MINIO_SECRET_KEY=
-GLEANERIO_HEADLESS_ENDPOINT=http://headless:9222
+#
+# where are the gleaner and tennant configurations
+GLEANERIO_CONFIG_PATH=scheduler/configs/test/
+GLEANERIO_TENANT_FILENAME=tenant.yaml
+GLEANERIO_SOURCES_FILENAME=gleanerconfig.yaml
+GLEANERIO_DOCKER_NABU_CONFIG=nabuconfig.yaml
+###
+#path in s3 for docker log files
+GLEANERIO_LOG_PREFIX=scheduler/logs/
 
+
+###
+# graph
+####
 # just the base address, no namespace https://graph.geocodes-aws-dev.earthcube.org/blazegraph
 GLEANERIO_GRAPH_URL=https://graph.geocodes-aws.earthcube.org/blazegraph
-GLEANERIO_GRAPH_NAMESPACE=mytest
+GLEANERIO_GRAPH_NAMESPACE=earthcube
 
-# optional: GLEANERIO_GRAPH_SUMMARY_ENDPOINT defaults to GLEANERIO_GRAPH_URL
-#GLEANERIO_GRAPH_SUMMARY_ENDPOINT=https://graph.geocodes-aws-dev.earthcube.org/blazegraph
-GLEANERIO_GRAPH_SUMMARY_NAMESPACE=mytest_summary
-GLEANERIO_GRAPH_SUMMARIZE=True
 
-# where are the gleaner and tennant configurations
-GLEANERIO_CONFIG_PATH="scheduler/configs/"
-GLEANERIO_TENANT_FILENAME="tenant.yaml"
-GLEANERIO_SOURCES_FILENAME="gleanerconfig.yaml"
+GLEANERIO_CSV_CONFIG_URL=https://docs.google.com/spreadsheets/d/e/2PACX-1vTt_45dYd5LMFK9Qm_lCg6P7YxG-ae0GZEtrHMZmNbI-y5tVDd8ZLqnEeIAa-SVTSztejfZeN6xmRZF/pub?gid=1340502269&single=true&output=csv
 
-# ECO Custom variables for ecrr
-ECRR_GRAPH_NAMESPACE=ecrr
-ECRR_MINIO_BUCKET=ecrr
-
-# only a public slack channel works. DV has no permissions to create a new channel
-#SLACK_CHANNEL="#production_discussion"
-SLACK_CHANNEL="#twitterfeed"
-SLACK_TOKEN=
 
 ```
 
@@ -485,12 +492,24 @@ at the documentation for [Accessing the Portainer API](https://docs.portainer.io
  export DAGSTER_HOME=/home/fils/src/Projects/gleaner.io/scheduler/python/dagster
 ```
 
+### Deply as a single stack
+We deploy as two stacks for flexibility, but you can do the multiple file, aka override, 
+to deploy the compose-project.yaml and compose-project-ingest.yaml as a single stack.
 
+`    docker compose -p dagster  --env-file $envfile  -f compose_project.yaml  compose-project-ingest.yam; up  -d
+`
 
 ### Handle Multiple Organizations
 
-thoughts... 
+There can be multiple ingest containers. These can be used for testing developement deployments, and 
+multiple organizations.
 
+The top level compose-project.yaml handles the dagster.
+1) Deploy a compose-project-ingest.yaml stack with a different PROJECT env variables, and minio and graph 
+environment variables to push to each communities repository.
+2) configure the workflows configuration in dagstger to include those containers as workflows.
+
+If you need to add workflows, fork the code, and add the branch to the containerize git workflow.
 * Each organization can be in a container with its own code workflow. 
    *  in the workflows directory: `dagster project projectname`
 * If we can standardize the loading and transforming workflows as much as possible, then the graph loading workflows 
