@@ -172,16 +172,16 @@ class GleanerioResource(ConfigurableResource):
         serivce_mode = ServiceMode("replicated-job", concurrency=1, replicas=1)
         get_dagster_logger().info(str(client.configs.list()))
         #  gleanerid = client.configs.list(filters={"name":{"gleaner-eco": "true"}})
-        gleanerconfig = client.configs.list(filters={"name": [self.GLEANERIO_DOCKER_GLEANER_CONFIG]})
-        if gleanerconfig is not None and len(gleanerconfig ) >0:
-            get_dagster_logger().info(f"docker config gleaner id {str(gleanerconfig[0].id)}")
-        else:
-            raise Exception(f"docker config '{self.GLEANERIO_DOCKER_GLEANER_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
-        nabuconfig = client.configs.list(filters={"name": [self.GLEANERIO_DOCKER_NABU_CONFIG]})
-        if nabuconfig is not None and len(nabuconfig) >0 :
-            get_dagster_logger().info(f"docker config nabu id {str(nabuconfig[0].id)}")
-        else:
-            raise Exception(f"docker config '{self.GLEANERIO_DOCKER_NABU_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
+        # gleanerconfig = client.configs.list(filters={"name": [self.GLEANERIO_DOCKER_GLEANER_CONFIG]})
+        # if gleanerconfig is not None and len(gleanerconfig ) >0:
+        #     get_dagster_logger().info(f"docker config gleaner id {str(gleanerconfig[0].id)}")
+        # else:
+        #     raise Exception(f"docker config '{self.GLEANERIO_DOCKER_GLEANER_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
+        # nabuconfig = client.configs.list(filters={"name": [self.GLEANERIO_DOCKER_NABU_CONFIG]})
+        # if nabuconfig is not None and len(nabuconfig) >0 :
+        #     get_dagster_logger().info(f"docker config nabu id {str(nabuconfig[0].id)}")
+        # else:
+        #     raise Exception(f"docker config '{self.GLEANERIO_DOCKER_NABU_CONFIG}' not found. Please add Gleaner/Nabu configuration files to docker.")
         get_dagster_logger().info(f"create docker service for {name}")
        # gleaner = ConfigReference(gleanerconfig[0].id, self.GLEANERIO_DOCKER_GLEANER_CONFIG, self.GLEANERIO_GLEANER_CONFIG_PATH)
        # nabu = ConfigReference(nabuconfig[0].id, self.GLEANERIO_DOCKER_NABU_CONFIG, self.GLEANERIO_NABU_CONFIG_PATH)
