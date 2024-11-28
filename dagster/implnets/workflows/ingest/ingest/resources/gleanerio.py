@@ -96,20 +96,20 @@ class GleanerioResource(ConfigurableResource):
     # docker swarm resources. Presently a network and config names
     GLEANERIO_DOCKER_HEADLESS_NETWORK: str = Field(
         description="GLEANERIO_HEADLESS_NETWORK.")
-    GLEANERIO_DOCKER_GLEANER_CONFIG: str = Field(
-        description="GLEANERIO_DOCKER_GLEANER_CONFIG.")
-    GLEANERIO_DOCKER_NABU_CONFIG: str = Field(
-        description="GLEANERIO_DOCKER_NABU_CONFIG.")
+    # GLEANERIO_DOCKER_GLEANER_CONFIG: str = Field(
+    #     description="GLEANERIO_DOCKER_GLEANER_CONFIG.")
+    # GLEANERIO_DOCKER_NABU_CONFIG: str = Field(
+    #     description="GLEANERIO_DOCKER_NABU_CONFIG.")
 
     GLEANERIO_HEADLESS_ENDPOINT:str = Field(
         description="GLEANERIO_HEADLESS_NETWORK.", default="http://headless:9000/")
 
 # location where config file will be mounted in container
-    GLEANERIO_GLEANER_CONFIG_PATH: str = Field(
-        description="GLEANERIO_DOCKER_GLEANER_CONFIG_PATH.")
-
-    GLEANERIO_NABU_CONFIG_PATH: str = Field(
-        description="GLEANERIO_DOCKER_NABU_CONFIG_PATH.")
+#     GLEANERIO_GLEANER_CONFIG_PATH: str = Field(
+#         description="GLEANERIO_DOCKER_GLEANER_CONFIG_PATH.")
+#
+#     GLEANERIO_NABU_CONFIG_PATH: str = Field(
+#         description="GLEANERIO_DOCKER_NABU_CONFIG_PATH.")
 
 # Execution parameter. The logs from LOG_PREFIX will be uploaded to s3 every n seconds.
     GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT: int = Field(
