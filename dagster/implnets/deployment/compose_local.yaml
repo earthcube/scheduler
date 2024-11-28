@@ -59,10 +59,10 @@ services:
               # sort these in BBedit to make finding them easier
         environment: &env
             - DEBUG_CONTAINER=${DEBUG_CONTAINER:-false}
-            - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
+#            - GLEANERIO_CONFIG_PATH=${GLEANERIO_CONFIG_PATH:-scheduler/configs/test/}
             - GLEANERIO_DAGSTER_CONFIG_PATH=${GLEANERIO_DAGSTER_CONFIG_PATH:-scheduler/logs/}
             - GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT=${GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT:-300}
-            - GLEANERIO_DOCKER_GLEANER_CONFIG=${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
+#            - GLEANERIO_DOCKER_GLEANER_CONFIG=${GLEANERIO_DOCKER_GLEANER_CONFIG:-gleaner}
             - GLEANERIO_DOCKER_HEADLESS_NETWORK=${GLEANERIO_DOCKER_HEADLESS_NETWORK}
  #           - GLEANERIO_DOCKER_NABU_CONFIG=${GLEANERIO_DOCKER_NABU_CONFIG:-nabu}
             - GLEANERIO_DOCKER_URL=${GLEANERIO_DOCKER_URL}
@@ -82,13 +82,14 @@ services:
             - GLEANERIO_MINIO_PORT=${GLEANERIO_MINIO_PORT}
             - GLEANERIO_MINIO_SECRET_KEY=${GLEANERIO_MINIO_SECRET_KEY}
             - GLEANERIO_MINIO_USE_SSL=${GLEANERIO_MINIO_USE_SSL}
-            - GLEANERIO_NABU_CONFIG_PATH=${GLEANERIO_NABU_CONFIG_PATH:-/configs/gleaner/nabuconfig.yaml}
+#            - GLEANERIO_NABU_CONFIG_PATH=${GLEANERIO_NABU_CONFIG_PATH:-/configs/gleaner/nabuconfig.yaml}
             - GLEANERIO_NABU_IMAGE=${GLEANERIO_NABU_IMAGE}
             - GLEANERIO_PORTAINER_APIKEY=${GLEANERIO_PORTAINER_APIKEY}
             - GLEANERIO_DEFAULT_SCHEDULE=${GLEANERIO_DEFAULT_SCHEDULE:-@weekly}
             - GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE=${GLEANERIO_DEFAULT_SCHEDULE_TIMEZONE:-America/Los_Angeles}
             - GLEANERIO_SOURCES_FILENAME=${GLEANERIO_SOURCES_FILENAME:-gleanerconfig.yaml}
             - GLEANERIO_TENANT_FILENAME=${GLEANERIO_TENANT_FILENAME:-tenant.yaml}
+            - GLEANERIO_NABU_FILENAME=${GLEANERIO_TENANT_FILENAME:-nabuconfig.yaml}
             - GLEANERIO_WORKSPACE_CONFIG_PATH=${GLEANERIO_WORKSPACE_CONFIG_PATH}
             - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             - SLACK_CHANNEL=${SLACK_CHANNEL:-"#twitterfeed"}
@@ -163,23 +164,6 @@ services:
   #      shm_size: "2gb"
       restart: unless-stopped
       shm_size: 265mb
-      labels:
-        -  "traefik.enable=false"
-        - "traefik.backend=headlesschrome"
-        - "traefik.port=9222"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.entrypoints=http"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.priority=13"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
-        - "traefik.http.middlewares.headlesschrome-https-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}.middlewares=sched-https-redirect"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.entrypoints=https"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.priority=12"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.rule=Host(`headlesschrome.${HOST? HOST is required}`)"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls=true"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.tls.certresolver=httpresolver"
-        - "traefik.http.routers.headlesschrome-${PROJECT:-eco}-secure.service=headlesschrome-${PROJECT}"
-        - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=9222"
-        - "traefik.docker.network=traefik_proxy"
       ports:
         - 9222:9222
       environment:
