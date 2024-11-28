@@ -11,7 +11,7 @@ on:
       - dev
       - dev_eco
       - v0_generated_code
-      - 142_dev_docker_compose
+      - 164_dev_gleanerurl
     tags:
       - "v*.*.*"
 
