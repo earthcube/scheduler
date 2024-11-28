@@ -105,8 +105,8 @@ class GleanerioResource(ConfigurableResource):
         description="GLEANERIO_HEADLESS_NETWORK.", default="http://headless:9000/")
 
 # location where config file will be mounted in container
-#     GLEANERIO_GLEANER_CONFIG_PATH: str = Field(
-#         description="GLEANERIO_DOCKER_GLEANER_CONFIG_PATH.")
+    GLEANERIO_GLEANER_CONFIG_PATH: str = Field(
+        description="GLEANERIO_DOCKER_GLEANER_CONFIG_PATH.")
 #
 #     GLEANERIO_NABU_CONFIG_PATH: str = Field(
 #         description="GLEANERIO_DOCKER_NABU_CONFIG_PATH.")
@@ -117,8 +117,8 @@ class GleanerioResource(ConfigurableResource):
     GLEANERIO_LOG_PREFIX: str = Field(
         description="GLEANERIO_DOCKER_LOG_PREFIX.")
 
-    GLEANERIO_DAGSTER_CONFIG_PATH: str = Field(
-        description="DAGSTER_GLEANERIO_CONFIG_PATH for Project.")
+    # GLEANERIO_DAGSTER_CONFIG_PATH: str = Field(
+    #     description="DAGSTER_GLEANERIO_CONFIG_PATH for Project.")
     gs3: gleanerS3Resource   # this will be a botocore.client.S3.
     triplestore: GraphResource  # should be a blazegraph... but let's try generic
     GLEANERIO_GRAPH_NAMESPACE:str = Field(
