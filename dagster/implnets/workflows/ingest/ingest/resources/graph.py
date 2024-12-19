@@ -1,5 +1,6 @@
 import os
 from typing import Any, Dict
+from abc import ABC, abstractmethod
 
 import pydash
 from dagster import ConfigurableResource, Config, EnvVar, get_dagster_logger
@@ -59,7 +60,7 @@ from ..utils import PythonMinioAddress
 # RELEASE_PATH = 'graphs/latest'
 
 
-class GraphResource(ConfigurableResource):
+class GraphResource(ConfigurableResource, ABC):
     GLEANERIO_GRAPH_URL: str =  Field(
          description="GLEANERIO_GRAPH_URL.")
     GLEANERIO_GRAPH_NAMESPACE: str =  Field(
@@ -67,49 +68,56 @@ class GraphResource(ConfigurableResource):
     gs3: gleanerS3Resource
 
 # need multiple namespaces. let's do this.
-    def GraphEndpoint(self, namespace):
+    @abstractmethod
+    def GraphEndpoint(self, namespace=GLEANERIO_GRAPH_NAMESPACE):
         url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
         return url
 
 
-    def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None, suffix='release'):
-        if graphendpoint is None:
+    @abstractmethod
+    def post_to_graph(self, source, path='graphs/latest', extension="nq", namespace=GLEANERIO_GRAPH_NAMESPACE, suffix='release'):
+        return NotImplemented
+
+    @abstractmethod
+    def removeNamespace(self, namespace=GLEANERIO_GRAPH_NAMESPACE):
+        return NotImplemented
+
+    @abstractmethod
+    def createNamespace(self, namespace=GLEANERIO_GRAPH_NAMESPACE):
+        return NotImplemented
+
+
+    @abstractmethod
+    #def loadRealeaseToNamespace(self,source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint):
+    def loadReleaseFromS3(self, source_name, path, extension="nq", namespace=GLEANERIO_GRAPH_NAMESPACE):
+        url = self.gs3.releaseFileUrl(source=source_name, path=path, suffix='release', extension=extension,
+                                  namespace=namespace)
+        return self.loadReleaseFromUrl(url=url, namespace=namespace)
+
+    @abstractmethod
+    def loadReleaseFromUrl(self, url=None, source=None, namespace=GLEANERIO_GRAPH_NAMESPACE):
+        return NotImplemented
+class BlazegraphResource(GraphResource):
+    def GraphEndpoint(self, namespace):
+        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
+        return url
+    def loadReleaseFromUrl(self, url=None, source=None, namespace=None):
+        if url is None:
+            raise ValueError("url must be provided")
+        else:
+            release_url = url
+        if namespace is None:
             graphendpoint = self.GraphEndpoint()
-        # revision of EC utilities, will have a insertFromURL
-        #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
-        proto = "http"
-# this need to get file from s3.
+        else:
+            graphendpoint = self.GraphEndpoint(namespace=namespace)
 
-        if self.gs3.GLEANERIO_MINIO_USE_SSL:
-            proto = "https"
-        port = self.gs3.GLEANERIO_MINIO_PORT
-        address = PythonMinioAddress(self.gs3.GLEANERIO_MINIO_ADDRESS, self.gs3.GLEANERIO_MINIO_PORT)
-        bucket = self.gs3.GLEANERIO_MINIO_BUCKET
-        release_url = f"{proto}://{address}/{bucket}/{path}/{source}_{suffix}.{extension}"
-        # BLAZEGRAPH SPECIFIC
-        # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
-        # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-        # r = requests.post(url)
-        # log.debug(f' status:{r.status_code}')  # status:404
-        # get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
-        # if r.status_code == 200:
-        #     # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
-        #     if 'data modified="0"' in r.text:
-        #         get_dagster_logger().info(f'graph: no data inserted ')
-        #         raise Exception("No Data Added: " + r.text)
-        #     return True
-        # else:
-        #     get_dagster_logger().info(f'graph: error')
-        #     raise Exception(f' graph: insert failed: status:{r.status_code}')
-
-        ### GENERIC LOAD FROM
-        url = f"{graphendpoint}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+        url = f"{graphendpoint}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
         get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
         loadfrom = {'update': f'LOAD <{release_url}>'}
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded'
         }
-        r = requests.post(url, headers=headers, data=loadfrom )
+        r = requests.post(url, headers=headers, data=loadfrom)
         get_dagster_logger().debug(f' status:{r.status_code}')  # status:404
         get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
         if r.status_code == 200:
@@ -117,12 +125,64 @@ class GraphResource(ConfigurableResource):
             # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
             if 'mutationCount=0' in r.text:
                 get_dagster_logger().info(f'graph: no data inserted ')
-                #raise Exception("No Data Added: " + r.text)
+                # raise Exception("No Data Added: " + r.text)
             return True
         else:
             get_dagster_logger().info(f'graph: error {str(r.text)}')
             raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
+    def post_to_graph(self, source, path='graphs/latest', extension="nq", namespace=None, suffix='release'):
+        get_dagster_logger().info(f'graph: change function to loadReleaseFromS3')
+        return self.loadReleaseFromS3(source,path=path,extension=extension,namespace=namespace, suffix=suffix)
 
-class BlazegraphResource(GraphResource):
-    pass
+        # if namespace is None:
+        #     graphendpoint = self.GraphEndpoint()
+        # else:
+        #     graphendpoint = self.GraphEndpoint(namespace=namespace)
+        # # revision of EC utilities, will have a insertFromURL
+        # # instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
+        # proto = "http"
+        # # this need to get file from s3.
+        #
+        # if self.gs3.GLEANERIO_MINIO_USE_SSL:
+        #     proto = "https"
+        # port = self.gs3.GLEANERIO_MINIO_PORT
+        # address = PythonMinioAddress(self.gs3.GLEANERIO_MINIO_ADDRESS, self.gs3.GLEANERIO_MINIO_PORT)
+        # bucket = self.gs3.GLEANERIO_MINIO_BUCKET
+        # release_url = f"{proto}://{address}/{bucket}/{path}/{source}_{suffix}.{extension}"
+        # # BLAZEGRAPH SPECIFIC
+        # # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+        # # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
+        # # r = requests.post(url)
+        # # log.debug(f' status:{r.status_code}')  # status:404
+        # # get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
+        # # if r.status_code == 200:
+        # #     # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+        # #     if 'data modified="0"' in r.text:
+        # #         get_dagster_logger().info(f'graph: no data inserted ')
+        # #         raise Exception("No Data Added: " + r.text)
+        # #     return True
+        # # else:
+        # #     get_dagster_logger().info(f'graph: error')
+        # #     raise Exception(f' graph: insert failed: status:{r.status_code}')
+        #
+        # ### GENERIC LOAD FROM
+        # url = f"{graphendpoint}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+        # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
+        # loadfrom = {'update': f'LOAD <{release_url}>'}
+        # headers = {
+        #     'Content-Type': 'application/x-www-form-urlencoded'
+        # }
+        # r = requests.post(url, headers=headers, data=loadfrom)
+        # get_dagster_logger().debug(f' status:{r.status_code}')  # status:404
+        # get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
+        # if r.status_code == 200:
+        #     get_dagster_logger().info(f'graph load response: {str(r.text)} ')
+        #     # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+        #     if 'mutationCount=0' in r.text:
+        #         get_dagster_logger().info(f'graph: no data inserted ')
+        #         # raise Exception("No Data Added: " + r.text)
+        #     return True
+        # else:
+        #     get_dagster_logger().info(f'graph: error {str(r.text)}')
+        #     raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
 
