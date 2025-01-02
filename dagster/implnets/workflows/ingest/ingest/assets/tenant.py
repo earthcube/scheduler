@@ -164,6 +164,35 @@ def create_graph_namespaces(context):
         raise Exception(f"graph creation failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
+def delete_graph_namespaces(context):
+    #context.log.info(config.source_name)
+    tenant_name = context.asset_partition_key_for_output()
+    context.log.info(f"tennant_name {tenant_name}")
+    tenants = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","tenant_all"]))
+    # from https://stackoverflow.com/questions/2361426/get-the-first-item-from-an-iterable-that-matches-a-condition
+    tenant = next((t for t in tenants["tenant"] if t['community'] == tenant_name ),None)
+    if tenant is None:
+        raise Exception("Tenant with name {} does not exist".format(tenant_name))
+    context.log.info(f"tennant {tenant}")
+    # should we put a default.
+    main_namespace = tenant["graph"]["main_namespace"]
+    summary_namespace = tenant["graph"]["summary_namespace"]
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 = context.resources.gleanerio.gs3
+    triplestore = context.resources.gleanerio.triplestore
+    bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, main_namespace )
+    bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
+    try:
+        msg = bg.createNamespace(quads=True)
+        context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        msg = bg_summary.deleteNamespace(quads=False)
+        context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+    except Exception as ex :
+        context.log.error(f"graph deletion failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        raise Exception(f"graph deletion failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+    return
+
 @asset(group_name="tenant_create",key_prefix=f"{PROJECT}_ingest",
        deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"]), AssetKey([f"{PROJECT}_ingest","create_graph_namespaces"])],
        required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
