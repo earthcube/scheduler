@@ -164,6 +164,10 @@ def create_graph_namespaces(context):
         raise Exception(f"graph creation failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
+@asset(group_name="tenant_delete",key_prefix=f"{PROJECT}_ingest",
+       deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"])],
+op_tags={"ingest": "graph"},
+       required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
 def delete_graph_namespaces(context):
     #context.log.info(config.source_name)
     tenant_name = context.asset_partition_key_for_output()
