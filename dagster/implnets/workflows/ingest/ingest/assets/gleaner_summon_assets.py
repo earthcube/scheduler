@@ -215,9 +215,10 @@ def release_summarize(context) :
 
     try:
         temp_namespace = f"{source_name}_temp"
-        bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
+        #bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
         try:
-            msg = bg.createNamespace(quads=True)
+            #msg = bg.createNamespace(quads=True)
+            msg =triplestore.createNamespace(temp_namespace, quads=True)
             context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         except Exception as ex:
@@ -225,8 +226,9 @@ def release_summarize(context) :
             raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
         try:
             filename = f"https://{PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,gleaner_s3.GLEANERIO_MINIO_PORT)}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
-            endpoint = triplestore.GraphEndpoint(temp_namespace)
-            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+            # endpoint = triplestore.GraphEndpoint(temp_namespace)
+            # triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", namespace=temp_namespace)
             context.log.info(f"temp graph {filename}  loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         except Exception as ex:
@@ -236,7 +238,8 @@ def release_summarize(context) :
         summarydf = get_summary4repoSubset(endpoint, source_name)
 
         try:
-            msg = bg.deleteNamespace()
+            #msg = bg.deleteNamespace()
+            msg = triplestore.deleteNamespace(temp_namespace)
             context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         except Exception as ex:

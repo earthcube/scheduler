@@ -107,7 +107,7 @@ services:
               - "traefik.http.routers.sched-${PROJECT:-eco}-secure.tls.certresolver=httpresolver"
               - "traefik.http.routers.sched-${PROJECT:-eco}-secure.service=sched-${PROJECT}"
               - "traefik.http.services.sched-${PROJECT:-eco}.loadbalancer.server.port=3000"
-              - "traefik.docker.network=traefik_proxy"
+              - "traefik.docker.network=${GLEANERIO_PROXY_NETWORK:-traefik_proxy}"
               - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.accesscontrolallowmethods=GET,OPTIONS,POST"
               - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.accessControlAllowOriginList=*"
               - "traefik.http.middlewares.sched-${PROJECT:-eco}.headers.accesscontrolmaxage=100"

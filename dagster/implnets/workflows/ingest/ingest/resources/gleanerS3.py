@@ -107,7 +107,7 @@ class gleanerS3Resource(ConfigurableResource):
 
         if self.GLEANERIO_MINIO_USE_SSL:
             proto = "https"
-        port = self.gGLEANERIO_MINIO_PORT
+        port = self.GLEANERIO_MINIO_PORT
         address = PythonMinioAddress(self.GLEANERIO_MINIO_ADDRESS, self.GLEANERIO_MINIO_PORT)
         bucket = self.GLEANERIO_MINIO_BUCKET
         release_url = f"{proto}://{address}/{bucket}/{path}/{source}_{suffix}.{extension}"

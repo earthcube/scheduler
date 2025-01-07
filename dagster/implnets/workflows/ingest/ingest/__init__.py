@@ -72,11 +72,12 @@ def slack_message_fn(context: RunFailureSensorContext) -> str:
     return (
         f"Partition for Source *[{context.partition_key}]* failed! "
         f"Error: {context.failure_event.message}"
+        f"Date: {context.failure_event.date}"
     )
 slack_on_run_failure = make_slack_on_run_failure_sensor(
      os.getenv("SLACK_CHANNEL"),
     os.getenv("SLACK_TOKEN"),
-    webserver_base_url=f'https://{os.getenv("SCHED_HOSTNAME")}.{os.getenv("HOST")}/',
+    webserver_base_url=f'https://{os.getenv("SCHED_HOSTNAME")}.{os.getenv("HOST")}',
     text_fn=slack_message_fn
 )
 all_sensors = [

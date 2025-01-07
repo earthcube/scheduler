@@ -10,8 +10,11 @@ from pydantic import Field
 import requests
 
 from .gleanerS3 import gleanerS3Resource
+from ec.graph.manageGraph import ManageBlazegraph, ManageGraphdb
+
 #Let's try to use dasgeter aws as the minio configuration
 from ..utils import PythonMinioAddress
+
 
 # class AirtableConfig(Config):
 # DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('DAGSTER_GLEANER_CONFIG_PATH', "/scheduler/gleanerconfig.yaml")
@@ -79,57 +82,67 @@ class GraphResource(ConfigurableResource, ABC):
         return NotImplemented
 
     @abstractmethod
-    def removeNamespace(self, namespace=GLEANERIO_GRAPH_NAMESPACE):
+    def deleteNamespace(self, namespace=GLEANERIO_GRAPH_NAMESPACE):
         return NotImplemented
 
     @abstractmethod
-    def createNamespace(self, namespace=GLEANERIO_GRAPH_NAMESPACE):
+    def createNamespace(self, namespace=GLEANERIO_GRAPH_NAMESPACE, quads=True):
         return NotImplemented
 
 
-    @abstractmethod
+
     #def loadRealeaseToNamespace(self,source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint):
-    def loadReleaseFromS3(self, source_name, path, extension="nq", namespace=GLEANERIO_GRAPH_NAMESPACE):
-        url = self.gs3.releaseFileUrl(source=source_name, path=path, suffix='release', extension=extension,
-                                  namespace=namespace)
-        return self.loadReleaseFromUrl(url=url, namespace=namespace)
+    def loadReleaseFromS3(self, source_name, path, extension="nq", namespace=GLEANERIO_GRAPH_NAMESPACE, suffix='release'):
+        url = self.gs3.releaseFileUrl(source=source_name, path=path, suffix=suffix, extension=extension )
+        return self.loadReleaseFromUrl(url=url, source=source_name, namespace=namespace, suffix=suffix)
 
     @abstractmethod
-    def loadReleaseFromUrl(self, url=None, source=None, namespace=GLEANERIO_GRAPH_NAMESPACE):
+    def loadReleaseFromUrl(self, url=None, source=None, namespace=GLEANERIO_GRAPH_NAMESPACE, suffix='release'):
         return NotImplemented
 class BlazegraphResource(GraphResource):
     def GraphEndpoint(self, namespace):
         url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
         return url
-    def loadReleaseFromUrl(self, url=None, source=None, namespace=None):
+    def createNamespace(self, namespace, quads=True):
+        bg = ManageBlazegraph(self.GLEANERIO_GRAPH_URL, namespace)
+        status = bg.createNamespace(quads)
+        if status=='Created' or status=='Exists':
+            return status
+
+    def deleteNamespace(self, namespace):
+        bg = ManageBlazegraph(self.GLEANERIO_GRAPH_URL, namespace)
+        bg.deleteNamespace()
+    def loadReleaseFromUrl(self, url=None, source=None, namespace=None, suffix='release'):
         if url is None:
             raise ValueError("url must be provided")
         else:
             release_url = url
-        if namespace is None:
-            graphendpoint = self.GraphEndpoint()
-        else:
-            graphendpoint = self.GraphEndpoint(namespace=namespace)
+            # if namespace is None:
+            #     graphendpoint = self.GraphEndpoint()
+            # else:
+            #     graphendpoint = self.GraphEndpoint(namespace=namespace)
 
-        url = f"{graphendpoint}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
-        get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-        loadfrom = {'update': f'LOAD <{release_url}>'}
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-        r = requests.post(url, headers=headers, data=loadfrom)
-        get_dagster_logger().debug(f' status:{r.status_code}')  # status:404
-        get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
-        if r.status_code == 200:
-            get_dagster_logger().info(f'graph load response: {str(r.text)} ')
-            # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
-            if 'mutationCount=0' in r.text:
-                get_dagster_logger().info(f'graph: no data inserted ')
-                # raise Exception("No Data Added: " + r.text)
-            return True
-        else:
-            get_dagster_logger().info(f'graph: error {str(r.text)}')
-            raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
+            bg = ManageBlazegraph(self.GLEANERIO_GRAPH_URL, namespace)
+            bg.loadReleaseFromUrl(url=release_url, source=source, namespace=namespace, suffix='release')
+        # url = f"{graphendpoint}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+        # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
+        # loadfrom = {'update': f'LOAD <{release_url}>'}
+        # headers = {
+        #     'Content-Type': 'application/x-www-form-urlencoded'
+        # }
+        # r = requests.post(url, headers=headers, data=loadfrom)
+        # get_dagster_logger().debug(f' status:{r.status_code}')  # status:404
+        # get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
+        # if r.status_code == 200:
+        #     get_dagster_logger().info(f'graph load response: {str(r.text)} ')
+        #     # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
+        #     if 'mutationCount=0' in r.text:
+        #         get_dagster_logger().info(f'graph: no data inserted ')
+        #         # raise Exception("No Data Added: " + r.text)
+        #     return True
+        # else:
+        #     get_dagster_logger().info(f'graph: error {str(r.text)}')
+        #     raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
     def post_to_graph(self, source, path='graphs/latest', extension="nq", namespace=None, suffix='release'):
         get_dagster_logger().info(f'graph: change function to loadReleaseFromS3')
         return self.loadReleaseFromS3(source,path=path,extension=extension,namespace=namespace, suffix=suffix)
@@ -185,4 +198,34 @@ class BlazegraphResource(GraphResource):
         # else:
         #     get_dagster_logger().info(f'graph: error {str(r.text)}')
         #     raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
+
+
+class GraphdbResource(GraphResource):
+    def GraphEndpoint(self, namespace):
+        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
+        return url
+
+    def createNamespace(self, namespace, quads=True):
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace)
+        status = bg.createNamespace(quads)
+        if status == 'Created' or status == 'Exists':
+            return status
+
+    def deleteNamespace(self, namespace):
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace)
+        bg.deleteNamespace()
+
+    def loadReleaseFromUrl(self, url=None, source=None, namespace=None):
+        if url is None:
+            raise ValueError("url must be provided")
+        else:
+            release_url = url
+        # if namespace is None:
+        #     graphendpoint = self.GraphEndpoint()
+        # else:
+        #     graphendpoint = self.GraphEndpoint(namespace=namespace)
+
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace)
+        bg.loadReleaseFromUrl(url=release_url, source=source, namespace=namespace)
+
 
