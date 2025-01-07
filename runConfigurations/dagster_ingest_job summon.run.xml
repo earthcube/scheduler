@@ -5,9 +5,10 @@
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
-      <env name="PYTHONUNBUFFERED" value="1" />
       <env name="DAGSTER_LOCAL_ARTIFACT_STORAGE_DIR" value="$PROJECT_DIR$/dagster/dagster_home/" />
       <env name="GLEANERIO_GLEANER_CONFIG_PATH" value="$PROJECT_DIR$/dagster/implnets/configs/eco/gleanerconfig.yaml" />
+      <env name="PYTHONUNBUFFERED" value="1" />
+      <env name="PROJECT" value="test" />
     </envs>
     <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/dagster/implnets/workflows/ingest" />
@@ -27,7 +28,7 @@
       </ENTRIES>
     </EXTENSION>
     <option name="SCRIPT_NAME" value="dagster" />
-    <option name="PARAMETERS" value="job execute eco_summon_and_release_job" />
+    <option name="PARAMETERS" value="job execute -m ingest -a test_summon_and_release_job" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />

@@ -94,6 +94,8 @@ class GraphResource(ConfigurableResource, ABC):
     #def loadRealeaseToNamespace(self,source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint):
     def loadReleaseFromS3(self, source_name, path, extension="nq", namespace=GLEANERIO_GRAPH_NAMESPACE, suffix='release'):
         url = self.gs3.releaseFileUrl(source=source_name, path=path, suffix=suffix, extension=extension )
+        get_dagster_logger().debug(f' loadReleaseFromS3 <{url}> , {suffix}, {namespace} {source_name} ')
+
         return self.loadReleaseFromUrl(url=url, source=source_name, namespace=namespace, suffix=suffix)
 
     @abstractmethod
@@ -123,6 +125,7 @@ class BlazegraphResource(GraphResource):
             #     graphendpoint = self.GraphEndpoint(namespace=namespace)
 
             bg = ManageBlazegraph(self.GLEANERIO_GRAPH_URL, namespace)
+            get_dagster_logger().info(f' upload summary <{release_url}> , {suffix}, {namespace} {source} ')
             bg.loadReleaseFromUrl(url=release_url, source=source, namespace=namespace, suffix='release')
         # url = f"{graphendpoint}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
         # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
