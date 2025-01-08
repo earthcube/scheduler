@@ -209,7 +209,7 @@ def release_summarize(context) :
                                       )
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
 
-    endpoint = triplestore.GraphEndpoint(gleaner_resource.GLEANERIO_GRAPH_NAMESPACE)
+
     # getting data, not uploading data
     #summary_namespace = _graphSummaryEndpoint()
 
@@ -219,6 +219,7 @@ def release_summarize(context) :
         try:
             #msg = bg.createNamespace(quads=True)
             msg =triplestore.createNamespace(temp_namespace, quads=True)
+
             context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         except Exception as ex:
@@ -235,6 +236,7 @@ def release_summarize(context) :
             context.log.error(f"temp graph {filename} load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
             raise Exception(f"temp graph {filename}  load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
 
+        endpoint = triplestore.GraphEndpoint(temp_namespace)
         summarydf = get_summary4repoSubset(endpoint, source_name)
 
         try:

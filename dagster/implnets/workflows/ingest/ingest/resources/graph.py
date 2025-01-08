@@ -106,12 +106,16 @@ class BlazegraphResource(GraphResource):
         url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
         return url
     def createNamespace(self, namespace, quads=True):
+        if namespace is None or namespace == '' :
+            raise Exception('Namespace cannot be empty')
         bg = ManageBlazegraph(self.GLEANERIO_GRAPH_URL, namespace)
         status = bg.createNamespace(quads)
         if status=='Created' or status=='Exists':
             return status
 
     def deleteNamespace(self, namespace):
+        if namespace is None or namespace == '' :
+            raise Exception('Namespace cannot be empty')
         bg = ManageBlazegraph(self.GLEANERIO_GRAPH_URL, namespace)
         bg.deleteNamespace()
     def loadReleaseFromUrl(self, url=None, source=None, namespace=None, suffix='release'):
