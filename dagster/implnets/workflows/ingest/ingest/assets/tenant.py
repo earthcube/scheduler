@@ -164,11 +164,11 @@ def create_graph_namespaces(context):
         raise Exception(f"graph creation failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
-@asset(group_name="tenant_delete",key_prefix=f"{PROJECT}_ingest",
+@asset(group_name="tenant_rebuild",key_prefix=f"{PROJECT}_ingest",
        deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"])],
 op_tags={"ingest": "graph"},
        required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
-def delete_graph_namespaces(context):
+def rebuild_graph_namespaces(context):
     #context.log.info(config.source_name)
     tenant_name = context.asset_partition_key_for_output()
     context.log.info(f"tennant_name {tenant_name}")
@@ -188,7 +188,7 @@ def delete_graph_namespaces(context):
     bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, main_namespace )
     bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
     try:
-        msg = bg.createNamespace(quads=True)
+        msg = bg.deleteNamespace(quads=True)
         context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
         msg = bg_summary.deleteNamespace(quads=False)
         context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
