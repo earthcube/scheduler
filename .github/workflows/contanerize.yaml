@@ -11,7 +11,7 @@ on:
       - dev
       - dev_eco
       - v0_generated_code
-      - 164_dev_gleanerurl
+      - rebuild-namespace
     tags:
       - "v*.*.*"
 
