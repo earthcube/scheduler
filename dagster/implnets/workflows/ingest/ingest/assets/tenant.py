@@ -193,13 +193,13 @@ def rebuild_graph_namespaces(context):
     bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
     try:
         # recreate namespace
-        msg = bg.deleteNamespace(quads=True)
+        msg = bg.deleteNamespace()
         context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
         msg = bg.createNamespace(quads=True)
         context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         # recreate summary namespace
-        msg = bg_summary.deleteNamespace(quads=False)
+        msg = bg_summary.deleteNamespace()
         context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
         msg = bg_summary.createNamespace(quads=False)
         context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
