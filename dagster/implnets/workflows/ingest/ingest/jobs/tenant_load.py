@@ -14,7 +14,7 @@ from typing import List, Dict
 from pydantic import Field
 
 from ..assets import gleanerio_tenants, tenant_partitions_def, sources_partitions_def, upload_release,upload_summary
-from ..assets.tenant import create_tenant_containers, create_graph_namespaces
+from ..assets.tenant import create_tenant_containers, create_graph_namespaces, rebuild_graph_namespaces
 from ..resources.gleanerio import GleanerioResource
 from ..resources.gleanerS3 import gleanerS3Resource
 from ..resources.graph import BlazegraphResource
@@ -43,6 +43,13 @@ release_asset_job = define_asset_job(
 tenant_namespaces_job = define_asset_job(
     name=f"{PROJECT}_tenant_namespaces_job",
     selection=AssetSelection.assets(create_tenant_containers, create_graph_namespaces),
+    partitions_def=tenant_partitions_def,
+     tags={"dagster/priority": "20"}
+)
+
+tenant_rebuild_namespaces_job = define_asset_job(
+    name=f"{PROJECT}_tenant_rebuild_namespaces_job",
+    selection=AssetSelection.assets(rebuild_graph_namespaces),
     partitions_def=tenant_partitions_def,
      tags={"dagster/priority": "20"}
 )
