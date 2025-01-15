@@ -7,7 +7,7 @@ AssetKey,
 static_partitioned_config,DynamicPartitionsDefinition,
 DefaultSensorStatus,DefaultScheduleStatus
 )
-from ..jobs.tenant_load import tenant_namespaces_job, release_asset_job
+from ..jobs.tenant_load import tenant_namespaces_job, release_asset_job, tenant_namespaces_job
 from ..assets import tenant_partitions_def
 #from ..assets.tenant import build_community
 
