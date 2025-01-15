@@ -180,7 +180,10 @@ def rebuild_graph_namespaces(context):
     context.log.info(f"tennant {tenant}")
     # should we put a default.
     main_namespace = tenant["graph"]["main_namespace"]
+    endpoint = triplestore.GraphEndpoint(main_namespace)
     summary_namespace = tenant["graph"]["summary_namespace"]
+    summary_endpoint = triplestore.GraphEndpoint(summary_namespace)
+    sources = tenant["sources"]
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
@@ -188,13 +191,28 @@ def rebuild_graph_namespaces(context):
     bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, main_namespace )
     bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
     try:
+        # recreate namespace
         msg = bg.deleteNamespace(quads=True)
         context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        msg = bg.createNamespace(quads=True)
+        context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        # recreate summary namespace
         msg = bg_summary.deleteNamespace(quads=False)
         context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        msg = bg_summary.createNamespace(quads=False)
+        context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        # upload releases and summaries
+        for source in sources:
+            triplestore.post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+            context.log.info(f"load  release for {source} to tenant  {tenant['community']}  {endpoint} ")
+            triplestore.post_to_graph(source, path=SUMMARY_PATH, extension="ttl", graphendpoint=summary_endpoint, suffix="release_summary")
+            context.log.info(f"load summary for {source} to tenant  {tenant['community']}   {summary_endpoint}")
+
     except Exception as ex :
-        context.log.error(f"graph deletion failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
-        raise Exception(f"graph deletion failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        context.log.error(f"graph rebuilt failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        raise Exception(f"graph rebuilt failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
 @asset(group_name="tenant_create",key_prefix=f"{PROJECT}_ingest",
