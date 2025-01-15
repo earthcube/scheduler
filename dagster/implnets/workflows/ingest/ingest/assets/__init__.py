@@ -16,5 +16,5 @@ from .gleaner_sources import (
 from .tenant import  (
     TenantOpConfig, TenantConfig,
     upload_release,upload_summary,
-    create_tenant_containers, create_graph_namespaces
+    create_tenant_containers, create_graph_namespaces, rebuild_graph_namespaces
 )
