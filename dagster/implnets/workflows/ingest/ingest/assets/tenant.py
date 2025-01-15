@@ -169,16 +169,15 @@ def create_graph_namespaces(context):
 op_tags={"ingest": "graph"},
        required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
 def rebuild_graph_namespaces(context):
-    #context.log.info(config.source_name)
     tenant_name = context.asset_partition_key_for_output()
     context.log.info(f"tennant_name {tenant_name}")
     tenants = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","tenant_all"]))
-    # from https://stackoverflow.com/questions/2361426/get-the-first-item-from-an-iterable-that-matches-a-condition
+
     tenant = next((t for t in tenants["tenant"] if t['community'] == tenant_name ),None)
     if tenant is None:
         raise Exception("Tenant with name {} does not exist".format(tenant_name))
     context.log.info(f"tennant {tenant}")
-    # should we put a default.
+
     main_namespace = tenant["graph"]["main_namespace"]
     endpoint = triplestore.GraphEndpoint(main_namespace)
     summary_namespace = tenant["graph"]["summary_namespace"]
