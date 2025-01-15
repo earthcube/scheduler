@@ -178,15 +178,17 @@ def rebuild_graph_namespaces(context):
         raise Exception("Tenant with name {} does not exist".format(tenant_name))
     context.log.info(f"tennant {tenant}")
 
-    main_namespace = tenant["graph"]["main_namespace"]
-    endpoint = triplestore.GraphEndpoint(main_namespace)
-    summary_namespace = tenant["graph"]["summary_namespace"]
-    summary_endpoint = triplestore.GraphEndpoint(summary_namespace)
     sources = tenant["sources"]
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
+
+    main_namespace = tenant["graph"]["main_namespace"]
+    endpoint = triplestore.GraphEndpoint(main_namespace)
+    summary_namespace = tenant["graph"]["summary_namespace"]
+    summary_endpoint = triplestore.GraphEndpoint(summary_namespace)
+
     bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, main_namespace )
     bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
     try:
