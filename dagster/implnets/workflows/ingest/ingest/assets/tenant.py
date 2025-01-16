@@ -206,10 +206,26 @@ def rebuild_graph_namespaces(context):
 
         # upload releases and summaries
         for source in sources:
-            triplestore.post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
-            context.log.info(f"load  release for {source} to tenant  {tenant['community']}  {endpoint} ")
-            triplestore.post_to_graph(source, path=SUMMARY_PATH, extension="ttl", graphendpoint=summary_endpoint, suffix="release_summary")
-            context.log.info(f"load summary for {source} to tenant  {tenant['community']}   {summary_endpoint}")
+            try:
+                # Attempt to load the release
+                triplestore.post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+                context.log.info(f"load release for {source} to tenant {tenant['community']} {endpoint}")
+            except Exception as e:
+                # Log the exception and continue
+                context.log.error(
+                    f"Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
+                continue
+
+            try:
+                # Attempt to load the summary
+                triplestore.post_to_graph(source, path=SUMMARY_PATH, extension="ttl", graphendpoint=summary_endpoint,
+                                          suffix="release_summary")
+                context.log.info(f"load summary for {source} to tenant {tenant['community']} {summary_endpoint}")
+            except Exception as e:
+                # Log the exception and continue
+                context.log.error(
+                    f"Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
+                continue
 
     except Exception as ex :
         context.log.error(f"graph rebuilt failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
