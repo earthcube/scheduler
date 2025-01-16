@@ -164,6 +164,74 @@ def create_graph_namespaces(context):
         raise Exception(f"graph creation failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
+@asset(group_name="tenant_rebuild",key_prefix=f"{PROJECT}_ingest",
+       deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"])],
+op_tags={"ingest": "graph"},
+       required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
+def rebuild_graph_namespaces(context):
+    tenant_name = context.asset_partition_key_for_output()
+    context.log.info(f"tennant_name {tenant_name}")
+    tenants = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","tenant_all"]))
+
+    tenant = next((t for t in tenants["tenant"] if t['community'] == tenant_name ),None)
+    if tenant is None:
+        raise Exception("Tenant with name {} does not exist".format(tenant_name))
+    context.log.info(f"tennant {tenant}")
+
+    sources = tenant["sources"]
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 = context.resources.gleanerio.gs3
+    triplestore = context.resources.gleanerio.triplestore
+
+    main_namespace = tenant["graph"]["main_namespace"]
+    endpoint = triplestore.GraphEndpoint(main_namespace)
+    summary_namespace = tenant["graph"]["summary_namespace"]
+    summary_endpoint = triplestore.GraphEndpoint(summary_namespace)
+
+    bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, main_namespace )
+    bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
+    try:
+        # recreate namespace
+        msg = bg.deleteNamespace()
+        context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        msg = bg.createNamespace(quads=True)
+        context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        # recreate summary namespace
+        msg = bg_summary.deleteNamespace()
+        context.log.info(f"graph deletion  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        msg = bg_summary.createNamespace(quads=False)
+        context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        # upload releases and summaries
+        for source in sources:
+            try:
+                # Attempt to load the release
+                triplestore.post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+                context.log.info(f"load release for {source} to tenant {tenant['community']} {endpoint}")
+            except Exception as e:
+                # Log the exception and continue
+                context.log.error(
+                    f"Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
+                continue
+
+            try:
+                # Attempt to load the summary
+                triplestore.post_to_graph(source, path=SUMMARY_PATH, extension="ttl", graphendpoint=summary_endpoint,
+                                          suffix="release_summary")
+                context.log.info(f"load summary for {source} to tenant {tenant['community']} {summary_endpoint}")
+            except Exception as e:
+                # Log the exception and continue
+                context.log.error(
+                    f"Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
+                continue
+
+    except Exception as ex :
+        context.log.error(f"graph rebuilt failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        raise Exception(f"graph rebuilt failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+    return
+
 @asset(group_name="tenant_create",key_prefix=f"{PROJECT}_ingest",
        deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"]), AssetKey([f"{PROJECT}_ingest","create_graph_namespaces"])],
        required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)

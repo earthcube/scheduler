@@ -40,14 +40,16 @@ from .jobs import (
                    sources_partitions_def
                 ,tenant_asset_job,
                    tenant_namespaces_job,
-                   release_asset_job
+                   release_asset_job,
+                   tenant_rebuild_namespaces_job
 )
 
 jobs = [
 summon_asset_job, sources_asset_job,
                 tenant_asset_job,
                    tenant_namespaces_job,
-                   release_asset_job
+                   release_asset_job,
+                   tenant_rebuild_namespaces_job
 ]
 from pydantic import Field
 
