@@ -68,6 +68,8 @@ class GraphResource(ConfigurableResource, ABC):
          description="GLEANERIO_GRAPH_URL.")
     GLEANERIO_GRAPH_NAMESPACE: str =  Field(
          description="GLEANERIO_GRAPH_NAMESPACE.")
+    GLEANERIO_GRAPH_USERNAME: str = Field(description="GLEANERIO_GRAPH_USERNAME.")
+    GLEANERIO_GRAPH_PASSWORD: str = Field(description="GLEANERIO_GRAPH_PASSWORD.")
     gs3: gleanerS3Resource
 
 # need multiple namespaces. let's do this.
@@ -209,17 +211,20 @@ class BlazegraphResource(GraphResource):
 
 class GraphdbResource(GraphResource):
     def GraphEndpoint(self, namespace):
-        url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
+        if namespace is None or namespace == '' :
+            url = f"{self.baseurl}repositories/{self.namespace}/"
+        else:
+            url = f"{self.baseurl}repositories/{namespace}/"
         return url
 
     def createNamespace(self, namespace, quads=True):
-        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace)
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace, self.GLEANERIO_GRAPH_USERNAME, self.GLEANERIO_GRAPH_PASSWORD)
         status = bg.createNamespace(quads)
         if status == 'Created' or status == 'Exists':
             return status
 
     def deleteNamespace(self, namespace):
-        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace)
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace, self.GLEANERIO_GRAPH_USERNAME, self.GLEANERIO_GRAPH_PASSWORD)
         bg.deleteNamespace()
 
     def loadReleaseFromUrl(self, url=None, source=None, namespace=None):
@@ -232,7 +237,7 @@ class GraphdbResource(GraphResource):
         # else:
         #     graphendpoint = self.GraphEndpoint(namespace=namespace)
 
-        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace)
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace, self.GLEANERIO_GRAPH_USERNAME, self.GLEANERIO_GRAPH_PASSWORD)
         bg.loadReleaseFromUrl(url=release_url, source=source, namespace=namespace)
 
 

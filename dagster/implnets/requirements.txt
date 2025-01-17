@@ -24,13 +24,17 @@ numpy==1.25.2
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@5d2158f#subdirectory=earthcube_utilities
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@488f802#subdirectory=earthcube_utilities
 
-# this egg thing had issues. beucase it did not build due to dependencies in pyoxigraph
-earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@dv_dev_graphdb#egg=earthcube_utilities&subdirectory=earthcube_utilities
+#  eggs have had issues. because they did not build due to dependencies in pyoxigraph, eg non python dependencies
+
+#earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@dv_dev_graphdb#egg=earthcube_utilities&subdirectory=earthcube_utilities
 
 # for local development on dv (scheduler and ec_utilties at same directory level)
 # can use pip install -e
 # to do development work
-#../../../earthcube_utilities/earthcube_utilities
+../../../earthcube_utilities/earthcube_utilities
+
+# for the graphdb deployment testing
+#earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@dv_dev_graphdb#egg=earthcube_utilities&subdirectory=earthcube_utilities
 
 # if we want to use an non-released branch 2c1dcab is the commit
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@a3acbe4#subdirectory=earthcube_utilities
