@@ -68,8 +68,8 @@ class GraphResource(ConfigurableResource, ABC):
          description="GLEANERIO_GRAPH_URL.")
     GLEANERIO_GRAPH_NAMESPACE: str =  Field(
          description="GLEANERIO_GRAPH_NAMESPACE.")
-    GLEANERIO_GRAPH_USERNAME: str = Field(description="GLEANERIO_GRAPH_USERNAME.")
-    GLEANERIO_GRAPH_PASSWORD: str = Field(description="GLEANERIO_GRAPH_PASSWORD.")
+    GLEANERIO_GRAPH_USERNAME: str = Field(description="GLEANERIO_GRAPH_USERNAME.", default=None)
+    GLEANERIO_GRAPH_PASSWORD: str = Field(description="GLEANERIO_GRAPH_PASSWORD.", default=None)
     gs3: gleanerS3Resource
 
 # need multiple namespaces. let's do this.
@@ -98,7 +98,7 @@ class GraphResource(ConfigurableResource, ABC):
         url = self.gs3.releaseFileUrl(source=source_name, path=path, suffix=suffix, extension=extension )
         get_dagster_logger().debug(f' loadReleaseFromS3 <{url}> , {suffix}, {namespace} {source_name} ')
 
-        return self.loadReleaseFromUrl(url=url, source=source_name, namespace=namespace, suffix=suffix)
+        return self.loadReleaseFromUrl(url=url, source=source_name, namespace=namespace)
 
     @abstractmethod
     def loadReleaseFromUrl(self, url=None, source=None, namespace=GLEANERIO_GRAPH_NAMESPACE, suffix='release'):
@@ -212,20 +212,23 @@ class BlazegraphResource(GraphResource):
 class GraphdbResource(GraphResource):
     def GraphEndpoint(self, namespace):
         if namespace is None or namespace == '' :
-            url = f"{self.baseurl}repositories/{self.namespace}/"
+            url = f"{self.GLEANERIO_GRAPH_URL}repositories/{self.namespace}"
         else:
-            url = f"{self.baseurl}repositories/{namespace}/"
+            url = f"{self.GLEANERIO_GRAPH_URL}repositories/{namespace}"
         return url
 
     def createNamespace(self, namespace, quads=True):
-        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace, self.GLEANERIO_GRAPH_USERNAME, self.GLEANERIO_GRAPH_PASSWORD)
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace, username=self.GLEANERIO_GRAPH_USERNAME, password=self.GLEANERIO_GRAPH_PASSWORD)
         status = bg.createNamespace(quads)
         if status == 'Created' or status == 'Exists':
             return status
 
     def deleteNamespace(self, namespace):
-        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace, self.GLEANERIO_GRAPH_USERNAME, self.GLEANERIO_GRAPH_PASSWORD)
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace,username=self.GLEANERIO_GRAPH_USERNAME, password=self.GLEANERIO_GRAPH_PASSWORD)
         bg.deleteNamespace()
+    def post_to_graph(self, source, path='graphs/latest', extension="nq", namespace=None, suffix='release'):
+        get_dagster_logger().info(f'graph: change function to loadReleaseFromS3')
+        return self.loadReleaseFromS3(source,path=path,extension=extension,namespace=namespace)
 
     def loadReleaseFromUrl(self, url=None, source=None, namespace=None):
         if url is None:
@@ -237,7 +240,7 @@ class GraphdbResource(GraphResource):
         # else:
         #     graphendpoint = self.GraphEndpoint(namespace=namespace)
 
-        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace, self.GLEANERIO_GRAPH_USERNAME, self.GLEANERIO_GRAPH_PASSWORD)
+        bg = ManageGraphdb(self.GLEANERIO_GRAPH_URL, namespace,username=self.GLEANERIO_GRAPH_USERNAME, password=self.GLEANERIO_GRAPH_PASSWORD)
         bg.loadReleaseFromUrl(url=release_url, source=source, namespace=namespace)
 
 

@@ -16,7 +16,7 @@
 
 import os
 
-from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext
+from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext,get_dagster_logger
 from dagster_aws.s3.resources import S3Resource
 from dagster_aws.s3.ops import S3Coordinate
 from dagster import (
@@ -132,21 +132,29 @@ gleaners3=gleanerS3Resource(
 triplestore=BlazegraphResource(
             GLEANERIO_GRAPH_URL=os.environ.get('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_NAMESPACE'),
+            GLEANERIO_GRAPH_USERNAME=EnvVar('GLEANERIO_GRAPH_USERNAME'),
+            GLEANERIO_GRAPH_PASSWORD=EnvVar('GLEANERIO_GRAPH_PASSWORD'),
        gs3=gleaners3,
         )
 triplestore_summary=BlazegraphResource(
             GLEANERIO_GRAPH_URL=os.environ.get('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+            GLEANERIO_GRAPH_USERNAME=EnvVar('GLEANERIO_GRAPH_USERNAME'),
+            GLEANERIO_GRAPH_PASSWORD=EnvVar('GLEANERIO_GRAPH_PASSWORD'),
        gs3=gleaners3,
         )
 Gdbtriplestore=GraphdbResource(
             GLEANERIO_GRAPH_URL=os.environ.get('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_NAMESPACE'),
+            GLEANERIO_GRAPH_USERNAME=EnvVar('GLEANERIO_GRAPH_USERNAME'),
+            GLEANERIO_GRAPH_PASSWORD=EnvVar('GLEANERIO_GRAPH_PASSWORD'),
        gs3=gleaners3,
         )
 Gdbtriplestore_summary=GraphdbResource(
             GLEANERIO_GRAPH_URL=os.environ.get('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+GLEANERIO_GRAPH_USERNAME=EnvVar('GLEANERIO_GRAPH_USERNAME'),
+GLEANERIO_GRAPH_PASSWORD=EnvVar('GLEANERIO_GRAPH_PASSWORD'),
        gs3=gleaners3,
         )
 
@@ -231,7 +239,7 @@ resources = {
 }
 
 deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
-
+get_dagster_logger().info(f"Deployment name: {deployment_name}")
 
 
 defs = Definitions(

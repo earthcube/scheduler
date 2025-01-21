@@ -19,3 +19,4 @@ venv/**
 /dagster/implnets/deployment/env.env
 /dagster/implnets/deployment/old.env
 /dagster/implnets/deployment/new.env
+/dagster/implnets/deployment/graphdb.env
