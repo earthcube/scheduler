@@ -81,12 +81,13 @@ def upload_release(context ):
         try:
             #bg.upload_nq_file()
             namespace = tenant['graph']['main_namespace']
-            endpoint =  triplestore.GraphEndpoint(namespace)
-            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
-            context.log.info(f"load  release for {source_name} to tenant  {tenant['community']}  {endpoint} ")
+            #endpoint =  triplestore.GraphEndpoint(namespace)
+            #triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", namespace=namespace)
+            context.log.info(f"load  release for {source_name} to tenant  {tenant['community']}  {namespace} {triplestore.GLEANERIO_GRAPH_URL}")
         except Exception as ex:
-            context.log.info(f"load to tenant {source_name} failed to {endpoint} {ex}")
-            raise Exception(f"load to tenant {source_name} failed to {endpoint} {ex}")
+            context.log.info(f"load to tenant {source_name} failed to {namespace} {ex} ")
+            raise Exception(f"load to tenant {source_name} failed to {namespace} {ex}")
     return
 
 #@asset(required_resource_keys={"gleanerio",},ins={"start": In(Nothing)})
@@ -114,7 +115,8 @@ def upload_summary(context):
            # bg.upload_nq_file()
             namespace = tenant['graph']['summary_namespace']
             endpoint = triplestore.GraphEndpoint(namespace)
-            triplestore.post_to_graph(source_name, path=SUMMARY_PATH,extension="ttl", graphendpoint=endpoint, suffix="release_summary")
+            #endpoint = triplestore.GLEANERIO_GRAPH_URL
+            triplestore.post_to_graph(source_name, namespace=namespace, path=SUMMARY_PATH,extension="ttl",  suffix="release_summary")
             context.log.info(f"load summary for {source_name} to tenant  {tenant['community']}   {endpoint}")
         except Exception as ex:
             context.log.error(f"load to tenant failed {source_name}  {endpoint} {ex}")
@@ -152,13 +154,15 @@ def create_graph_namespaces(context):
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
-    bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, main_namespace )
-    bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
+    # bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, main_namespace )
+    # bg_summary = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, summary_namespace)
     try:
-        msg = bg.createNamespace(quads=True)
-        context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
-        msg = bg_summary.createNamespace(quads=False)
-        context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        #msg = bg.createNamespace(quads=True)
+        msg = triplestore.createNamespace(main_namespace,quads=True)
+        context.log.info(f"graph creation  {tenant_name} {main_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        #msg = bg_summary.createNamespace(quads=False)
+        msg = triplestore.createNamespace(summary_namespace,quads=False)
+        context.log.info(f"graph creation  {tenant_name} {summary_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
     except Exception as ex :
         context.log.error(f"graph creation failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
         raise Exception(f"graph creation failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")

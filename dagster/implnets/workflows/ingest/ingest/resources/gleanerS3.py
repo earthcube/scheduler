@@ -99,3 +99,16 @@ class gleanerS3Resource(ConfigurableResource):
         return self.s3ConfigUrl(self.GLEANERIO_SOURCES_FILENAME)
     def s3ConfigNabu(self):
         return self.s3ConfigUrl(self.GLEANERIO_NABU_FILENAME)
+    def releaseFileUrl(self, source=None, path='graphs/latest',suffix='release', extension="nq" ):
+        if source is None:
+            raise Exception("must have a value for source")
+        proto = "http"
+        # this need to get file from s3.
+
+        if self.GLEANERIO_MINIO_USE_SSL:
+            proto = "https"
+        port = self.GLEANERIO_MINIO_PORT
+        address = PythonMinioAddress(self.GLEANERIO_MINIO_ADDRESS, self.GLEANERIO_MINIO_PORT)
+        bucket = self.GLEANERIO_MINIO_BUCKET
+        release_url = f"{proto}://{address}/{bucket}/{path}/{source}_{suffix}.{extension}"
+        return release_url
