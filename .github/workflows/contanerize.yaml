@@ -13,6 +13,7 @@ on:
       - v0_generated_code
       - 164_dev_gleanerurl
       - 174_dev_graphdb
+      - rebuild-namespace
     tags:
       - "v*.*.*"
 
