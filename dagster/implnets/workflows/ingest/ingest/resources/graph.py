@@ -128,14 +128,21 @@ class GraphResource(ConfigurableResource):
             # Step 2: Transform the RDF data
             cleaned_data = self.transform_data(raw_data)
 
+            sparql_query = f"""
+            INSERT DATA {{
+            {cleaned_data}
+            }}
+            """
+
             # Step 3: Prepare the SPARQL update query
-            loadfrom = {'update': f'INSERT DATA {{ {cleaned_data} }}'}
+            loadfrom = {'update': sparql_query}
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
 
             # Step 4: Send the transformed data to the SPARQL endpoint
             r = requests.post(url, headers=headers, data=loadfrom)
+            r.raise_for_status()  # raises an HTTPError for 4xx or 5xx responses
 
             # Debugging output
             get_dagster_logger().info(f'graph load response: {str(r.text)} status:{r.status_code}')
