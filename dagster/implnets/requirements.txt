@@ -16,7 +16,6 @@ notebook
 pydash
 pyyaml
 orjson
-unicodedata
 
 
 #earthcube-utilities>=0.1.28
