@@ -11,7 +11,7 @@ on:
       - dev
       - dev_eco
       - v0_generated_code
-      - rebuild-namespace
+      - encoding-for-post-to-graph
     tags:
       - "v*.*.*"
 
