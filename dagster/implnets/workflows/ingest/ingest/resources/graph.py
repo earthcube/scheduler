@@ -118,7 +118,7 @@ class GraphResource(ConfigurableResource):
         ### GENERIC LOAD FROM
         url = f"{graphendpoint}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
         get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-        
+
         # Step 1: Download the RDF data from release_url
         response = requests.get(release_url)
 
