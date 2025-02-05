@@ -1,4 +1,5 @@
 import os
+import unicodedata
 from typing import Any, Dict
 
 import pydash
@@ -71,6 +72,18 @@ class GraphResource(ConfigurableResource):
         url = f"{self.GLEANERIO_GRAPH_URL}/namespace/{namespace}/sparql"
         return url
 
+    def escape_unicode(self, text):
+        """Convert all special characters to Unicode escape sequences."""
+        return ''.join(f'\\u{ord(c):04X}' if ord(c) > 127 else c for c in text)
+
+    def transform_data(self, data):
+        """Normalize and escape special characters in the RDF data."""
+        if isinstance(data, bytes):
+            data = data.decode("utf-8", errors="replace")  # Convert bytes to string
+
+        data = unicodedata.normalize("NFC", data)  # Normalize Unicode characters
+        data = self.escape_unicode(data)  # Escape special characters
+        return data
 
     def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None, suffix='release'):
         if graphendpoint is None:
@@ -105,23 +118,34 @@ class GraphResource(ConfigurableResource):
         ### GENERIC LOAD FROM
         url = f"{graphendpoint}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
         get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-        loadfrom = {'update': f'LOAD <{release_url}>'}
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-        r = requests.post(url, headers=headers, data=loadfrom )
-        get_dagster_logger().debug(f' status:{r.status_code}')  # status:404
-        get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
-        if r.status_code == 200:
-            get_dagster_logger().info(f'graph load response: {str(r.text)} ')
+        
+        # Step 1: Download the RDF data from release_url
+        response = requests.get(release_url)
+
+        if response.status_code == 200:
+            raw_data = response.content  # Get the file content (in bytes)
+
+            # Step 2: Transform the RDF data
+            cleaned_data = self.transform_data(raw_data)
+
+            # Step 3: Prepare the SPARQL update query
+            loadfrom = {'update': f'INSERT DATA {{ {cleaned_data} }}'}
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+
+            # Step 4: Send the transformed data to the SPARQL endpoint
+            r = requests.post(url, headers=headers, data=loadfrom)
+
+            # Debugging output
+            get_dagster_logger().info(f'graph load response: {str(r.text)} status:{r.status_code}')
             # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
             if 'mutationCount=0' in r.text:
                 get_dagster_logger().info(f'graph: no data inserted ')
-                #raise Exception("No Data Added: " + r.text)
             return True
+
         else:
-            get_dagster_logger().info(f'graph: error {str(r.text)}')
-            raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
+            get_dagster_logger().info(f"Failed to fetch RDF file: {response.status_code}")
 
 class BlazegraphResource(GraphResource):
     pass
