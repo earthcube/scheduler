@@ -387,8 +387,14 @@ def graph_stats_report(context) :
     s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
     get_dagster_logger().info(f"graph stats  returned  {r} ")
     return
+def shacl(context):
+    #pyshacl -s https://raw.githubusercontent.com/iodepo/odis-arch/master/validation/SHACL/GeoCodesv1Shapes.ttl https://oss.geocodes-aws-dev.earthcube.org/test/graphs/latest/cchdo_release.nq
+# use shacls from https://github.com/earthcube/GeoCODES-Metadata/blob/shacl/metadata/OtherResources/GeoCodesv1RecommendedShapes.ttl
+    # pyshacl -s https://raw.githubusercontent.com/earthcube/GeoCODES-Metadata/refs/heads/shacl/metadata/OtherResources/GeoCodesv1RecommendedShapes.ttl -o validation.txt ../../cchdo_release.nq
+    pass
 
-#might need to use this https://docs.dagster.io/_apidocs/repositories#dagster.RepositoryDefinition.get_asset_value_loader
+#might nee
+# d to use this https://docs.dagster.io/_apidocs/repositories#dagster.RepositoryDefinition.get_asset_value_loader
 #@sensor(job=summon_asset_job)
 # @sensor(asset_selection=AssetSelection.keys("gleanerio_orgs"))
 # def sources_sensor(context ):
