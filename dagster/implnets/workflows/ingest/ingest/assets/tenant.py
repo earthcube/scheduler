@@ -216,7 +216,7 @@ def rebuild_graph_namespaces(context):
             except Exception as e:
                 # Log the exception and continue
                 context.log.error(
-                    f"Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
+                    f"rebuild namespace Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
                 slack.get_client().chat_postMessage(channel=slack_channel, text=f"rebuild_graph_namespace: Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
                 continue
 
@@ -228,11 +228,13 @@ def rebuild_graph_namespaces(context):
             except Exception as e:
                 # Log the exception and continue
                 context.log.error(
-                    f"Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
+                    f"rebuild namespace Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
                 slack.get_client().chat_postMessage(channel=slack_channel, text=f"Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
                 continue
+            context.log.info(f"rebuild namespace loaded source {source} for {tenant['community']}")
 
-            slack.get_client().chat_postMessage(channel=slack_channel, text=f"rebuild namspace for {tenant['community']} {summary_endpoint}")
+
+        slack.get_client().chat_postMessage(channel=slack_channel, text=f"rebuild namspace for {tenant['community']} {summary_endpoint}")
 
     except Exception as ex :
         context.log.error(f"graph rebuilt failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
