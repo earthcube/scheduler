@@ -12,6 +12,7 @@ on:
       - dev_eco
       - v0_generated_code
       - rebuild-namespace
+      - 181_dev_rebuild_namespace
     tags:
       - "v*.*.*"
 

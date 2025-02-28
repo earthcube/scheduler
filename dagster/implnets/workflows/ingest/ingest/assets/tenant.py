@@ -165,14 +165,14 @@ def create_graph_namespaces(context):
     return
 
 @asset(group_name="tenant_rebuild",key_prefix=f"{PROJECT}_ingest",
-       deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"])],
+       deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"]), AssetKey([f"{PROJECT}_ingest","sources_names_active"])],
 op_tags={"ingest": "graph"},
-       required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
+       required_resource_keys={"gleanerio",'slack'},partitions_def=tenant_partitions_def)
 def rebuild_graph_namespaces(context):
     tenant_name = context.asset_partition_key_for_output()
     context.log.info(f"tennant_name {tenant_name}")
     tenants = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","tenant_all"]))
-
+    source_names_active = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","sources_names_active"]))
     tenant = next((t for t in tenants["tenant"] if t['community'] == tenant_name ),None)
     if tenant is None:
         raise Exception("Tenant with name {} does not exist".format(tenant_name))
@@ -183,7 +183,8 @@ def rebuild_graph_namespaces(context):
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
     triplestore = context.resources.gleanerio.triplestore
-
+    slack = context.resources.slack
+    slack_channel= os.getenv("SLACK_CHANNEL", "#production_discussion")
     main_namespace = tenant["graph"]["main_namespace"]
     endpoint = triplestore.GraphEndpoint(main_namespace)
     summary_namespace = tenant["graph"]["summary_namespace"]
@@ -204,16 +205,19 @@ def rebuild_graph_namespaces(context):
         msg = bg_summary.createNamespace(quads=False)
         context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
+        if 'all' in sources:
+            sources = source_names_active
         # upload releases and summaries
         for source in sources:
             try:
                 # Attempt to load the release
                 triplestore.post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
-                context.log.info(f"load release for {source} to tenant {tenant['community']} {endpoint}")
+                context.log.info(f"rebuild_graph_namespace: load release for {source} to tenant {tenant['community']} {endpoint}")
             except Exception as e:
                 # Log the exception and continue
                 context.log.error(
-                    f"Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
+                    f"rebuild namespace Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
+               # slack.get_client().chat_postMessage(channel=slack_channel, text=f"rebuild_graph_namespace: Failed to load release for {source} to tenant {tenant['community']} {endpoint}: {e}")
                 continue
 
             try:
@@ -224,8 +228,13 @@ def rebuild_graph_namespaces(context):
             except Exception as e:
                 # Log the exception and continue
                 context.log.error(
-                    f"Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
+                    f"rebuild namespace Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
+               # slack.get_client().chat_postMessage(channel=slack_channel, text=f"Failed to load summary for {source} to tenant {tenant['community']} {summary_endpoint}: {e}")
                 continue
+            context.log.info(f"rebuild namespace loaded source {source} for {tenant['community']}")
+
+        context.log.info(f"rebuild namespace  for {tenant['community']} {summary_endpoint}")
+         # slack.get_client().chat_postMessage(channel=slack_channel, text=f"rebuild namspace for {tenant['community']} {summary_endpoint}")
 
     except Exception as ex :
         context.log.error(f"graph rebuilt failed {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
