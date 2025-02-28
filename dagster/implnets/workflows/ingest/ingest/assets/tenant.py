@@ -165,14 +165,14 @@ def create_graph_namespaces(context):
     return
 
 @asset(group_name="tenant_rebuild",key_prefix=f"{PROJECT}_ingest",
-       deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"])],
+       deps=[AssetKey([f"{PROJECT}_ingest","tenant_all"]), AssetKey([f"{PROJECT}_ingest","sources_names_active"])],
 op_tags={"ingest": "graph"},
        required_resource_keys={"gleanerio",},partitions_def=tenant_partitions_def)
 def rebuild_graph_namespaces(context):
     tenant_name = context.asset_partition_key_for_output()
     context.log.info(f"tennant_name {tenant_name}")
     tenants = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","tenant_all"]))
-
+    source_names_active = context.repository_def.load_asset_value(AssetKey([f"{PROJECT}_ingest","sources_names_active"]))
     tenant = next((t for t in tenants["tenant"] if t['community'] == tenant_name ),None)
     if tenant is None:
         raise Exception("Tenant with name {} does not exist".format(tenant_name))
@@ -204,6 +204,8 @@ def rebuild_graph_namespaces(context):
         msg = bg_summary.createNamespace(quads=False)
         context.log.info(f"graph creation  {tenant_name} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
+        if 'all' in sources:
+            sources = source_names_active
         # upload releases and summaries
         for source in sources:
             try:
