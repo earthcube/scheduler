@@ -11,7 +11,7 @@ on:
       - dev
       - dev_eco
       - v0_generated_code
-      - 199_dev_fixgraphreports
+      - 173_dev_graphreport
     tags:
       - "v*.*.*"
 
