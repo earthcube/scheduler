@@ -409,7 +409,7 @@ def graph_stats_report(context) :
         returned_value = generateGraphReportsRepo(source_name, endpoint, reportList=reportTypes["repo"])
         try:
 
-            #msg = bg.deleteNamespace()
+            msg = bg.deleteNamespace()
             context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
         except Exception as ex:
