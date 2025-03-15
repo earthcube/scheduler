@@ -17,7 +17,7 @@ from .gleaner_sources import sources_partitions_def
 from ..utils import PythonMinioAddress
 
 from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpointUpdateNamespace
-from ec.reporting.report import missingReport, generateIdentifierRepo, generateGraphReportsRelease
+from ec.reporting.report import missingReport, generateIdentifierRepo, generateGraphReportsRelease, generateGraphReportsRepo, reportTypes
 from ec.graph.release_graph import ReleaseGraph
 from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
 import os
@@ -357,6 +357,79 @@ op_tags={"ingest": "report"},
    # , backfill_policy=BackfillPolicy.single_run()
        )
 def graph_stats_report(context) :
+    gleaner_resource = context.resources.gleanerio
+    s3_resource = context.resources.gleanerio.gs3.s3
+    gleaner_s3 = context.resources.gleanerio.gs3
+    triplestore = context.resources.gleanerio.triplestore
+    source_name = context.asset_partition_key_for_output()
+    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
+    source = getSource(context, source_name)
+    source_url = source.get('url')
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                         gleaner_s3.GLEANERIO_MINIO_PORT),
+                                      gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+
+    #returned_value = generateGraphReportsRepo(source_name,  graphendpoint, reportList=reportTypes["repo_detailed"])
+    proto = "http"
+    if gleaner_s3.GLEANERIO_MINIO_USE_SSL:
+        proto = "https"
+    address = PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS, gleaner_s3.GLEANERIO_MINIO_PORT)
+
+    s3FileUrl = f"{proto}://{address}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
+
+    endpoint = triplestore.GraphEndpoint(gleaner_resource.GLEANERIO_GRAPH_NAMESPACE)
+    # getting data, not uploading data
+    # summary_namespace = _graphSummaryEndpoint()
+
+    try:
+        temp_namespace = f"{source_name}_report_temp"
+        bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
+        endpoint = triplestore.GraphEndpoint(temp_namespace)
+        context.log.info(f"temp {temp_namespace} graph endpoint  {endpoint}")
+
+        try:
+            msg = bg.createNamespace(quads=True)
+            context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        except Exception as ex:
+            context.log.error(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        try:
+            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+            context.log.info(f"temp graph {s3FileUrl}  loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        except Exception as ex:
+            context.log.error(
+                f"temp graph {s3FileUrl} load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(
+                f"temp graph {s3FileUrl}  load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+
+        #returned_value = generateGraphReportsRelease(source_name, s3FileUrl)
+        returned_value = generateGraphReportsRepo(source_name, endpoint, reportList=reportTypes["repo"])
+        try:
+
+            msg = bg.deleteNamespace()
+            context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+
+        except Exception as ex:
+            context.log.error(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            raise Exception(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+        r = str('returned value:{}'.format(returned_value))
+        # report = json.dumps(returned_value, indent=2) # value already json.dumps
+        report = returned_value
+        s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
+        get_dagster_logger().info(f"graph stats  returned  {r} ")
+        return
+    except Exception as e:
+        # use dagster logger
+        get_dagster_logger().error(f"Summary. Issue creating graph  {str(e)} ")
+        raise Exception(f"Loading Summary graph failed. {str(e)}")
+        return 1
+
+
+# below loaded data into an rdflib and tran stats. this is slow.
+def graph_stats_report_releasefile(context) :
     gleaner_resource = context.resources.gleanerio
     s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
