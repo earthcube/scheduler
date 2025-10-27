@@ -46,4 +46,4 @@ disable="""
     wrong-import-order
     """
 [tool.dagster]
-module_name = "workflows.tasks.tasks"
+module_name = "workflows.ingest.ingest"
