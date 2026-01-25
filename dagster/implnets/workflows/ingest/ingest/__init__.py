@@ -26,7 +26,13 @@ from dagster import (
 )
 from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 
-from .resources.graph import BlazegraphResource, GraphResource
+from .resources.graph import (
+    BlazegraphResource,
+    GraphResource,
+    GraphDBResource,
+    QleverResource,
+    get_graph_resource_for_tenant
+)
 from .resources.gleanerio import GleanerioResource
 from .resources.gleanerS3 import gleanerS3Resource
 from .assets import (

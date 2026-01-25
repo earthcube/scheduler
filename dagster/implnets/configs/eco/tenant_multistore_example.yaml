@@ -1,0 +1,71 @@
+# Example tenant configuration with multiple triple store types
+# This file demonstrates how to configure tenants with different graph stores:
+# - Blazegraph (default, backwards compatible)
+# - GraphDB
+# - Qlever
+
+tenant:
+  # Tenant using Blazegraph (default behavior, backwards compatible)
+  - community: dev
+    hostname: geocodes-dev
+    description: Development tenant using Blazegraph
+    name: Geocodes Development
+    url: https://www.earthcube.org
+    logo: https://unsplash.com/random
+    graph:
+      main_namespace: dev
+      summary_namespace: dev_summary
+      # No store block = defaults to Blazegraph using env vars
+    sources:
+      - iris
+      - geocodes_demo_datasets
+
+  # Tenant with explicit Blazegraph configuration
+  - community: geocodes-blazegraph
+    hostname: geocodes-bg
+    description: Production tenant on dedicated Blazegraph
+    name: Geocodes Blazegraph
+    url: https://www.earthcube.org
+    graph:
+      main_namespace: geocodes
+      summary_namespace: geocodes_summary
+      store:
+        type: blazegraph
+        endpoint_url: http://blazegraph-prod:9999/blazegraph
+    sources:
+      - all
+
+  # Tenant using GraphDB
+  - community: geocodes-graphdb
+    hostname: geocodes-gdb
+    description: Production tenant on GraphDB
+    name: Geocodes GraphDB
+    url: https://www.earthcube.org
+    graph:
+      main_namespace: geocodes
+      summary_namespace: geocodes_summary
+      store:
+        type: graphdb
+        endpoint_url: http://graphdb:7200
+        repository: geocodes
+    sources:
+      - iris
+      - opentopography
+      - amgeo
+
+  # Tenant using Qlever
+  - community: geocodes-qlever
+    hostname: geocodes-ql
+    description: Experimental tenant using Qlever
+    name: Geocodes Qlever
+    url: https://www.earthcube.org
+    graph:
+      main_namespace: geocodes
+      # summary_namespace is optional for Qlever
+      store:
+        type: qlever
+        endpoint_url: http://qlever:7001
+        config_path: graphs/qlever  # S3 path for config files
+    sources:
+      - iris
+      - amgeo

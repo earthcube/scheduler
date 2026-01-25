@@ -99,3 +99,22 @@ class gleanerS3Resource(ConfigurableResource):
         return self.s3ConfigUrl(self.GLEANERIO_SOURCES_FILENAME)
     def s3ConfigNabu(self):
         return self.s3ConfigUrl(self.GLEANERIO_NABU_FILENAME)
+
+    def putTextFileToS3(self, content: str, s3path: str):
+        """Write text content to an S3 path.
+
+        Args:
+            content: The text content to write
+            s3path: The S3 key (path) to write to
+        """
+        try:
+            self.s3.get_client().put_object(
+                Bucket=self.GLEANERIO_MINIO_BUCKET,
+                Key=s3path,
+                Body=content.encode('utf-8'),
+                ContentType='application/json'
+            )
+            get_dagster_logger().info(f"wrote file to s3://{self.GLEANERIO_MINIO_BUCKET}/{s3path}")
+        except Exception as ex:
+            get_dagster_logger().error(f"failed to write to {s3path}: {ex}")
+            raise
