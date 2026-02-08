@@ -110,12 +110,18 @@ def upload_summary(context):
     default_triplestore = context.resources.gleanerio.triplestore
     tenants = find_tenants_with_source(context,source_name, tenants_all)
     for tenant in tenants:
+        store_type = tenant.get('graph', {}).get('store', {}).get('type', 'blazegraph')
+
+        # Qlever does not use summary namespace
+        if store_type == 'qlever':
+            context.log.info(f"Skipping summary upload for Qlever tenant {tenant['community']}")
+            continue
+
         try:
             # Get the appropriate graph resource for this tenant's store type
             triplestore = get_graph_resource_for_tenant(tenant, default_triplestore)
             namespace = tenant['graph'].get('summary_namespace', tenant['graph']['main_namespace'] + '_summary')
             endpoint = triplestore.GraphEndpoint(namespace)
-            store_type = tenant.get('graph', {}).get('store', {}).get('type', 'blazegraph')
             triplestore.post_to_graph(source_name, path=SUMMARY_PATH, extension="ttl", graphendpoint=endpoint, suffix="release_summary")
             context.log.info(f"load summary for {source_name} to tenant {tenant['community']} ({store_type}) {endpoint}")
         except Exception as ex:
@@ -142,7 +148,7 @@ def create_graph_namespaces(context):
 
     For Blazegraph: Creates namespaces using ManageBlazegraph
     For GraphDB: Logs info (repository creation typically done via admin API)
-    For Qlever: Creates empty config files
+    For Qlever: Creates empty config file (no summary namespace needed)
     """
     from ..resources.graph import QleverResource
 
@@ -230,12 +236,7 @@ def rebuild_graph_namespaces(context):
             context.log.info(f"Generating Qlever config for tenant {tenant_name}")
             triplestore.generate_full_config(sources, path=RELEASE_PATH, extension="nq", suffix='release')
             context.log.info(f"Generated Qlever release config for tenant {tenant_name} with {len(sources)} sources")
-
-            # Generate summary config (different namespace)
-            triplestore_summary = get_graph_resource_for_tenant(tenant, default_triplestore)
-            triplestore_summary.GLEANERIO_GRAPH_NAMESPACE = summary_namespace
-            triplestore_summary.generate_full_config(sources, path=SUMMARY_PATH, extension="ttl", suffix='release_summary')
-            context.log.info(f"Generated Qlever summary config for tenant {tenant_name}")
+            # Note: Qlever does not use summary namespace
 
         else:
             # For Blazegraph/GraphDB, recreate namespaces and reload data
