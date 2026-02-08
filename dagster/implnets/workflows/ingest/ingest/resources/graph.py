@@ -214,6 +214,9 @@ class QleverResource(GraphResource):
         # Try to load existing config
         try:
             existing_config = self.gs3.getFile(path=config_key)
+            # getFile returns a StreamingBody, need to read it
+            if hasattr(existing_config, 'read'):
+                existing_config = existing_config.read().decode('utf-8')
             config = json.loads(existing_config)
         except Exception:
             config = {
