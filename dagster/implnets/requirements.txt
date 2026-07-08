@@ -16,6 +16,10 @@ notebook
 pydash
 pyyaml
 orjson
+# phased pipeline workflow (workflows/pipeline): JSON-LD enhancement + RDF conversion
+pyld
+rdflib
+pandas
 
 
 #earthcube-utilities>=0.1.28
