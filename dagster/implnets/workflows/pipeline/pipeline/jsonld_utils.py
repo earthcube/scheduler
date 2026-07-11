@@ -5,6 +5,7 @@ The step registry in steps.py wires these into the per-source pipeline.
 """
 import hashlib
 import json
+import re
 
 SCHEMA_ORG = "https://schema.org/"
 # Inline replacement for remote schema.org contexts. Expanding against the
@@ -177,3 +178,144 @@ def document_sha(raw_bytes):
     """Content hash used to name enhanced objects; matches gleaner's
     identifiersha spirit (sha of the object content)."""
     return hashlib.sha1(raw_bytes).hexdigest()
+
+
+# ── known-identifier promotion ───────────────────────────────────────
+# Patterns for well-known persistent identifiers found in identifier /
+# sameAs / url values. Used by promote_identifiers to give typed nodes an
+# authoritative @id instead of a minted skolem IRI.
+KNOWN_IDENTIFIER_PATTERNS = (
+    re.compile(r"^https?://orcid\.org/\d{4}-\d{4}-\d{4}-\d{3}[\dX]$"),
+    re.compile(r"^https?://ror\.org/[0-9a-z]{9}$"),
+    re.compile(r"^https?://(?:dx\.)?doi\.org/10\.\S+$"),
+    re.compile(r"^https?://(?:www\.)?re3data\.org/repository/r3d\d+$"),
+    re.compile(r"^https?://(?:www\.)?wikidata\.org/(?:entity|wiki)/Q\d+$"),
+    re.compile(r"^https?://(?:www\.)?isni\.org/(?:isni/)?\d{15}[\dX]$"),
+)
+
+
+def _known_identifier(value):
+    """Return the value when it matches a known persistent-identifier
+    pattern, else None. Accepts strings, PropertyValue dicts, and lists."""
+    if isinstance(value, list):
+        for v in value:
+            match = _known_identifier(v)
+            if match:
+                return match
+        return None
+    if isinstance(value, dict):
+        # schema:PropertyValue and friends
+        for key in ("@id", "value", "url"):
+            match = _known_identifier(value.get(key))
+            if match:
+                return match
+        return None
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    # bare DOI form "10.1234/abc" -> normalize to a doi.org IRI
+    if re.match(r"^10\.\d{4,}/\S+$", candidate):
+        return f"https://doi.org/{candidate}"
+    for pattern in KNOWN_IDENTIFIER_PATTERNS:
+        if pattern.match(candidate):
+            return candidate
+    return None
+
+
+def promote_identifiers(node):
+    """IdentifierStrategy for skolemize(): typed nodes without an @id get a
+    known persistent identifier (ORCID, ROR, DOI, re3data, wikidata, ISNI)
+    found in their identifier / sameAs / url values, when present.
+
+    Returns the IRI or None (None lets skolemize fall through to the next
+    strategy / the attribute-hash mint).
+    """
+    for prop in ("identifier", "sameAs", "url"):
+        match = _known_identifier(node.get(prop))
+        if match:
+            return match
+    return None
+
+
+def promote_known_ids(doc):
+    """Walk a document and give every typed node object that lacks an @id a
+    known persistent identifier when one is present in its own
+    identifier/sameAs/url values. Runs before skolemize in the step chain so
+    authoritative IDs win over minted skolem IRIs.
+
+    Returns (doc, count_of_ids_promoted).
+    """
+    promoted = 0
+
+    def walk(value):
+        nonlocal promoted
+        if isinstance(value, list):
+            for v in value:
+                walk(v)
+            return
+        if not _is_node_object(value):
+            return
+        if (value.get("@type") or value.get("type")) and _needs_id(value):
+            iri = promote_identifiers(value)
+            if iri:
+                value["@id"] = iri
+                promoted += 1
+        for k, v in value.items():
+            if k != "@context":
+                walk(v)
+
+    if isinstance(doc, dict) and isinstance(doc.get("@graph"), list):
+        walk(doc["@graph"])
+    else:
+        walk(doc)
+    return doc, promoted
+
+
+# ── keyword splitting ────────────────────────────────────────────────
+_KEYWORD_SPLIT_RE = re.compile(r"[,;]")
+
+
+def split_keyword_string(value):
+    """'ocean, seismology; geology' -> ['ocean', 'seismology', 'geology'];
+    values without delimiters pass through unchanged (as a 1-list)."""
+    if not isinstance(value, str):
+        return [value]
+    if not _KEYWORD_SPLIT_RE.search(value):
+        return [value.strip()] if value.strip() else []
+    return [t.strip() for t in _KEYWORD_SPLIT_RE.split(value) if t.strip()]
+
+
+def split_keywords(doc):
+    """Rewrite packed keyword strings into arrays, in place, on every node
+    object in the document. Returns (doc, count_of_nodes_rewritten)."""
+    rewritten = 0
+
+    def walk(value):
+        nonlocal rewritten
+        if isinstance(value, list):
+            for v in value:
+                walk(v)
+            return
+        if not _is_node_object(value):
+            return
+        kw = value.get("keywords")
+        if kw is not None:
+            terms = []
+            changed = False
+            for item in kw if isinstance(kw, list) else [kw]:
+                parts = split_keyword_string(item)
+                if len(parts) != 1 or (parts and parts[0] != item):
+                    changed = True
+                terms.extend(parts)
+            if not isinstance(kw, list):
+                changed = True
+            if changed:
+                value["keywords"] = terms
+                rewritten += 1
+        for k, v in value.items():
+            if k not in ("@context", "keywords"):
+                walk(v)
+
+    walk(doc.get("@graph") if isinstance(doc, dict) and isinstance(doc.get("@graph"), list)
+         else doc)
+    return doc, rewritten

@@ -1,0 +1,54 @@
+# pysummon — Python summoner (standalone Dagster project)
+
+Replaces the Gleaner Go binary with Python running inside Dagster, built as
+its **own project/code location** so it can run in parallel with the
+gleaner-based `pipeline` project until it's trusted.
+
+## Workflow
+
+| Group | Asset(s) | Writes (under `PYSUMMON_DATA_PREFIX`, default `pysummon/`) |
+|---|---|---|
+| summon | `validate_sitemap_url`, `summon_source`, `identifier_manifest` | `summoned/{source}/`, `metadata/{source}/identifiers.csv` |
+| enhance | `enhanced_jsonld` | `enhanced/{source}/` |
+| reports | `source_report` | `reports/{source}/` |
+| release | `source_datacatalog`, `release_nquads` | `graphs/latest/{source}_release.nq` |
+| publish | `community_load_files`, `sparql_update_load` | `tenants/{community}/Qleverfile`, `tenants/{community}/load.rq`; optional POST to `sparql_endpoint` |
+
+Default enhancement chain: `fix_context → promote_identifiers →
+split_keywords → skolemize` (promote gives typed nodes an ORCID/ROR/DOI/
+re3data/wikidata `@id` found in their own identifier/sameAs/url values;
+skolemize mints deterministic IRIs for whatever is left). Overridable per
+source in `pipelineconfig.yaml`, same file the pipeline project reads.
+
+## Headless sources
+
+Sources flagged `headless: true` in gleanerconfig.yaml render through a
+`chromedp/headless-shell` container over CDP (Playwright
+`connect_over_cdp`) — no chromium in the Dagster image. Endpoint:
+`PYSUMMON_HEADLESS_ENDPOINT` (default `http://headless:9222`).
+Per-source `headlesswait` and `delay` are honored; `delay` or `headless`
+forces sequential fetching, otherwise the summoner uses the gleanerconfig
+`summoner.threads` (default 5).
+
+## Parallel running & promotion
+
+- Both projects read the same config files and crawl the same source list;
+  outputs are isolated by `PYSUMMON_DATA_PREFIX`.
+- Compare: `metadata/{source}/identifiers.csv` and each asset's doc counts
+  vs the gleaner pipeline's `load_report_s3`/manifest for the same source.
+- Both weekly schedules default RUNNING; pause either from the Dagster UI
+  (note both hitting the same remote sitemaps weekly is intentional during
+  the comparison window).
+- **Promote pysummon**: set `PYSUMMON_DATA_PREFIX=""`, pause the pipeline
+  project's schedule, and let the qlever rebuild (pipeline project) or a
+  per-community Qleverfile point at the now-primary release files.
+
+## Running locally
+
+```
+pip install -e ../pipeline -e .[dev]
+export PROJECT=geocodes GLEANERIO_MINIO_ADDRESS=...   # see definitions.py
+dagster dev -m pysummon.definitions
+```
+
+Tests (no network): `python -m pytest pysummon_tests/`

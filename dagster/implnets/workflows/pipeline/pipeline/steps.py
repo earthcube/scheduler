@@ -38,6 +38,16 @@ def _step_fix_context(doc, source):
     return doc, {}
 
 
+def _step_promote_identifiers(doc, source):
+    doc, promoted = jsonld_utils.promote_known_ids(doc)
+    return doc, {"ids_promoted": promoted}
+
+
+def _step_split_keywords(doc, source):
+    doc, rewritten = jsonld_utils.split_keywords(doc)
+    return doc, {"keywords_split": rewritten}
+
+
 def _step_skolemize(doc, source):
     doc, minted = jsonld_utils.skolemize(doc, source)
     return doc, {"ids_minted": minted}
@@ -45,8 +55,14 @@ def _step_skolemize(doc, source):
 
 STEP_REGISTRY = {
     "fix_context": _step_fix_context,
+    # give typed nodes an authoritative @id (ORCID/ROR/DOI/re3data/wikidata)
+    # found in their own identifier/sameAs/url values; run before skolemize
+    "promote_identifiers": _step_promote_identifiers,
+    # break comma/semicolon-packed keyword strings into arrays
+    "split_keywords": _step_split_keywords,
+    # mint deterministic IRIs for whatever blank nodes remain
     "skolemize": _step_skolemize,
-    # future: "normalize_identifiers" (ORCID/ROR lookup), "standard_form", ...
+    # future: "standard_form", vocabulary linking (phase 2.2), ...
 }
 
 

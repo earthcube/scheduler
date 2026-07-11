@@ -20,6 +20,13 @@ orjson
 pyld
 rdflib
 pandas
+# pysummon workflow (workflows/pysummon): python summoner replacing Gleaner.
+# playwright connects to the remote headless-shell over CDP; no browser
+# download needed in this image (do NOT run `playwright install`).
+playwright
+beautifulsoup4
+lxml
+requests
 
 
 #earthcube-utilities>=0.1.28
