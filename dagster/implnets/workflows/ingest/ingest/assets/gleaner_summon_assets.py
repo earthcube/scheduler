@@ -210,7 +210,7 @@ def _construct_to_quads(ntriples_text, graph_iri):
         triple = line.strip()
         if not triple:
             continue
-        quads.append(f"{triple[:-1]} <{graph_iri}> .")
+        quads.append(f"{triple.removesuffix(' .')} <{graph_iri}> .")
     return "\n".join(quads) + ("\n" if quads else "")
 
 
