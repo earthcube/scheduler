@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 
 # this file no longer needs to generate code. It will just include the base
@@ -20,9 +20,13 @@ RUN mkdir -p /usr/src/app/workflows
 
 ## this is a base for the project. Build this 'layer' first
 ## deps come from pyproject.toml, pinned by uv.lock
+## --no-hashes: earthcube-utilities is a git dependency and cannot be hashed,
+## and pip refuses a requirements file that mixes hashed and unhashed entries.
+# --no-hashes: earthcube-utilities is a git dependency and cannot be hashed,
+# and pip refuses a requirements file that mixes hashed and unhashed entries.
 COPY ./pyproject.toml ./uv.lock ./
 RUN pip install uv \
-    && uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
+    && uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt \
     && pip install -r /tmp/requirements.txt
 
 # this add the code

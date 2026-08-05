@@ -3,7 +3,9 @@ name = "GleanerIO_Scheduler"
 version = "0.0.67"
 description = "Tools for harvesting and loading on a schedule from gleaner configurations"
 # readme =  "README.md"
-requires-python = ">=3.13"
+# 3.12 is the ceiling while earthcube-utilities caps numpy<2: the newest numpy
+# under that cap is 1.26.4, which publishes no cp313 wheels.
+requires-python = ">=3.12"
 dependencies = [
   "dagit>=1.7.10",
   "dagster-postgres>=0.23.10",

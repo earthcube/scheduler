@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.12-slim
 # context is fron implnets
 # for local, code is compiled. to generatedCode/implnet-PROJECT
 
@@ -6,11 +6,17 @@ ARG implnet=eco
 RUN mkdir -p /usr/src/app/project
 RUN mkdir -p /usr/src/app/workflows
 
+# git is needed to fetch the earthcube-utilities git dependency
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 # deps come from pyproject.toml, pinned by uv.lock
+# --no-hashes: earthcube-utilities is a git dependency and cannot be hashed,
+# and pip refuses a requirements file that mixes hashed and unhashed entries.
 COPY ./pyproject.toml ./uv.lock ./
 
 RUN pip install uv \
-    && uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
+    && uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt \
     && pip install -r /tmp/requirements.txt
 
 
