@@ -14,6 +14,7 @@ get_dagster_logger,BackfillPolicy
 )
 from ec.datastore import s3 as utils_s3
 from ec.sitemap import Sitemap
+from rdflib import ConjunctiveGraph
 from .gleaner_sources import sources_partitions_def
 from ..utils import PythonMinioAddress
 
@@ -22,7 +23,6 @@ from ec.reporting.report import missingReport, generateIdentifierRepo, generateG
 from ec.graph.release_graph import ReleaseGraph
 from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
 import os
-import requests
 PROJECT=os.environ.get('PROJECT')
 from ec.graph.manageGraph import ManageBlazegraph
 SUMMARY_PATH = 'graphs/summary'
@@ -214,15 +214,11 @@ def _construct_to_quads(ntriples_text, graph_iri):
     return "\n".join(quads) + ("\n" if quads else "")
 
 
-def _run_construct_query(endpoint, query):
-    response = requests.post(
-        endpoint,
-        headers={"Accept": "application/n-triples"},
-        data={"query": query},
-    )
-    if response.status_code != 200:
-        raise Exception(f"spatial construct failed: status:{response.status_code} body:{response.text}")
-    return response.text
+def _run_construct_query(graph, query):
+    result_graph = graph.query(query).graph
+    return result_graph.serialize(format="nt")
+
+
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        name="release_summarize",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -321,25 +317,20 @@ def release_summarize(context) :
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
        )
 def spatial_release_quads(context):
-    gleaner_resource = context.resources.gleanerio
     gleaner_s3 = context.resources.gleanerio.gs3
-    triplestore = context.resources.gleanerio.triplestore
     source_name = context.asset_partition_key_for_output()
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
                                                           gleaner_s3.GLEANERIO_MINIO_PORT),
                                        gleaner_s3.MinioOptions()
                                       )
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
-    temp_namespace = f"{source_name}_temp"
     graph_iri = SPATIAL_GRAPH_NAMESPACE.format(source=source_name)
-    bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
     try:
-        msg = bg.createNamespace(quads=True)
-        context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
-        endpoint = triplestore.GraphEndpoint(temp_namespace)
-        triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+        release_text = gleaner_s3.getFile(f"{RELEASE_PATH}/{source_name}_release.nq").read().decode("utf-8")
+        release_graph = ConjunctiveGraph()
+        release_graph.parse(data=release_text, format="nquads")
         spatial_nq = "".join(
-            _construct_to_quads(_run_construct_query(endpoint, _spatial_query_text(query_file)), graph_iri)
+            _construct_to_quads(_run_construct_query(release_graph, _spatial_query_text(query_file)), graph_iri)
             for query_file in SPATIAL_QUERY_FILES
         )
         objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"
@@ -360,12 +351,6 @@ def spatial_release_quads(context):
     except Exception as e:
         get_dagster_logger().error(f"Spatial. Issue creating graph  {str(e)} ")
         raise Exception(f"Loading spatial graph failed. {str(e)}")
-    finally:
-        try:
-            msg = bg.deleteNamespace()
-            context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
-        except Exception as ex:
-            context.log.error(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
