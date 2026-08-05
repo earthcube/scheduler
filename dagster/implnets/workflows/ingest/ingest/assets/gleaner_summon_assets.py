@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import csv
 from urllib.error import HTTPError
+from pathlib import Path
 
 from dagster import (
     asset,op, Config, Output,AssetKey,
@@ -21,10 +22,18 @@ from ec.reporting.report import missingReport, generateIdentifierRepo, generateG
 from ec.graph.release_graph import ReleaseGraph
 from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
 import os
+import requests
 PROJECT=os.environ.get('PROJECT')
 from ec.graph.manageGraph import ManageBlazegraph
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
+SPATIAL_PATH = 'graphs/latest'
+SPATIAL_GRAPH_NAMESPACE = "https://gleaner.io/enhancement/spatial/{source}"
+
+SPATIAL_QUERY_FILES = (
+    "spatial_construct_bbox.rq",
+    "spatial_construct_multipoint.rq",
+)
 
 class HarvestOpConfig(Config):
     source_name: str
@@ -189,6 +198,31 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
+
+
+def _spatial_query_text(filename):
+    return (Path(__file__).resolve().parent.parent / "files" / filename).read_text()
+
+
+def _construct_to_quads(ntriples_text, graph_iri):
+    quads = []
+    for line in ntriples_text.splitlines():
+        triple = line.strip()
+        if not triple:
+            continue
+        quads.append(f"{triple[:-1]} <{graph_iri}> .")
+    return "\n".join(quads) + ("\n" if quads else "")
+
+
+def _run_construct_query(endpoint, query):
+    response = requests.post(
+        endpoint,
+        headers={"Accept": "application/n-triples"},
+        data={"query": query},
+    )
+    if response.status_code != 200:
+        raise Exception(f"spatial construct failed: status:{response.status_code} body:{response.text}")
+    return response.text
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        name="release_summarize",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -280,6 +314,58 @@ def release_summarize(context) :
         raise Exception(f"Loading Summary graph failed. {str(e)}")
         return 1
 
+    return
+
+
+@asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
+       deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+       )
+def spatial_release_quads(context):
+    gleaner_resource = context.resources.gleanerio
+    gleaner_s3 = context.resources.gleanerio.gs3
+    triplestore = context.resources.gleanerio.triplestore
+    source_name = context.asset_partition_key_for_output()
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                                       gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+    temp_namespace = f"{source_name}_temp"
+    graph_iri = SPATIAL_GRAPH_NAMESPACE.format(source=source_name)
+    bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
+    try:
+        msg = bg.createNamespace(quads=True)
+        context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        endpoint = triplestore.GraphEndpoint(temp_namespace)
+        triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+        spatial_nq = "".join(
+            _construct_to_quads(_run_construct_query(endpoint, _spatial_query_text(query_file)), graph_iri)
+            for query_file in SPATIAL_QUERY_FILES
+        )
+        objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"
+        s3ObjectInfo = S3ObjectInfo()
+        s3ObjectInfo.bucket_name = bucket
+        s3ObjectInfo.object_name = objectname
+        bucket_name, object_name = s3Minio.putTextFileToStore(spatial_nq, s3ObjectInfo)
+        context.add_output_metadata(
+            metadata={
+                "source": source_name,
+                "run": "spatial_release_quads",
+                "bucket_name": bucket_name,
+                "object_name": object_name,
+                "line_count": len(spatial_nq.splitlines()),
+                "graph": graph_iri,
+            }
+        )
+    except Exception as e:
+        get_dagster_logger().error(f"Spatial. Issue creating graph  {str(e)} ")
+        raise Exception(f"Loading spatial graph failed. {str(e)}")
+    finally:
+        try:
+            msg = bg.deleteNamespace()
+            context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        except Exception as ex:
+            context.log.error(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
     return
 
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",

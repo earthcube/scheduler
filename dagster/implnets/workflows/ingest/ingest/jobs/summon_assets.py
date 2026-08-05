@@ -16,7 +16,7 @@ PROJECT=os.environ.get('PROJECT')
 summon_asset_job = define_asset_job(
     name=f"{PROJECT}_summon_and_release_job",
     selection=AssetSelection.assets(validate_sitemap_url, gleanerio_run, release_nabu_run, load_report_s3,
-                                    release_summarize, identifier_stats, bucket_urls,
+                                    release_summarize, spatial_release_quads, identifier_stats, bucket_urls,
                                     graph_stats_report #, upload_release
                                     ),
     partitions_def=sources_partitions_def,
