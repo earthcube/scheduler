@@ -1,8 +1,55 @@
 [project]
-name = "GleanerIO Scheduler"
+name = "GleanerIO_Scheduler"
 version = "0.0.67"
 description = "Tools for harvesting and loading on a schedule from gleaner configurations"
 # readme =  "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "dagit>=1.7.10",
+  "dagster-postgres>=0.23.10",
+  "dagster>=1.7.10",
+  "dagster-graphql>=1.7.10",
+  "dagster-webserver>=1.7.10",
+  "dagster-docker>=0.23.10",
+  "dagster-aws>=0.23.10",
+  "dagster_slack>=0.23.10",
+  "ipython-genutils==0.2.0",
+  "advertools==0.13.2",
+  "minio==7.1.13",
+  "docker>=6.1.0",
+  "dagstermill>=0.23.10",
+  "notebook",
+  "pydash",
+  "pyyaml",
+  "orjson",
+  # if we want to use an non-released branch, pin the commit, eg:
+  # "earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@a3acbe4#subdirectory=earthcube_utilities",
+  "earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@199_dev_fixgraphreports#subdirectory=earthcube_utilities",
+]
+
+[dependency-groups]
+# the dagster core packages, for images built FROM a dagster base image where
+# the rest of the runtime deps (minio, docker, advertools, earthcube-utilities, ...)
+# are already present. see build/Dockerfile_dagster.
+dagster = [
+  "dagit>=1.7.10",
+  "dagster-postgres>=0.23.10",
+  "dagster>=1.7.10",
+  "dagster-webserver>=1.7.10",
+  "dagster-docker>=0.23.10",
+  "dagster-aws>=0.23.10",
+  "dagstermill>=0.23.10",
+  "dagster_slack>=0.23.10",
+]
+dev = [
+  # the previous pins (black 22.1.0 / isort 5.10.1 / pylint 2.12.2 / pytest 7.0.1)
+  # cannot build on python 3.13 -- pylint 2.x pulls wrapt 1.13.3, which uses
+  # inspect.formatargspec, removed in 3.11.
+  "black>=26.5.1",
+  "isort>=8.0.1",
+  "pylint>=4.0.6",
+  "pytest>=9.1.1",
+]
 
 [tool.black]
 line-length = 99

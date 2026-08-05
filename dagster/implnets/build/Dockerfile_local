@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 # context is fron implnets
 # for local, code is compiled. to generatedCode/implnet-PROJECT
 
@@ -6,9 +6,12 @@ ARG implnet=eco
 RUN mkdir -p /usr/src/app/project
 RUN mkdir -p /usr/src/app/workflows
 
-COPY ./requirements.txt .
+# deps come from pyproject.toml, pinned by uv.lock
+COPY ./pyproject.toml ./uv.lock ./
 
-RUN pip install -r requirements.txt
+RUN pip install uv \
+    && uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
+    && pip install -r /tmp/requirements.txt
 
 
 # these are the configs.
