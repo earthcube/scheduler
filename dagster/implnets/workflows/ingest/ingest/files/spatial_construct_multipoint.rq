@@ -1,0 +1,28 @@
+PREFIX schema: <https://schema.org/>
+PREFIX geo:    <http://www.opengis.net/ont/geosparql#>
+PREFIX sf:     <http://www.opengis.net/ont/sf#>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+CONSTRUCT {
+    ?s a schema:Dataset .
+    ?s geo:hasGeometry ?geometry .
+    ?geometry a sf:MultiPoint .
+    ?geometry geo:asWKT ?wkt .
+}
+WHERE {
+    {
+        SELECT ?s (GROUP_CONCAT(DISTINCT ?pt; separator=", ") AS ?pts)
+        WHERE {
+            ?s a schema:Dataset ;
+               schema:spatialCoverage/schema:geo ?geo .
+            ?geo a schema:GeoCoordinates ;
+                 schema:latitude  ?lat ;
+                 schema:longitude ?long .
+
+            BIND(CONCAT("(", STR(xsd:decimal(?long)), " ", STR(xsd:decimal(?lat)), ")") AS ?pt)
+        }
+        GROUP BY ?s
+    }
+    BIND(IRI(CONCAT(STR(?s), "/geometry")) AS ?geometry)
+    BIND(STRDT(CONCAT("MULTIPOINT(", ?pts, ")"), geo:wktLiteral) AS ?wkt)
+}
