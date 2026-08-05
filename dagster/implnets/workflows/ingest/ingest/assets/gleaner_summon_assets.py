@@ -334,6 +334,25 @@ def spatial_release_quads(context):
             for query_file in SPATIAL_QUERY_FILES
         )
         objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"
+        # a source with no spatial coverage produces no quads. writing that as an
+        # empty object just publishes a zero byte file for nabu to pick up, so
+        # skip the upload and say so in the metadata instead.
+        if not spatial_nq.strip():
+            get_dagster_logger().info(
+                f"Spatial. No spatial quads constructed for {source_name}, skipping upload of {objectname}"
+            )
+            context.add_output_metadata(
+                metadata={
+                    "source": source_name,
+                    "run": "spatial_release_quads",
+                    "bucket_name": bucket,
+                    "object_name": "",
+                    "line_count": 0,
+                    "graph": graph_iri,
+                    "uploaded": False,
+                }
+            )
+            return
         s3ObjectInfo = S3ObjectInfo()
         s3ObjectInfo.bucket_name = bucket
         s3ObjectInfo.object_name = objectname
@@ -346,6 +365,7 @@ def spatial_release_quads(context):
                 "object_name": object_name,
                 "line_count": len(spatial_nq.splitlines()),
                 "graph": graph_iri,
+                "uploaded": True,
             }
         )
     except Exception as e:

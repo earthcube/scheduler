@@ -1,14 +1,12 @@
 PREFIX schema: <https://schema.org/>
-PREFIX schema: <https://schema.org/>
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
-PREFIX geof: <http://www.opengis.net/def/function/geosparql#>
+PREFIX sf: <http://www.opengis.net/ont/sf#>
 
 CONSTRUCT {
   ?geo geo:hasGeometry ?geometry .
-
-    ?geometry geo:asWKT ?wktBbox
-   .
+  ?geometry a sf:Polygon .
+  ?geometry geo:asWKT ?wktBbox .
 }
 WHERE {
   ?s a schema:Dataset .
@@ -17,38 +15,36 @@ WHERE {
   ?geo a schema:GeoShape .
   ?geo schema:box ?coordString .
 
-  # Parse first value before first comma
-  BIND(STRBEFORE(?coordString, ",") AS ?x1_str)
+  # schema:box is "minLat minLong maxLat maxLong". Separators vary in the wild
+  # (space, comma, comma+space), so normalise to single spaces and drop any
+  # language tag before parsing.
+  BIND(REPLACE(REPLACE(STR(?coordString), ",", " "), "\\s+", " ") AS ?spaced)
+  BIND(REPLACE(?spaced, "^ | $", "") AS ?norm)
 
-  # After first comma: everything after '162,'
-  BIND(STRAFTER(?coordString, ",") AS ?afterFirstComma)
+  # Only accept exactly four numeric values; anything else must not produce a
+  # geometry at all, rather than a WKT literal full of empty slots.
+  FILTER(REGEX(?norm, "^[+-]?[0-9]*\\.?[0-9]+( [+-]?[0-9]*\\.?[0-9]+){3}$"))
 
-  # Remove leading whitespace
-  BIND(REPLACE(?afterFirstComma, "^\\s+", "") AS ?afterFirstCommaTrimmed)
+  BIND(STRBEFORE(?norm, " ") AS ?minLat)
+  BIND(STRAFTER(?norm, " ") AS ?rest1)
+  BIND(STRBEFORE(?rest1, " ") AS ?minLong)
+  BIND(STRAFTER(?rest1, " ") AS ?rest2)
+  BIND(STRBEFORE(?rest2, " ") AS ?maxLat)
+  BIND(STRAFTER(?rest2, " ") AS ?maxLong)
 
-  # Second value: number before first space
-  BIND(STRBEFORE(?afterFirstCommaTrimmed, " ") AS ?y1_str)
+  BIND(IRI(CONCAT(STR(?geo), "/geometry")) AS ?geometry)
 
-  # After first space: get the rest ("169, -75")
-  BIND(STRAFTER(?afterFirstCommaTrimmed, " ") AS ?afterFirstSpace)
-
-  # Third value: before second comma
-  BIND(STRBEFORE(?afterFirstSpace, ",") AS ?x2_str)
-
-  # Fourth value: after second comma, remove leading whitespace
-  BIND(REPLACE(STRAFTER(?afterFirstSpace, ","), "^\\s+", "") AS ?y2_str)
-BIND(IRI(CONCAT(STR(?geo), "/geometry")) AS ?geometry)
-  # Rectangle WKT: (x1 y1, x2 y1, x2 y2, x1 y2, x1 y1)
+  # WKT is x y == longitude latitude, counter-clockwise from the lower-left.
   BIND(
     STRDT(
-	CONCAT(
-      "POLYGON((",
-      ?x1_str, " ", ?y1_str, ", ",
-      ?x2_str, " ", ?y1_str, ", ",
-      ?x2_str, " ", ?y2_str, ", ",
-      ?x1_str, " ", ?y2_str, ", ",
-      ?x1_str, " ", ?y1_str, "))"
-    ), geo:wktLiteral
-	) AS ?wktBbox
+      CONCAT(
+        "POLYGON((",
+        ?minLong, " ", ?minLat, ", ",
+        ?maxLong, " ", ?minLat, ", ",
+        ?maxLong, " ", ?maxLat, ", ",
+        ?minLong, " ", ?maxLat, ", ",
+        ?minLong, " ", ?minLat, "))"
+      ), geo:wktLiteral
+    ) AS ?wktBbox
   )
 }
