@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Read the ARG implnet to set who to build for.
 
@@ -9,8 +9,11 @@ WORKDIR /usr/src/app
 ENV DAGSTER_HOME=/usr/src/app
 
 # Install dependencies
-COPY ./requirements.txt .
-RUN pip install -r requirements.txt
+# deps come from pyproject.toml, pinned by uv.lock
+COPY ./pyproject.toml ./uv.lock ./
+RUN pip install uv \
+    && uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
+    && pip install -r /tmp/requirements.txt
 
 # Copy source code
 COPY ./dagster.yaml .

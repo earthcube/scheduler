@@ -4,7 +4,8 @@ from .gleaner_summon_assets import (
     load_report_s3,load_report_graph,validate_sitemap_url,
     bucket_urls, identifier_stats,
     graph_stats_report,
-    SUMMARY_PATH,RELEASE_PATH
+    spatial_release_quads,
+    SUMMARY_PATH,RELEASE_PATH,SPATIAL_PATH
 )
 from .gleaner_sources import (
      gleanerio_tenants,

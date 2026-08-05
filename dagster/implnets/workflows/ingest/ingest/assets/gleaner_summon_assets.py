@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import csv
 from urllib.error import HTTPError
+from pathlib import Path
 
 from dagster import (
     asset,op, Config, Output,AssetKey,
@@ -13,6 +14,7 @@ get_dagster_logger,BackfillPolicy
 )
 from ec.datastore import s3 as utils_s3
 from ec.sitemap import Sitemap
+from rdflib import ConjunctiveGraph
 from .gleaner_sources import sources_partitions_def
 from ..utils import PythonMinioAddress
 
@@ -25,6 +27,13 @@ PROJECT=os.environ.get('PROJECT')
 from ec.graph.manageGraph import ManageBlazegraph
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
+SPATIAL_PATH = 'graphs/latest'
+SPATIAL_GRAPH_NAMESPACE = "https://gleaner.io/enhancement/spatial/{source}"
+
+SPATIAL_QUERY_FILES = (
+    "spatial_construct_bbox.rq",
+    "spatial_construct_multipoint.rq",
+)
 
 class HarvestOpConfig(Config):
     source_name: str
@@ -189,6 +198,27 @@ def load_report_graph(context):
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
+
+
+def _spatial_query_text(filename):
+    return (Path(__file__).resolve().parent.parent / "files" / filename).read_text()
+
+
+def _construct_to_quads(ntriples_text, graph_iri):
+    quads = []
+    for line in ntriples_text.splitlines():
+        triple = line.strip()
+        if not triple:
+            continue
+        quads.append(f"{triple.removesuffix(' .')} <{graph_iri}> .")
+    return "\n".join(quads) + ("\n" if quads else "")
+
+
+def _run_construct_query(graph, query):
+    result_graph = graph.query(query).graph
+    return result_graph.serialize(format="nt")
+
+
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        name="release_summarize",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -280,6 +310,67 @@ def release_summarize(context) :
         raise Exception(f"Loading Summary graph failed. {str(e)}")
         return 1
 
+    return
+
+
+@asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
+       deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+       )
+def spatial_release_quads(context):
+    gleaner_s3 = context.resources.gleanerio.gs3
+    source_name = context.asset_partition_key_for_output()
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                                       gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+    graph_iri = SPATIAL_GRAPH_NAMESPACE.format(source=source_name)
+    try:
+        release_text = gleaner_s3.getFile(f"{RELEASE_PATH}/{source_name}_release.nq").read().decode("utf-8")
+        release_graph = ConjunctiveGraph()
+        release_graph.parse(data=release_text, format="nquads")
+        spatial_nq = "".join(
+            _construct_to_quads(_run_construct_query(release_graph, _spatial_query_text(query_file)), graph_iri)
+            for query_file in SPATIAL_QUERY_FILES
+        )
+        objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"
+        # a source with no spatial coverage produces no quads. writing that as an
+        # empty object just publishes a zero byte file for nabu to pick up, so
+        # skip the upload and say so in the metadata instead.
+        if not spatial_nq.strip():
+            get_dagster_logger().info(
+                f"Spatial. No spatial quads constructed for {source_name}, skipping upload of {objectname}"
+            )
+            context.add_output_metadata(
+                metadata={
+                    "source": source_name,
+                    "run": "spatial_release_quads",
+                    "bucket_name": bucket,
+                    "object_name": "",
+                    "line_count": 0,
+                    "graph": graph_iri,
+                    "uploaded": False,
+                }
+            )
+            return
+        s3ObjectInfo = S3ObjectInfo()
+        s3ObjectInfo.bucket_name = bucket
+        s3ObjectInfo.object_name = objectname
+        bucket_name, object_name = s3Minio.putTextFileToStore(spatial_nq, s3ObjectInfo)
+        context.add_output_metadata(
+            metadata={
+                "source": source_name,
+                "run": "spatial_release_quads",
+                "bucket_name": bucket_name,
+                "object_name": object_name,
+                "line_count": len(spatial_nq.splitlines()),
+                "graph": graph_iri,
+                "uploaded": True,
+            }
+        )
+    except Exception as e:
+        get_dagster_logger().error(f"Spatial. Issue creating graph  {str(e)} ")
+        raise Exception(f"Loading spatial graph failed. {str(e)}")
     return
 
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
