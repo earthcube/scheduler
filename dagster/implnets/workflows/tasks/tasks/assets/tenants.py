@@ -16,14 +16,14 @@ from dagster import (asset,
                      asset_sensor, AssetKey, AutoMaterializePolicy,
                      )
 from ec.datastore import s3
-from distutils import util
+from ..utils import strtobool
 from ..resources.gleanerS3 import _pythonMinioAddress
 from ec.reporting.report import generateReportStats
 
 PROJECT=os.environ.get('PROJECT')
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
-GLEANER_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
+GLEANER_MINIO_USE_SSL = bool(strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
 GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANERIO_MINIO_SECRET_KEY')
 GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANERIO_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANERIO_MINIO_BUCKET')

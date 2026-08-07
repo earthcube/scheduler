@@ -1,4 +1,3 @@
-import distutils
 import json
 import os
 from typing import List, Any
@@ -6,11 +5,11 @@ import pandas as pd
 from dagster import asset, get_dagster_logger, define_asset_job, AutoMaterializePolicy
 from ec.datastore import s3
 from pydash import pick
-from distutils import util
+from ..utils import strtobool
 PROJECT=os.environ.get('PROJECT')
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
 GLEANER_MINIO_PORT = os.environ.get('GLEANERIO_MINIO_PORT')
-GLEANER_MINIO_USE_SSL = bool(util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
+GLEANER_MINIO_USE_SSL = bool(strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL', 'true')))
 GLEANER_MINIO_SECRET_KEY = os.environ.get('GLEANERIO_MINIO_SECRET_KEY')
 GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANERIO_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANERIO_MINIO_BUCKET')
