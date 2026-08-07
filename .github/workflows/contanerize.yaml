@@ -17,8 +17,12 @@ on:
       - dev_eco
       - v0_generated_code
       - 173_dev_graphreport
+      # TEMPORARY: so this branch can be timed before merging. remove before merge.
+      - perf/faster-docker-builds
     tags:
       - "v*.*.*"
+  # so a build can be kicked off by hand on any branch
+  workflow_dispatch:
 
 # https://github.com/marketplace/actions/publish-docker
 # https://github.com/docker/build-push-action
