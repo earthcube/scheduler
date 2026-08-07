@@ -1,5 +1,4 @@
 import csv
-import distutils
 import logging
 import time
 
@@ -56,7 +55,19 @@ CONTAINER_WAIT_TIMEOUT= int( os.environ.get('GLEANERIO_DOCKER_CONTAINER_WAIT_TIM
 
 GLEANER_MINIO_ADDRESS = str(os.environ.get('GLEANERIO_MINIO_ADDRESS'))
 GLEANER_MINIO_PORT = str(os.environ.get('GLEANERIO_MINIO_PORT'))
-GLEANER_MINIO_USE_SSL = bool(distutils.util.strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL')))
+def strtobool(val):
+    """Convert a string representation of truth to 1 (true) or 0 (false).
+
+    Replacement for distutils.util.strtobool, removed in Python 3.12.
+    """
+    val = str(val).lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return 1
+    if val in ("n", "no", "f", "false", "off", "0"):
+        return 0
+    raise ValueError(f"invalid truth value {val!r}")
+
+GLEANER_MINIO_USE_SSL = bool(strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL')))
 GLEANER_MINIO_SECRET_KEY = str(os.environ.get('GLEANERIO_MINIO_SECRET_KEY'))
 GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
 GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
@@ -151,7 +162,7 @@ def s3_log_uploader(data, name, date_string=datetime.now().strftime("%Y_%m_%d_%H
     client = Minio(
         server,
         secure=secure,
-        #secure = bool(distutils.util.strtobool(os.environ.get('GLEANER_MINIO_SSL'))),
+        #secure = bool(strtobool(os.environ.get('GLEANER_MINIO_SSL'))),
         access_key=GLEANER_MINIO_ACCESS_KEY,
         secret_key=GLEANER_MINIO_SECRET_KEY,
     )
