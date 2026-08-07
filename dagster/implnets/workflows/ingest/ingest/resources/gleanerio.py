@@ -210,7 +210,7 @@ class GleanerioResource(ConfigurableResource):
             if len(containers) > 0:
                 break
             if wait_count > 12:
-                raise f"Container  for service {name} not starting"
+                raise Exception(f"Container  for service {name} not starting")
 
         get_dagster_logger().info(len(containers))
         return service, containers[0]
@@ -313,6 +313,12 @@ class GleanerioResource(ConfigurableResource):
             else None,
         )
         validate_docker_image(IMAGE)
+
+        # initialized here so the finally block below can run even if service
+        # creation fails; otherwise an UnboundLocalError masks the real error
+        service = None
+        container = None
+        exit_status = 0
 
         try:
             # setup data/body for  container create
@@ -461,13 +467,17 @@ class GleanerioResource(ConfigurableResource):
                 except docker.errors.APIError as ex:
                     get_dagster_logger().info(f"Container Wait docker API error :  {str(ex)}")
                     returnCode = 1
+                    exit_status = 1
                     break
                 if container.status == 'exited' or container.status == 'removed':
                     get_dagster_logger().info(f"Container exited or removed. status:  {container.status}")
                     exit_status = container.wait()["StatusCode"]
                     returnCode = exit_status
+                    # this path is only reached after a wait timeout, so the logs
+                    # were never pulled above: fetch them here
+                    c = container.logs(stdout=True, stderr=True, stream=False, follow=False).decode('latin-1')
                     # use minio_resource
-                    self.s3loader(str(c).encode(), NAME)  # s3loader needs a bytes like object
+                    self.s3loader(str(c).encode(), NAME, date_string=date_string)  # s3loader needs a bytes like object
                     # s3loader(str(c).encode('utf-8'), NAME)  # s3loader needs a bytes like object
                     # write to minio (would need the minio info here)
 
@@ -498,7 +508,7 @@ class GleanerioResource(ConfigurableResource):
                 else:
                     get_dagster_logger().info(f"Service Not created, so not removed.")
 
-            else:
+            elif (service):
                 get_dagster_logger().info(f"Service {service.name} NOT Removed : DEBUG ENABLED")
 
 
