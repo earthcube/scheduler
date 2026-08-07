@@ -5,10 +5,10 @@ FROM python:3.12-slim
 # it will run ingest by default
 # we may want to get an unreleased version of code, so this is needed
 
-RUN apt-get update && apt-get install -y git
-RUN pip install --upgrade pip
-RUN apt-get install -y  gcc musl-dev python3-dev
-#RUN apt-get install libffi-dev
+RUN apt-get update && apt-get install -y git \
+    && apt-get install -y  gcc musl-dev python3-dev
+RUN pip install uv \
+    && pip install --upgrade pip#RUN apt-get install libffi-dev
 # Read the ARG implnet to set who to build for.
 
 # docker buildandpush pulls the repo, so we need to put the code at a different location
@@ -25,8 +25,7 @@ RUN mkdir -p /usr/src/app/workflows
 # --no-hashes: earthcube-utilities is a git dependency and cannot be hashed,
 # and pip refuses a requirements file that mixes hashed and unhashed entries.
 COPY ./pyproject.toml ./uv.lock ./
-RUN pip install uv \
-    && uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt \
+RUN uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt \
     && pip install -r /tmp/requirements.txt
 
 # this add the code
