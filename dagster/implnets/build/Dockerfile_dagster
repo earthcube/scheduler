@@ -6,13 +6,16 @@ FROM python:3.12-slim
 # this fails becaus the dagster/implnets files are not in the docker
 
 
-RUN pip install --upgrade pip
+# the uv binary straight from its image, so we skip a pip resolve+install just
+# to get the tool that does the resolving
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 ## this is a base for the project. Build this 'layer' first
 ## only the dagster core packages, from the 'dagster' group in pyproject.toml
 COPY ./pyproject.toml ./uv.lock ./
-RUN pip install uv \
-    && uv export --frozen --only-group dagster --no-emit-project -o /tmp/requirements.txt \
-    && pip install -r /tmp/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv export --frozen --only-group dagster --no-emit-project -o /tmp/requirements.txt \
+    && uv pip install --system -r /tmp/requirements.txt
 
 ## this add the code
 #COPY . scheduler

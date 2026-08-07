@@ -2,6 +2,11 @@ name: Dockerize  Dagster
 # this will build based on what is committed to the branch
 # dockerbuildandpush pulls the repo.
 # overwrites any files created.
+#
+# Each arch builds on a runner of that arch and pushes by digest; the merge job
+# stitches the digests into one multi-arch tag. arm64 used to be cross-built on
+# an amd64 runner under QEMU, which emulates every instruction of the dependency
+# install and dominated the build time.
 on:
   push:
     # be wary of using **  for the branch...
@@ -14,6 +19,8 @@ on:
       - 173_dev_graphreport
     tags:
       - "v*.*.*"
+  # so a build can be kicked off by hand on any branch
+  workflow_dispatch:
 
 # https://github.com/marketplace/actions/publish-docker
 # https://github.com/docker/build-push-action
@@ -23,36 +30,102 @@ defaults:
 
 jobs:
   build:
-    name: Dockerize  Scheduler
-    runs-on: ubuntu-latest
-    #strategy:
-      #matrix:
-       # project: [ "eco" ]
-        #project: [ "eco", "iow", "oih" ]
-       # platform: ["linux/amd64","linux/arm64"]
-        #platform: ["linux/amd64"] #linux/arm64 issues with building
+    name: ${{ matrix.name }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: dagster
+            image: nsfearthcube/dagster-gleanerio
+            file: ./build/Dockerfile_dagster
+            arch: amd64
+            runner: ubuntu-latest
+          - name: dagster
+            image: nsfearthcube/dagster-gleanerio
+            file: ./build/Dockerfile_dagster
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - name: workflows
+            image: nsfearthcube/dagster-gleanerio-workflows
+            file: ./build/Dockerfile_workflows
+            arch: amd64
+            runner: ubuntu-latest
+          - name: workflows
+            image: nsfearthcube/dagster-gleanerio-workflows
+            file: ./build/Dockerfile_workflows
+            arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
-      - name: Set variables
-        run: |
-            REGISTRY_IMAGE=nsfearthcube/dagster-gleanerio
-            echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
-        working-directory:  /
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata (labels) for Docker
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
-          images:  ${{ env.REGISTRY_IMAGE }}
+          images: ${{ matrix.image }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          #context:  ./dagster/implnets
+          # grr https://github.com/docker/build-push-action#git-context
+          file: ${{ matrix.file }}
+          context:  "{{defaultContext}}:dagster/implnets"
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/${{ matrix.arch }}
+          # a run that does not touch pyproject.toml/uv.lock reuses the whole
+          # dependency layer instead of resolving and downloading it again
+          cache-from: type=gha,scope=${{ matrix.name }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}-${{ matrix.arch }}
+          outputs: type=image,name=${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+        working-directory: /
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.name }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge ${{ matrix.name }} manifest
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: dagster
+            image: nsfearthcube/dagster-gleanerio
+          - name: workflows
+            image: nsfearthcube/dagster-gleanerio-workflows
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digests-${{ matrix.name }}-*
+          merge-multiple: true
+          path: /tmp/digests
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Extract metadata (tags) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image }}
           flavor: |
             latest=true
           tags: |
@@ -60,83 +133,16 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=sha
-
-      - name: Build and push
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          #context:  ./dagster/implnets
-          # grr https://github.com/docker/build-push-action#git-context
-          #context:  "{{defaultContext}}"
-          push: true
-          build-args:
-            implnet=${{ matrix.project }}
-          #file: ./dagster/implnets/build/Dockerfile
-          file: ./build/Dockerfile_dagster
-          context:  "{{defaultContext}}:dagster/implnets"
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          #outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-
-      - name: Image digest
-        run: echo ${{ steps.build.outputs.digest }}
-
-  build_code_workflows:
-    name: Dockerize  Scheduler Workflows base
-    runs-on: ubuntu-latest
-    #strategy:
-      #matrix:
-       # project: [ "eco" ]
-        #project: [ "eco", "iow", "oih" ]
-        #platform: ["linux/amd64","linux/arm64"]
-        #platform: ["linux/amd64"] #linux/arm64 issues with building
-    steps:
-      - name: Set variables
-        run: |
-            REGISTRY_IMAGE=nsfearthcube/dagster-gleanerio-workflows
-            echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
-        working-directory:  /
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images:  ${{ env.REGISTRY_IMAGE }}
-          flavor: |
-            latest=true
-          tags: |
-            type=ref,event=tag
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=sha
-      - name: Build and push
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          #context:  ./dagster/implnets
-          # grr https://github.com/docker/build-push-action#git-context
-          #context:  "{{defaultContext}}"
-          push: true
-          build-args:
-            implnet=${{ matrix.project }}
-          #file: ./dagster/implnets/build/Dockerfile
-          file: ./build/Dockerfile_workflows
-          context:  "{{defaultContext}}:dagster/implnets"
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          #outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-
-      - name: Image digest
-        run: echo ${{ steps.build.outputs.digest }}
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ matrix.image }}@sha256:%s ' *)
+      - name: Inspect image
+        run: echo "${{ matrix.image }}:${{ steps.meta.outputs.version }}" && docker buildx imagetools inspect ${{ matrix.image }}:${{ steps.meta.outputs.version }}
+        working-directory: /
