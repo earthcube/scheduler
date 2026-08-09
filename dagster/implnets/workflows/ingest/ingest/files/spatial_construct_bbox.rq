@@ -4,7 +4,7 @@ PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 PREFIX sf: <http://www.opengis.net/ont/sf#>
 
 CONSTRUCT {
-  ?geo geo:hasGeometry ?geometry .
+  ?s geo:hasGeometry ?geometry .
   ?geometry a sf:Polygon .
   ?geometry geo:asWKT ?wktBbox .
 }
@@ -32,7 +32,12 @@ WHERE {
   BIND(STRBEFORE(?rest2, " ") AS ?maxLat)
   BIND(STRAFTER(?rest2, " ") AS ?maxLong)
 
-  BIND(IRI(CONCAT(STR(?geo), "/geometry")) AS ?geometry)
+  # ?geo is a blank node in the harvested data, and STR() of a blank node is a
+  # type error in SPARQL -- rdflib tolerated it and minted invalid relative IRIs
+  # like <N793220240ebb.../geometry>, a spec compliant engine drops the solution
+  # entirely. Key the geometry off the dataset IRI instead, hashing the
+  # normalised box so a dataset with several boxes gets several geometries.
+  BIND(IRI(CONCAT(STR(?s), "/geometry/bbox/", MD5(?norm))) AS ?geometry)
 
   # WKT is x y == longitude latitude, counter-clockwise from the lower-left.
   BIND(
