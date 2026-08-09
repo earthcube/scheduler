@@ -373,11 +373,15 @@ def test_ingest_definitions_load_asset_checks():
 class _FakeS3Client:
     """Minimal boto3 S3 client stub that records delete_object calls."""
 
-    def __init__(self):
+    def __init__(self, last_modified=None):
         self.deleted = []
+        self._last_modified = last_modified
 
     def delete_object(self, Bucket, Key):
         self.deleted.append({"Bucket": Bucket, "Key": Key})
+
+    def head_object(self, Bucket, Key):
+        return {"LastModified": self._last_modified}
 
 
 class _FakeMinioDatastore:
@@ -433,34 +437,34 @@ def _make_ctx(gleaner_s3):
     return _Ctx()
 
 
-def test_url_is_404_returns_true_for_404(monkeypatch):
+def test_check_url_status_returns_status_code(monkeypatch):
     module = _load_gleaner_summon_assets()
 
     class _Resp:
         status_code = 404
 
     monkeypatch.setattr(module._requests, "head", lambda *a, **k: _Resp())
-    assert module._url_is_404("http://example.com/gone") is True
+    assert module._check_url_status("http://example.com/gone") == 404
 
 
-def test_url_is_404_returns_false_for_200(monkeypatch):
+def test_check_url_status_returns_200(monkeypatch):
     module = _load_gleaner_summon_assets()
 
     class _Resp:
         status_code = 200
 
     monkeypatch.setattr(module._requests, "head", lambda *a, **k: _Resp())
-    assert module._url_is_404("http://example.com/exists") is False
+    assert module._check_url_status("http://example.com/exists") == 200
 
 
-def test_url_is_404_returns_false_on_exception(monkeypatch):
+def test_check_url_status_returns_none_on_exception(monkeypatch):
     module = _load_gleaner_summon_assets()
 
     def _raise(*a, **k):
         raise ConnectionError("no network")
 
     monkeypatch.setattr(module._requests, "head", _raise)
-    assert module._url_is_404("http://example.com/error") is False
+    assert module._check_url_status("http://example.com/error") is None
 
 
 def test_delete_stale_s3_files_no_extras(monkeypatch):
@@ -489,9 +493,10 @@ def test_delete_stale_s3_files_no_extras(monkeypatch):
     assert report["deleted"] == []
 
 
-def test_delete_stale_s3_files_deletes_404_urls(monkeypatch):
-    """URLs that return 404 and have a CSV entry should be deleted from S3."""
+def test_delete_stale_s3_files_deletes_on_http_error(monkeypatch):
+    """URLs that return an HTTP error (other than 403) should be deleted from S3."""
     import csv as csv_module
+    from datetime import datetime, timezone
 
     module = _load_gleaner_summon_assets()
 
@@ -509,16 +514,17 @@ def test_delete_stale_s3_files_deletes_404_urls(monkeypatch):
     writer.writerows(csv_rows)
     csv_content = csv_buf.getvalue()
 
+    last_mod = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
     fake_store = _FakeMinioDatastore({
         "reports/wifire/latest/load_report_s3.json": load_report,
         "reports/wifire/latest/bucketutil_urls.csv": csv_content,
     })
-    fake_client = _FakeS3Client()
+    fake_client = _FakeS3Client(last_modified=last_mod)
     gleaner_s3 = _make_gleaner_s3(fake_client)
 
     original_cls = module.utils_s3.MinioDatastore
     module.utils_s3 = types.SimpleNamespace(MinioDatastore=lambda *a, **k: fake_store)
-    module._url_is_404 = lambda url: True
+    module._check_url_status = lambda url: 404
 
     try:
         module.delete_stale_s3_files(_make_ctx(gleaner_s3))
@@ -531,20 +537,23 @@ def test_delete_stale_s3_files_deletes_404_urls(monkeypatch):
 
     report = json.loads(fake_store._put[("wifire", "deleted_s3.json")])
     assert report["deleted_count"] == 1
-    assert report["deleted"][0]["url"] == extra_url
+    entry = report["deleted"][0]
+    assert entry["url"] == extra_url
+    assert entry["http_status"] == 404
+    assert entry["created_at"] == last_mod.isoformat()
 
 
-def test_delete_stale_s3_files_skips_non_404_urls(monkeypatch):
-    """URLs that do NOT return 404 should be skipped (not deleted)."""
+def test_delete_stale_s3_files_skips_403_urls(monkeypatch):
+    """URLs that return 403 should be skipped (not deleted)."""
     import csv as csv_module
 
     module = _load_gleaner_summon_assets()
 
-    extra_url = "https://wifire-data.sdsc.edu/dataset/still-alive"
+    extra_url = "https://wifire-data.sdsc.edu/dataset/auth-required"
     load_report = json.dumps({"extra_in_summon": [extra_url]})
     csv_buf = io.StringIO()
     writer = csv_module.writer(csv_buf, quoting=csv_module.QUOTE_NONNUMERIC)
-    writer.writerows([["url", "object_name"], [extra_url, "summoned/wifire/alive.jsonld"]])
+    writer.writerows([["url", "object_name"], [extra_url, "summoned/wifire/auth.jsonld"]])
     csv_content = csv_buf.getvalue()
 
     fake_store = _FakeMinioDatastore({
@@ -556,7 +565,7 @@ def test_delete_stale_s3_files_skips_non_404_urls(monkeypatch):
 
     original_cls = module.utils_s3.MinioDatastore
     module.utils_s3 = types.SimpleNamespace(MinioDatastore=lambda *a, **k: fake_store)
-    module._url_is_404 = lambda url: False
+    module._check_url_status = lambda url: 403
 
     try:
         module.delete_stale_s3_files(_make_ctx(gleaner_s3))
@@ -566,4 +575,45 @@ def test_delete_stale_s3_files_skips_non_404_urls(monkeypatch):
     assert fake_client.deleted == []
     report = json.loads(fake_store._put[("wifire", "deleted_s3.json")])
     assert report["deleted_count"] == 0
-    assert extra_url in report["skipped"]
+    skipped_entries = report["skipped"]
+    assert len(skipped_entries) == 1
+    assert skipped_entries[0]["url"] == extra_url
+    assert skipped_entries[0]["http_status"] == 403
+
+
+def test_delete_stale_s3_files_skips_on_network_error(monkeypatch):
+    """URLs that cannot be reached (None status) should be skipped."""
+    import csv as csv_module
+
+    module = _load_gleaner_summon_assets()
+
+    extra_url = "https://wifire-data.sdsc.edu/dataset/unreachable"
+    load_report = json.dumps({"extra_in_summon": [extra_url]})
+    csv_buf = io.StringIO()
+    writer = csv_module.writer(csv_buf, quoting=csv_module.QUOTE_NONNUMERIC)
+    writer.writerows([["url", "object_name"], [extra_url, "summoned/wifire/net.jsonld"]])
+    csv_content = csv_buf.getvalue()
+
+    fake_store = _FakeMinioDatastore({
+        "reports/wifire/latest/load_report_s3.json": load_report,
+        "reports/wifire/latest/bucketutil_urls.csv": csv_content,
+    })
+    fake_client = _FakeS3Client()
+    gleaner_s3 = _make_gleaner_s3(fake_client)
+
+    original_cls = module.utils_s3.MinioDatastore
+    module.utils_s3 = types.SimpleNamespace(MinioDatastore=lambda *a, **k: fake_store)
+    module._check_url_status = lambda url: None
+
+    try:
+        module.delete_stale_s3_files(_make_ctx(gleaner_s3))
+    finally:
+        module.utils_s3 = types.SimpleNamespace(MinioDatastore=original_cls)
+
+    assert fake_client.deleted == []
+    report = json.loads(fake_store._put[("wifire", "deleted_s3.json")])
+    assert report["deleted_count"] == 0
+    skipped_entries = report["skipped"]
+    assert len(skipped_entries) == 1
+    assert skipped_entries[0]["url"] == extra_url
+    assert skipped_entries[0]["http_status"] is None

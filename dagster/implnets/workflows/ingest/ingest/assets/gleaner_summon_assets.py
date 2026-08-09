@@ -574,19 +574,21 @@ def bucket_urls(context):
 REPORT_PATH_PREFIX = "reports"
 
 
-def _url_is_404(url):
-    """Return True if the URL responds with HTTP 404, False otherwise."""
+def _check_url_status(url):
+    """Return the HTTP status code for *url*, or None on network/connection error.
+
+    Uses HEAD first; falls back to GET when the server returns 405 (Method Not Allowed).
+    A return value of ``None`` means the request could not be completed (timeout,
+    DNS failure, etc.) and the caller should treat the object as *keep*.
+    """
     try:
         resp = _requests.head(url, timeout=10, allow_redirects=True)
-        if resp.status_code == 404:
-            return True
         # Some servers don't support HEAD; fall back to GET
         if resp.status_code == 405:
             resp = _requests.get(url, timeout=10, allow_redirects=True, stream=True)
-            return resp.status_code == 404
-        return False
+        return resp.status_code
     except Exception:
-        return False
+        return None
 
 
 @asset(group_name="load", key_prefix=f"{PROJECT}_ingest",
@@ -596,8 +598,10 @@ def _url_is_404(url):
        )
 def delete_stale_s3_files(context):
     """Delete files from S3 that are no longer in the source sitemap (extra_in_summon)
-    and return a 404 response.  A report of what was deleted is written to
-    ``reports/{source}/latest/deleted_s3.json``.
+    and return any HTTP error other than 403.  URLs that return 403 (auth required) or
+    that cannot be reached (network error) are skipped so that harvested data is
+    preserved when there is a transient connectivity problem.  A report of what was
+    deleted / skipped is written to ``reports/{source}/latest/deleted_s3.json``.
     """
     gleaner_s3 = context.resources.gleanerio.gs3
     s3_resource = gleaner_s3.s3
@@ -663,15 +667,35 @@ def delete_stale_s3_files(context):
 
     extra_set = set(extra_urls)
     for url in extra_set:
-        if not _url_is_404(url):
-            logger.info(f"delete_stale_s3_files: {url} is not a 404, skipping")
-            skipped.append(url)
+        http_status = _check_url_status(url)
+
+        # None means a network/connection error — keep the object to be safe
+        if http_status is None:
+            reason = "network error (no response)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": None})
             continue
 
+        # 403 means auth-required — the resource may still exist, keep it
+        if http_status == 403:
+            reason = "HTTP 403 (auth required)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # 2xx/3xx — resource still accessible, keep it
+        if http_status < 400:
+            reason = f"HTTP {http_status} (resource accessible)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # Any other HTTP error (4xx except 403, 5xx) — treat as stale, delete
         object_name = url_to_key.get(url)
         if not object_name:
-            logger.info(f"delete_stale_s3_files: no S3 key found for {url}, skipping")
-            skipped.append(url)
+            reason = f"HTTP {http_status} but no S3 key found"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
             continue
 
         # object_name may already be a full key (e.g. summoned/source/sha.jsonld)
@@ -679,10 +703,21 @@ def delete_stale_s3_files(context):
         if "/" not in object_name:
             object_name = f"summoned/{source_name}/{object_name}.jsonld"
 
+        # Fetch creation date from S3 before deleting
+        created_at = None
+        try:
+            head = s3_client.head_object(Bucket=bucket, Key=object_name)
+            last_modified = head.get("LastModified")
+            if last_modified is not None:
+                created_at = last_modified.isoformat()
+        except Exception as ex:
+            logger.warning(f"delete_stale_s3_files: could not get metadata for {object_name}: {ex}")
+
         try:
             s3_client.delete_object(Bucket=bucket, Key=object_name)
-            logger.info(f"delete_stale_s3_files: deleted {object_name} ({url})")
-            deleted.append({"url": url, "object_name": object_name})
+            logger.info(f"delete_stale_s3_files: deleted {object_name} ({url}) [HTTP {http_status}]")
+            deleted.append({"url": url, "object_name": object_name,
+                            "http_status": http_status, "created_at": created_at})
         except Exception as ex:
             logger.error(f"delete_stale_s3_files: failed to delete {object_name}: {ex}")
 
