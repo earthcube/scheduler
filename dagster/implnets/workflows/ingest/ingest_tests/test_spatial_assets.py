@@ -1,9 +1,14 @@
+import io
+from pathlib import Path
+
 import pytest
 
+from workflows.ingest.ingest.assets import gleaner_summon_assets
 from workflows.ingest.ingest.assets.gleaner_summon_assets import (
     SPATIAL_GRAPH_NAMESPACE,
     _construct_to_quads,
     _load_release_store,
+    _release_store,
     _run_construct_query,
     _spatial_query_text,
 )
@@ -235,6 +240,108 @@ def test_multipoint_coordinates_do_not_carry_a_binary_expansion():
     assert "MULTIPOINT((166.66267 -77.85067))" in result
     # and no scientific notation leaking into the WKT either
     assert "E2" not in result
+
+
+class _FakeS3:
+    """Enough of gleanerS3Resource for _release_store: a head and a body."""
+
+    GLEANERIO_MINIO_BUCKET = "test"
+
+    def __init__(self, payload, size=None):
+        self.payload = payload
+        self.size = len(payload) if size is None else size
+        self.read_as_stream = None
+        outer = self
+
+        class _Client:
+            def head_object(self, Bucket, Key):
+                return {"ContentLength": outer.size}
+
+        class _S3:
+            def get_client(self):
+                return _Client()
+
+        self.s3 = _S3()
+
+    def getFile(self, path):
+        # the real resource hands back a botocore StreamingBody, which the parser
+        # consumes incrementally rather than materialising the whole release
+        stream = io.BytesIO(self.payload)
+        self.read_as_stream = stream
+        return stream
+
+
+_ONE_QUAD = (
+    b'<https://example.org/ds> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
+    b'<https://schema.org/Dataset> <https://example.org/graph/1> .\n'
+)
+
+
+def test_release_store_stays_in_memory_below_the_threshold():
+    s3 = _FakeS3(_ONE_QUAD)
+
+    with _release_store(s3, "graphs/latest/x_release.nq") as store:
+        assert len(store) == 1
+    # nothing to clean up when the store never touched disk
+    assert s3.read_as_stream is not None
+
+
+def test_release_store_goes_to_disk_above_the_threshold(monkeypatch):
+    monkeypatch.setattr(gleaner_summon_assets, "SPATIAL_ONDISK_THRESHOLD_BYTES", 1)
+    created = []
+    real_mkdtemp = gleaner_summon_assets.tempfile.mkdtemp
+
+    def _record(*args, **kwargs):
+        path = real_mkdtemp(*args, **kwargs)
+        created.append(path)
+        return path
+
+    monkeypatch.setattr(gleaner_summon_assets.tempfile, "mkdtemp", _record)
+    s3 = _FakeS3(_ONE_QUAD)
+
+    with _release_store(s3, "graphs/latest/x_release.nq") as store:
+        assert len(store) == 1
+        assert created and Path(created[0]).exists()
+
+    # the rocksdb directory must not survive the asset, or a worker slowly fills
+    # its disk one release at a time
+    assert not Path(created[0]).exists()
+
+
+def test_release_store_cleans_up_when_the_body_is_unreadable(monkeypatch):
+    monkeypatch.setattr(gleaner_summon_assets, "SPATIAL_ONDISK_THRESHOLD_BYTES", 1)
+    created = []
+    real_mkdtemp = gleaner_summon_assets.tempfile.mkdtemp
+
+    def _record(*args, **kwargs):
+        path = real_mkdtemp(*args, **kwargs)
+        created.append(path)
+        return path
+
+    monkeypatch.setattr(gleaner_summon_assets.tempfile, "mkdtemp", _record)
+    s3 = _FakeS3(b"this is not n-quads at all\n")
+
+    with pytest.raises(SyntaxError):
+        with _release_store(s3, "graphs/latest/x_release.nq"):
+            pass
+
+    assert created and not Path(created[0]).exists()
+
+
+def test_release_store_falls_back_to_memory_when_the_size_is_unknown(monkeypatch):
+    monkeypatch.setattr(gleaner_summon_assets, "SPATIAL_ONDISK_THRESHOLD_BYTES", 1)
+    s3 = _FakeS3(_ONE_QUAD)
+
+    def _boom(Bucket, Key):
+        raise RuntimeError("no head for you")
+
+    monkeypatch.setattr(
+        s3.s3, "get_client", lambda: type("C", (), {"head_object": staticmethod(_boom)})()
+    )
+
+    # an unavailable head must not fail the asset, it just forgoes the decision
+    with _release_store(s3, "graphs/latest/x_release.nq") as store:
+        assert len(store) == 1
 
 
 def test_multipoint_query_groups_points_per_dataset():

@@ -4,6 +4,10 @@ from typing import Any
 import json
 import pandas as pd
 import csv
+import gc
+import shutil
+import tempfile
+from contextlib import contextmanager
 from urllib.error import HTTPError
 from pathlib import Path
 
@@ -33,6 +37,23 @@ SPATIAL_GRAPH_NAMESPACE = "https://gleaner.io/enhancement/spatial/{source}"
 SPATIAL_QUERY_FILES = (
     "spatial_construct_bbox.rq",
     "spatial_construct_multipoint.rq",
+)
+
+# Releases at or above this size are loaded into a temporary on disk store rather
+# than an in memory one. Measured on r2r, the largest release at 462MB / 2.45M
+# quads, on disk is worse on every axis than streaming into memory:
+#
+#   in memory, whole file read into bytes   2.50 GB rss   3.0s
+#   in memory, streamed                     2.02 GB rss   3.8s
+#   on disk, streamed                       2.53 GB rss   9.0s   + 918 MB disk
+#
+# RocksDB's write buffers during a bulk load cost more than the on disk
+# representation saves, so the default sits above every current release and this
+# is a safety valve for growth rather than something that fires today. Lower
+# GLEANERIO_SPATIAL_ONDISK_THRESHOLD_BYTES if a worker is memory bound and would
+# rather trade wall clock and disk for headroom.
+SPATIAL_ONDISK_THRESHOLD_BYTES = int(
+    os.environ.get("GLEANERIO_SPATIAL_ONDISK_THRESHOLD_BYTES", 2 * 1024 ** 3)
 )
 
 class HarvestOpConfig(Config):
@@ -214,23 +235,70 @@ def _construct_to_quads(ntriples_text, graph_iri):
     return "\n".join(quads) + ("\n" if quads else "")
 
 
-def _load_release_store(release_bytes):
-    """Parse an n-quads release into an in memory oxigraph store.
+def _bulk_load(store, release):
+    """Load an n-quads release, from bytes or a readable, into ``store``.
 
     rdflib parsed this fine, but its SPARQL evaluator is roughly quadratic in
     graph size: 23k quads took 45s of query time, 46k took 179s, so a real
-    release never finished. Oxigraph does 1.1M quads in ~2s end to end.
+    release never finished. Oxigraph does 2.45M quads in ~4s end to end.
+
+    lenient: releases in the wild contain named graph URNs that nabu mints from
+    the identifier, like <urn:gleaner.io:eco:geocodes_examples:data:[OTLAS.1]>.
+    Square brackets are reserved for IPv6 literals and are not legal in an IRI,
+    so a validating parser rejects them -- and one bad quad aborts the whole
+    load, not just that line. rdflib accepted them, so this keeps the previous
+    behaviour rather than dropping sources on the floor. 756 of the 2920 quads
+    in the geocodes_examples release are affected.
     """
-    store = ox.Store()
-    # lenient: releases in the wild contain named graph URNs that nabu mints from
-    # the identifier, like <urn:gleaner.io:eco:geocodes_examples:data:[OTLAS.1]>.
-    # Square brackets are reserved for IPv6 literals and are not legal in an IRI,
-    # so a validating parser rejects them -- and one bad quad aborts the whole
-    # load, not just that line. rdflib accepted them, so this keeps the previous
-    # behaviour rather than dropping sources on the floor. 756 of the 2920 quads
-    # in the geocodes_examples release are affected.
-    store.bulk_load(release_bytes, format=ox.RdfFormat.N_QUADS, lenient=True)
+    store.bulk_load(release, format=ox.RdfFormat.N_QUADS, lenient=True)
     return store
+
+
+def _load_release_store(release_bytes):
+    """In memory store from a release already held in memory. Used by the tests."""
+    return _bulk_load(ox.Store(), release_bytes)
+
+
+def _release_object_size(gleaner_s3, object_name):
+    """Size of the release object, or None if it cannot be determined."""
+    try:
+        head = gleaner_s3.s3.get_client().head_object(
+            Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET, Key=object_name
+        )
+        return head.get("ContentLength")
+    except Exception as ex:  # a missing size only costs us the on disk decision
+        get_dagster_logger().info(f"Spatial. Could not size {object_name}: {ex}")
+        return None
+
+
+@contextmanager
+def _release_store(gleaner_s3, object_name):
+    """Open a store over a release, on disk if the release is big enough.
+
+    The body is streamed straight from s3 into the parser rather than read into
+    a bytes object first. On r2r that is 480MB of peak RSS saved for ~0.8s of
+    wall clock, and it is the difference that actually moves the needle -- see
+    SPATIAL_ONDISK_THRESHOLD_BYTES for why the on disk path is not the default.
+    """
+    size = _release_object_size(gleaner_s3, object_name)
+    on_disk = size is not None and size >= SPATIAL_ONDISK_THRESHOLD_BYTES
+    tempdir = tempfile.mkdtemp(prefix="spatial_release_") if on_disk else None
+    store = None
+    try:
+        store = ox.Store(path=str(Path(tempdir) / "store")) if on_disk else ox.Store()
+        get_dagster_logger().info(
+            f"Spatial. Loading {object_name} ({size} bytes) into "
+            f"{'an on disk store at ' + tempdir if on_disk else 'an in memory store'}"
+        )
+        _bulk_load(store, gleaner_s3.getFile(object_name))
+        yield store
+    finally:
+        if tempdir is not None:
+            # the store holds the rocksdb files open and pyoxigraph exposes no
+            # close(), so drop the reference and collect before unlinking
+            store = None
+            gc.collect()
+            shutil.rmtree(tempdir, ignore_errors=True)
 
 
 def _run_construct_query(store, query):
@@ -348,12 +416,11 @@ def spatial_release_quads(context):
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
     graph_iri = SPATIAL_GRAPH_NAMESPACE.format(source=source_name)
     try:
-        release_bytes = gleaner_s3.getFile(f"{RELEASE_PATH}/{source_name}_release.nq").read()
-        release_store = _load_release_store(release_bytes)
-        spatial_nq = "".join(
-            _construct_to_quads(_run_construct_query(release_store, _spatial_query_text(query_file)), graph_iri)
-            for query_file in SPATIAL_QUERY_FILES
-        )
+        with _release_store(gleaner_s3, f"{RELEASE_PATH}/{source_name}_release.nq") as release_store:
+            spatial_nq = "".join(
+                _construct_to_quads(_run_construct_query(release_store, _spatial_query_text(query_file)), graph_iri)
+                for query_file in SPATIAL_QUERY_FILES
+            )
         objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"
         # a source with no spatial coverage produces no quads. writing that as an
         # empty object just publishes a zero byte file for nabu to pick up, so
