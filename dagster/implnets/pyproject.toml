@@ -24,6 +24,10 @@ dependencies = [
   "pydash",
   "pyyaml",
   "orjson",
+  # spatial_release_quads runs CONSTRUCT queries over a whole release. rdflib's
+  # SPARQL evaluator is ~quadratic in graph size and never finished on a real
+  # release; oxigraph handles 1.1M quads in ~2s.
+  "pyoxigraph>=0.4",
   # if we want to use an non-released branch, pin the commit, eg:
   # "earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@a3acbe4#subdirectory=earthcube_utilities",
   "earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@199_dev_fixgraphreports#subdirectory=earthcube_utilities",

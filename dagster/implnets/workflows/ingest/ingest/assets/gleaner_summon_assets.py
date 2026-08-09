@@ -14,7 +14,7 @@ get_dagster_logger,BackfillPolicy
 )
 from ec.datastore import s3 as utils_s3
 from ec.sitemap import Sitemap
-from rdflib import ConjunctiveGraph
+import pyoxigraph as ox
 from .gleaner_sources import sources_partitions_def
 from ..utils import PythonMinioAddress
 
@@ -214,9 +214,31 @@ def _construct_to_quads(ntriples_text, graph_iri):
     return "\n".join(quads) + ("\n" if quads else "")
 
 
-def _run_construct_query(graph, query):
-    result_graph = graph.query(query).graph
-    return result_graph.serialize(format="nt")
+def _load_release_store(release_bytes):
+    """Parse an n-quads release into an in memory oxigraph store.
+
+    rdflib parsed this fine, but its SPARQL evaluator is roughly quadratic in
+    graph size: 23k quads took 45s of query time, 46k took 179s, so a real
+    release never finished. Oxigraph does 1.1M quads in ~2s end to end.
+    """
+    store = ox.Store()
+    # lenient: releases in the wild contain named graph URNs that nabu mints from
+    # the identifier, like <urn:gleaner.io:eco:geocodes_examples:data:[OTLAS.1]>.
+    # Square brackets are reserved for IPv6 literals and are not legal in an IRI,
+    # so a validating parser rejects them -- and one bad quad aborts the whole
+    # load, not just that line. rdflib accepted them, so this keeps the previous
+    # behaviour rather than dropping sources on the floor. 756 of the 2920 quads
+    # in the geocodes_examples release are affected.
+    store.bulk_load(release_bytes, format=ox.RdfFormat.N_QUADS, lenient=True)
+    return store
+
+
+def _run_construct_query(store, query):
+    # the release puts every dataset in its own named graph, and nothing in the
+    # default graph. rdflib's ConjunctiveGraph queried the union implicitly;
+    # oxigraph is spec correct and would otherwise match nothing at all.
+    triples = store.query(query, use_default_graph_as_union=True)
+    return ox.serialize(triples, format=ox.RdfFormat.N_TRIPLES).decode("utf-8")
 
 
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
@@ -326,11 +348,10 @@ def spatial_release_quads(context):
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
     graph_iri = SPATIAL_GRAPH_NAMESPACE.format(source=source_name)
     try:
-        release_text = gleaner_s3.getFile(f"{RELEASE_PATH}/{source_name}_release.nq").read().decode("utf-8")
-        release_graph = ConjunctiveGraph()
-        release_graph.parse(data=release_text, format="nquads")
+        release_bytes = gleaner_s3.getFile(f"{RELEASE_PATH}/{source_name}_release.nq").read()
+        release_store = _load_release_store(release_bytes)
         spatial_nq = "".join(
-            _construct_to_quads(_run_construct_query(release_graph, _spatial_query_text(query_file)), graph_iri)
+            _construct_to_quads(_run_construct_query(release_store, _spatial_query_text(query_file)), graph_iri)
             for query_file in SPATIAL_QUERY_FILES
         )
         objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"

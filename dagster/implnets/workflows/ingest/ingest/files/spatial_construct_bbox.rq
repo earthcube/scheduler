@@ -32,7 +32,23 @@ WHERE {
   BIND(STRBEFORE(?rest2, " ") AS ?maxLat)
   BIND(STRAFTER(?rest2, " ") AS ?maxLong)
 
-  BIND(IRI(CONCAT(STR(?geo), "/geometry")) AS ?geometry)
+  # nabu skolemises blank nodes into https://gleaner.io/xid/genid/... IRIs, so in
+  # every release checked ?geo is an IRI and STR(?geo) is well defined -- that is
+  # the branch that runs, and it keeps the geometry IRIs byte identical to what
+  # is already published. Should an unskolemised release ever turn up, STR() of a
+  # blank node is a type error in SPARQL: rdflib tolerated it and minted invalid
+  # relative IRIs like <N793220240ebb.../geometry>, a spec compliant engine drops
+  # the solution and emits no geometry at all. The fallback keys off the dataset
+  # IRI instead, hashing the normalised box so one dataset can hold several
+  # boxes. IF only evaluates the branch it takes, so STR(?geo) is never reached
+  # for a blank node.
+  BIND(
+    IF(isIRI(?geo),
+       CONCAT(STR(?geo), "/geometry"),
+       CONCAT(STR(?s), "/geometry/bbox/", MD5(?norm))
+    ) AS ?geometryIri
+  )
+  BIND(IRI(?geometryIri) AS ?geometry)
 
   # WKT is x y == longitude latitude, counter-clockwise from the lower-left.
   BIND(
