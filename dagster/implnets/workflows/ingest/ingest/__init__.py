@@ -16,7 +16,7 @@
 
 import os
 
-from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext
+from dagster import Definitions, load_asset_checks_from_modules, load_assets_from_modules, EnvVar,RunFailureSensorContext
 from dagster_aws.s3.resources import S3Resource
 from dagster_aws.s3.ops import S3Coordinate
 from dagster import (
@@ -58,6 +58,7 @@ from .utils import PythonMinioAddress
 
 
 all_assets = load_assets_from_modules([assets])
+all_asset_checks = load_asset_checks_from_modules([assets])
 
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
@@ -239,6 +240,7 @@ deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 
 defs = Definitions(
     assets=all_assets,
+    asset_checks=all_asset_checks,
     resources=resources[deployment_name],
     sensors=all_sensors,
     jobs=jobs,

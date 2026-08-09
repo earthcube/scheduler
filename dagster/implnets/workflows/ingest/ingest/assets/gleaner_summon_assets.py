@@ -14,7 +14,8 @@ from pathlib import Path
 from dagster import (
     asset,op, Config, Output,AssetKey,
     define_asset_job, AssetSelection,
-get_dagster_logger,BackfillPolicy
+get_dagster_logger,BackfillPolicy, asset_check, AssetCheckExecutionContext,
+AssetCheckResult
 )
 from ec.datastore import s3 as utils_s3
 from ec.sitemap import Sitemap
@@ -271,6 +272,36 @@ def _release_object_size(gleaner_s3, object_name):
         return None
 
 
+def _non_zero_length_check_result(gleaner_s3, object_name):
+    size = _release_object_size(gleaner_s3, object_name)
+    metadata = {
+        "bucket_name": gleaner_s3.GLEANERIO_MINIO_BUCKET,
+        "object_name": object_name,
+    }
+    if size is not None:
+        metadata["size_bytes"] = size
+    return AssetCheckResult(
+        passed=size is not None and size > 0,
+        metadata=metadata,
+    )
+
+
+@asset_check(
+    asset=release_nabu_run,
+    name="non_zero_length",
+    partitions_def=sources_partitions_def,
+    required_resource_keys={"gleanerio"},
+)
+def release_nabu_run_non_zero_length(
+    context: AssetCheckExecutionContext,
+) -> AssetCheckResult:
+    source_name = context.partition_key
+    return _non_zero_length_check_result(
+        context.resources.gleanerio.gs3,
+        f"{RELEASE_PATH}/{source_name}_release.nq",
+    )
+
+
 @contextmanager
 def _release_store(gleaner_s3, object_name):
     """Open a store over a release, on disk if the release is big enough.
@@ -401,6 +432,22 @@ def release_summarize(context) :
         return 1
 
     return
+
+
+@asset_check(
+    asset=release_summarize,
+    name="non_zero_length",
+    partitions_def=sources_partitions_def,
+    required_resource_keys={"gleanerio"},
+)
+def release_summary_non_zero_length(
+    context: AssetCheckExecutionContext,
+) -> AssetCheckResult:
+    source_name = context.partition_key
+    return _non_zero_length_check_result(
+        context.resources.gleanerio.gs3,
+        f"{SUMMARY_PATH}/{source_name}_release_summary.ttl",
+    )
 
 
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
