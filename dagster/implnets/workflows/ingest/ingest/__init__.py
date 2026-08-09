@@ -43,13 +43,15 @@ from .jobs import (
                    release_asset_job,
                    tenant_rebuild_namespaces_job
 )
+from .sensors.long_running_runs import long_running_runs_alert_job
 
 jobs = [
 summon_asset_job, sources_asset_job,
                 tenant_asset_job,
                    tenant_namespaces_job,
                    release_asset_job,
-                   tenant_rebuild_namespaces_job
+                   tenant_rebuild_namespaces_job,
+                   long_running_runs_alert_job,
 ]
 from pydantic import Field
 
@@ -68,6 +70,7 @@ release_file_sensor_v2,
     tenant_names_sensor,
     sources_s3_sensor,
     tenant_s3_sensor,
+    long_running_runs_alert_schedule,
 #tenant_names_sensor_v2
 )
 def slack_message_fn(context: RunFailureSensorContext) -> str:
@@ -94,7 +97,7 @@ release_file_sensor_v2,
 
 from .sensors.gleaner_summon import sources_schedule
 
-all_schedules = [sources_schedule]
+all_schedules = [sources_schedule, long_running_runs_alert_schedule]
 
 def _awsEndpointAddress(url, port=None, use_ssl=True):
     if use_ssl:
