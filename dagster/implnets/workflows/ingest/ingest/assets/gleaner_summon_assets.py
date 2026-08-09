@@ -222,7 +222,14 @@ def _load_release_store(release_bytes):
     release never finished. Oxigraph does 1.1M quads in ~2s end to end.
     """
     store = ox.Store()
-    store.bulk_load(release_bytes, format=ox.RdfFormat.N_QUADS)
+    # lenient: releases in the wild contain named graph URNs that nabu mints from
+    # the identifier, like <urn:gleaner.io:eco:geocodes_examples:data:[OTLAS.1]>.
+    # Square brackets are reserved for IPv6 literals and are not legal in an IRI,
+    # so a validating parser rejects them -- and one bad quad aborts the whole
+    # load, not just that line. rdflib accepted them, so this keeps the previous
+    # behaviour rather than dropping sources on the floor. 756 of the 2920 quads
+    # in the geocodes_examples release are affected.
+    store.bulk_load(release_bytes, format=ox.RdfFormat.N_QUADS, lenient=True)
     return store
 
 

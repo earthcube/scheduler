@@ -19,7 +19,17 @@ WHERE {
                  schema:latitude  ?lat ;
                  schema:longitude ?long .
 
-            BIND(CONCAT("(", STR(xsd:decimal(?long)), " ", STR(xsd:decimal(?lat)), ")") AS ?pt)
+            # the coordinates arrive as xsd:double in scientific notation
+            # ("-1.121115E2"), and the decimal cast is what keeps that out of the
+            # WKT. Casting alone is not enough: xsd:decimal of a double is exact,
+            # so 166.66267 comes back as 166.662669999999975424 -- the binary
+            # expansion of the double. rdflib happened to shorten it, a spec
+            # correct engine does not. Rounding in decimal space restores the
+            # short form. 9 places is ~0.1mm at the equator, well beyond the
+            # precision of any coordinate in the harvested data.
+            BIND(ROUND(xsd:decimal(?long) * 1000000000) / 1000000000 AS ?longDec)
+            BIND(ROUND(xsd:decimal(?lat) * 1000000000) / 1000000000 AS ?latDec)
+            BIND(CONCAT("(", STR(?longDec), " ", STR(?latDec), ")") AS ?pt)
         }
         GROUP BY ?s
     }

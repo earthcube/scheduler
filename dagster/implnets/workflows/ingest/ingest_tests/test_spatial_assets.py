@@ -13,7 +13,21 @@ from workflows.ingest.ingest.assets.gleaner_summon_assets import (
 # pass under rdflib's ConjunctiveGraph but match nothing under oxigraph.
 GRAPH = "<https://example.org/graph/1>"
 
+# nabu skolemises blank nodes, so in a real release the spatialCoverage and geo
+# nodes are https://gleaner.io/xid/genid/... IRIs rather than _:b0 style blank
+# nodes. Every release checked looks like this, so it is the default fixture.
+GEO = "<https://gleaner.io/xid/genid/testgeo>"
+
 _DATASET = (
+    f'<https://example.org/ds> <https://schema.org/spatialCoverage> '
+    f'<https://gleaner.io/xid/genid/testsc> {GRAPH} .\n'
+    f'<https://gleaner.io/xid/genid/testsc> <https://schema.org/geo> {GEO} {GRAPH} .\n'
+    f'<https://example.org/ds> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
+    f'<https://schema.org/Dataset> {GRAPH} .\n'
+)
+
+# the unskolemised shape, which the bbox query still has to cope with
+_DATASET_BNODE = (
     f'<https://example.org/ds> <https://schema.org/spatialCoverage> _:b0 {GRAPH} .\n'
     f'_:b0 <https://schema.org/geo> _:b1 {GRAPH} .\n'
     f'<https://example.org/ds> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
@@ -25,11 +39,11 @@ def _store(data):
     return _load_release_store(data.encode("utf-8"))
 
 
-def _graph_with_box(box, datatype_or_lang=""):
+def _graph_with_box(box, datatype_or_lang="", geo=GEO, dataset=_DATASET):
     return _store(
-        _DATASET
-        + f'_:b1 <https://schema.org/box> "{box}"{datatype_or_lang} {GRAPH} .\n'
-        + f'_:b1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
+        dataset
+        + f'{geo} <https://schema.org/box> "{box}"{datatype_or_lang} {GRAPH} .\n'
+        + f'{geo} <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
           f'<https://schema.org/GeoShape> {GRAPH} .\n'
     )
 
@@ -138,36 +152,89 @@ def test_bbox_query_ignores_language_tagged_box():
     assert "POLYGON((-126.0 25.0" in result
 
 
-def test_bbox_geometry_hangs_off_the_dataset_iri():
-    # ?geo is a blank node here, as it is in the harvested data. STR() of a blank
-    # node is a type error, so the geometry IRI has to be derived from ?s -- the
-    # old query minted invalid relative IRIs like <N793220240ebb.../geometry>.
+def test_bbox_geometry_iri_is_derived_from_the_geo_node():
+    # the published form. Keeping it identical matters: these IRIs are already in
+    # the enhancement graph, and changing their shape would orphan every geometry
+    # published so far.
     result = _run_construct_query(
         _graph_with_box("25.0 -126.0 49.0 -81.0"),
         _spatial_query_text("spatial_construct_bbox.rq"),
     )
 
-    assert "<https://example.org/ds> <http://www.opengis.net/ont/geosparql#hasGeometry> " in result
+    assert f"{GEO} <http://www.opengis.net/ont/geosparql#hasGeometry> " in result
+    assert "<https://gleaner.io/xid/genid/testgeo/geometry>" in result
+
+
+def test_bbox_query_still_emits_a_geometry_for_an_unskolemised_geo_node():
+    # STR() of a blank node is a type error in SPARQL, so a spec correct engine
+    # drops the solution and emits nothing at all. rdflib instead minted invalid
+    # relative IRIs like <N793220240ebb.../geometry>. Neither is useful, so the
+    # query falls back to keying off the dataset IRI.
+    result = _run_construct_query(
+        _graph_with_box("25.0 -126.0 49.0 -81.0", geo="_:b1", dataset=_DATASET_BNODE),
+        _spatial_query_text("spatial_construct_bbox.rq"),
+    )
+
+    assert "POLYGON((-126.0 25.0" in result
     assert "<https://example.org/ds/geometry/bbox/" in result
-    assert "_:" not in result
 
 
-def test_bbox_query_keeps_multiple_boxes_on_one_dataset_distinct():
+def test_bbox_query_keeps_multiple_boxes_on_one_geo_node_distinct():
     store = _store(
         _DATASET
-        + f'_:b1 <https://schema.org/box> "25.0 -126.0 49.0 -81.0" {GRAPH} .\n'
-        + f'_:b1 <https://schema.org/box> "10.0 -20.0 30.0 -40.0" {GRAPH} .\n'
-        + f'_:b1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
+        + f'{GEO} <https://schema.org/box> "25.0 -126.0 49.0 -81.0" {GRAPH} .\n'
+        + f'{GEO} <https://schema.org/box> "10.0 -20.0 30.0 -40.0" {GRAPH} .\n'
+        + f'{GEO} <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
           f'<https://schema.org/GeoShape> {GRAPH} .\n'
     )
 
     result = _run_construct_query(store, _spatial_query_text("spatial_construct_bbox.rq"))
     wkt = [line for line in result.splitlines() if "asWKT" in line]
 
+    # both boxes hang off the same geo node, so they share a geometry IRI -- as
+    # they always have. This documents the existing behaviour rather than
+    # endorsing it.
     assert len(wkt) == 2
-    # the geometry IRI is hashed off the box, so the two do not collide
-    geometries = {line.split(" ", 1)[0] for line in wkt}
-    assert len(geometries) == 2
+    assert len({line.split(" ", 1)[0] for line in wkt}) == 1
+
+
+def test_release_with_invalid_iris_still_loads():
+    # nabu mints named graph URNs from the identifier, and identifiers containing
+    # square brackets come through verbatim: square brackets are reserved for IPv6
+    # literals and are not legal in an IRI. A validating parser rejects the quad,
+    # and one bad quad aborts the entire load -- 756 of the 2920 quads in the
+    # geocodes_examples release are affected, so this is not a corner case.
+    store = _store(
+        '<https://example.org/ds> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
+        '<https://schema.org/Dataset> '
+        '<urn:gleaner.io:eco:geocodes_examples:data:[OTLAS.022013.26910.2]> .\n'
+    )
+
+    assert len(store) == 1
+
+
+def test_multipoint_coordinates_do_not_carry_a_binary_expansion():
+    # coordinates arrive as xsd:double in scientific notation, and casting a
+    # double to xsd:decimal is exact, so an unrounded cast yields
+    # 166.662669999999975424 rather than 166.66267.
+    store = _store(
+        '<https://example.org/ds> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
+        f'<https://schema.org/Dataset> {GRAPH} .\n'
+        f'<https://example.org/ds> <https://schema.org/spatialCoverage> _:s0 {GRAPH} .\n'
+        f'_:s0 <https://schema.org/geo> _:g0 {GRAPH} .\n'
+        f'_:g0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> '
+        f'<https://schema.org/GeoCoordinates> {GRAPH} .\n'
+        f'_:g0 <https://schema.org/latitude> "-7.785067E1"'
+        f'^^<http://www.w3.org/2001/XMLSchema#double> {GRAPH} .\n'
+        f'_:g0 <https://schema.org/longitude> "1.6666267E2"'
+        f'^^<http://www.w3.org/2001/XMLSchema#double> {GRAPH} .\n'
+    )
+
+    result = _run_construct_query(store, _spatial_query_text("spatial_construct_multipoint.rq"))
+
+    assert "MULTIPOINT((166.66267 -77.85067))" in result
+    # and no scientific notation leaking into the WKT either
+    assert "E2" not in result
 
 
 def test_multipoint_query_groups_points_per_dataset():
