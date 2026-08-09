@@ -154,6 +154,134 @@ def _load_gleaner_summon_assets():
     return module
 
 
+def _load_ingest_module():
+    module_name = "workflows.ingest.ingest"
+    module_path = Path(__file__).resolve().parent.parent / "ingest" / "__init__.py"
+
+    for name in [
+        module_name,
+        "workflows",
+        "workflows.ingest",
+        "workflows.ingest.ingest.assets",
+        "workflows.ingest.ingest.resources",
+        "workflows.ingest.ingest.resources.graph",
+        "workflows.ingest.ingest.resources.gleanerio",
+        "workflows.ingest.ingest.resources.gleanerS3",
+        "workflows.ingest.ingest.jobs",
+        "workflows.ingest.ingest.jobs.summon_assets",
+        "workflows.ingest.ingest.sensors",
+        "workflows.ingest.ingest.sensors.gleaner_summon",
+        "workflows.ingest.ingest.utils",
+        "dagster",
+        "dagster_aws",
+        "dagster_aws.s3",
+        "dagster_aws.s3.resources",
+        "dagster_aws.s3.ops",
+        "dagster_slack",
+        "pydantic",
+    ]:
+        sys.modules.pop(name, None)
+
+    class _Definitions:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    class _EnvVar:
+        def __init__(self, name):
+            self.name = name
+
+        def get_value(self):
+            return "test"
+
+    dagster = _stub_module(
+        "dagster",
+        Definitions=_Definitions,
+        load_assets_from_modules=lambda modules: ["assets", modules],
+        load_asset_checks_from_modules=lambda modules: ["asset_checks", modules],
+        EnvVar=_EnvVar,
+        RunFailureSensorContext=type("RunFailureSensorContext", (), {}),
+        AssetSelection=object(),
+        define_asset_job=lambda *args, **kwargs: None,
+    )
+    dagster.__path__ = []
+    dagster_aws = _stub_module("dagster_aws")
+    dagster_aws.__path__ = []
+    dagster_aws_s3 = _stub_module("dagster_aws.s3")
+    dagster_aws_s3.__path__ = []
+    _stub_module("dagster_aws.s3.resources", S3Resource=lambda **kwargs: ("S3Resource", kwargs))
+    _stub_module("dagster_aws.s3.ops", S3Coordinate=object())
+    _stub_module(
+        "dagster_slack",
+        SlackResource=lambda **kwargs: ("SlackResource", kwargs),
+        make_slack_on_run_failure_sensor=lambda *args, **kwargs: "slack_sensor",
+    )
+    _stub_module("pydantic", Field=lambda *args, **kwargs: None)
+
+    workflows = _stub_module("workflows")
+    workflows.__path__ = []
+    workflows_ingest = _stub_module("workflows.ingest")
+    workflows_ingest.__path__ = []
+    workflows_ingest_ingest = _stub_module("workflows.ingest.ingest")
+    workflows_ingest_ingest.__path__ = []
+    workflows_ingest_resources = _stub_module("workflows.ingest.ingest.resources")
+    workflows_ingest_resources.__path__ = []
+    workflows_ingest_jobs = _stub_module("workflows.ingest.ingest.jobs")
+    workflows_ingest_jobs.__path__ = []
+    workflows_ingest_sensors = _stub_module("workflows.ingest.ingest.sensors")
+    workflows_ingest_sensors.__path__ = []
+
+    assets = _stub_module("workflows.ingest.ingest.assets", gleanerio_run=object(), release_nabu_run=object())
+    _stub_module(
+        "workflows.ingest.ingest.resources.graph",
+        BlazegraphResource=lambda **kwargs: ("BlazegraphResource", kwargs),
+        GraphResource=type("GraphResource", (), {}),
+    )
+    _stub_module(
+        "workflows.ingest.ingest.resources.gleanerio",
+        GleanerioResource=lambda **kwargs: ("GleanerioResource", kwargs),
+    )
+    _stub_module(
+        "workflows.ingest.ingest.resources.gleanerS3",
+        gleanerS3Resource=lambda **kwargs: types.SimpleNamespace(**kwargs),
+    )
+    _stub_module(
+        "workflows.ingest.ingest.jobs.summon_assets",
+        summon_asset_job="summon_asset_job",
+    )
+    workflows_ingest_jobs.summon_asset_job = "summon_asset_job"
+    workflows_ingest_jobs.sources_asset_job = "sources_asset_job"
+    workflows_ingest_jobs.sources_partitions_def = "sources_partitions_def"
+    workflows_ingest_jobs.tenant_asset_job = "tenant_asset_job"
+    workflows_ingest_jobs.tenant_namespaces_job = "tenant_namespaces_job"
+    workflows_ingest_jobs.release_asset_job = "release_asset_job"
+    workflows_ingest_jobs.tenant_rebuild_namespaces_job = "tenant_rebuild_namespaces_job"
+    workflows_ingest_sensors.release_file_sensor = "release_file_sensor"
+    workflows_ingest_sensors.release_file_sensor_v2 = "release_file_sensor_v2"
+    workflows_ingest_sensors.sources_sensor = "sources_sensor"
+    workflows_ingest_sensors.tenant_names_sensor = "tenant_names_sensor"
+    workflows_ingest_sensors.sources_s3_sensor = "sources_s3_sensor"
+    workflows_ingest_sensors.tenant_s3_sensor = "tenant_s3_sensor"
+    _stub_module(
+        "workflows.ingest.ingest.sensors.gleaner_summon",
+        sources_schedule="sources_schedule",
+    )
+    _stub_module(
+        "workflows.ingest.ingest.utils",
+        PythonMinioAddress=lambda *args, **kwargs: "minio-address",
+    )
+
+    spec = importlib.util.spec_from_file_location(
+        module_name,
+        module_path,
+        submodule_search_locations=[str(module_path.parent)],
+    )
+    module = importlib.util.module_from_spec(spec)
+    module.assets = assets
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 class _FakeGleanerS3:
     GLEANERIO_MINIO_BUCKET = "test-bucket"
 
@@ -200,6 +328,21 @@ def test_non_zero_length_check_result_fails_for_zero_byte_object():
     assert result.metadata["size_bytes"] == 0
 
 
+def test_non_zero_length_check_result_omits_size_metadata_when_unknown():
+    module = _load_gleaner_summon_assets()
+
+    result = module._non_zero_length_check_result(
+        _FakeGleanerS3(None),
+        "graphs/latest/example_release.nq",
+    )
+
+    assert result.passed is False
+    assert result.metadata == {
+        "bucket_name": "test-bucket",
+        "object_name": "graphs/latest/example_release.nq",
+    }
+
+
 def test_release_and_summary_checks_target_the_expected_objects():
     module = _load_gleaner_summon_assets()
     context = types.SimpleNamespace(
@@ -217,7 +360,7 @@ def test_release_and_summary_checks_target_the_expected_objects():
 
 
 def test_ingest_definitions_load_asset_checks():
-    init_text = (Path(__file__).resolve().parent.parent / "ingest" / "__init__.py").read_text()
+    module = _load_ingest_module()
 
-    assert "load_asset_checks_from_modules" in init_text
-    assert "asset_checks=all_asset_checks" in init_text
+    assert module.all_asset_checks[0] == "asset_checks"
+    assert module.defs.asset_checks == module.all_asset_checks

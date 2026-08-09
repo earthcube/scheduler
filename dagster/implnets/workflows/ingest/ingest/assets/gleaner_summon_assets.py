@@ -274,13 +274,15 @@ def _release_object_size(gleaner_s3, object_name):
 
 def _non_zero_length_check_result(gleaner_s3, object_name):
     size = _release_object_size(gleaner_s3, object_name)
+    metadata = {
+        "bucket_name": gleaner_s3.GLEANERIO_MINIO_BUCKET,
+        "object_name": object_name,
+    }
+    if size is not None:
+        metadata["size_bytes"] = size
     return AssetCheckResult(
         passed=size is not None and size > 0,
-        metadata={
-            "bucket_name": gleaner_s3.GLEANERIO_MINIO_BUCKET,
-            "object_name": object_name,
-            "size_bytes": size,
-        },
+        metadata=metadata,
     )
 
 
