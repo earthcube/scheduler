@@ -29,6 +29,8 @@ class gleanerS3Resource(ConfigurableResource):
          description="GLEANERIO_CONFIG_PATH.", default="scheduler/configs/test/")
     GLEANERIO_TENANT_FILENAME : str =  Field(
          description="GLEANERIO_TENANT_CONFIG.", default="tenant.yaml")
+    GLEANERIO_SOURCES_FILENAME : str =  Field(
+         description="GLEANERIO_SOURCES_FILENAME.", default="gleanerconfig.yaml")
     # now using the boto s3 embedded in dagster_aws, but just in case we need them
     GLEANERIO_MINIO_ACCESS_KEY: str =  Field(
          description="GLEANERIO_MINIO_ACCESS_KEY")
@@ -48,6 +50,19 @@ class gleanerS3Resource(ConfigurableResource):
 
         )["Contents"]
 
+    def getFile(self, path):
+        """The object body, as a stream.
+
+        Raises rather than returning None on a missing object: callers here feed
+        this straight to a parser, where a None turns into a TypeError deep
+        inside bulk_load instead of a legible error. Whether an object exists is
+        answered with head_object before ever getting here.
+        """
+        return self.s3.get_client().get_object(
+            Bucket=self.GLEANERIO_MINIO_BUCKET,
+            Key=path,
+        )["Body"]
+
     def getTennatInfo(self, path='orgs'):
         path= f"{self.GLEANERIO_CONFIG_PATH}{self.GLEANERIO_TENANT_FILENAME}"
         try:
@@ -58,5 +73,22 @@ class gleanerS3Resource(ConfigurableResource):
             return  yaml.safe_load(r["Body"])
         except Exception as ex:
             get_dagster_logger().info(f"tennant file {path} not found in bucket {self.GLEANERIO_MINIO_BUCKET} at {self.GLEANERIO_MINIO_ADDRESS} ")
+            raise ex
+
+    def getSourcesInfo(self):
+        """The parsed gleanerconfig.yaml. Sibling of getTennatInfo.
+
+        tenant.yaml says which sources are in a community; this says what each
+        of them is -- propername, domain, url, logo, active.
+        """
+        path = f"{self.GLEANERIO_CONFIG_PATH}{self.GLEANERIO_SOURCES_FILENAME}"
+        try:
+            r = self.s3.get_client().get_object(
+                Bucket=self.GLEANERIO_MINIO_BUCKET,
+                Key=path,
+            )
+            return yaml.safe_load(r["Body"])
+        except Exception as ex:
+            get_dagster_logger().info(f"sources file {path} not found in bucket {self.GLEANERIO_MINIO_BUCKET} at {self.GLEANERIO_MINIO_ADDRESS} ")
             raise ex
      #endpoint_url =_pythonMinioAddress(GLEANER_MINIO_ADDRESS, port=GLEANER_MINIO_PORT)

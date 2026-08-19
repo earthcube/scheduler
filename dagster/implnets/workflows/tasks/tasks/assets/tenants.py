@@ -4,8 +4,10 @@ from io import StringIO
 import yaml
 import os
 import pandas as pd
+import pydash
 from pydash import pick
 from dagster import (asset,
+                     AssetIn,
                      get_dagster_logger,
                      Output,
                      DynamicPartitionsDefinition,
@@ -19,6 +21,7 @@ from ec.datastore import s3
 from ..utils import strtobool
 from ..resources.gleanerS3 import _pythonMinioAddress
 from ec.reporting.report import generateReportStats
+from .release_stats import release_record_count
 
 PROJECT=os.environ.get('PROJECT')
 GLEANER_MINIO_ADDRESS = os.environ.get('GLEANERIO_MINIO_ADDRESS')
@@ -29,7 +32,6 @@ GLEANER_MINIO_ACCESS_KEY = os.environ.get('GLEANERIO_MINIO_ACCESS_KEY')
 GLEANER_MINIO_BUCKET = os.environ.get('GLEANERIO_MINIO_BUCKET')
 GLEANERIO_GRAPH_URL = os.environ.get('GLEANERIO_GRAPH_URL')
 GLEANERIO_GRAPH_SUMMARY_NAMESPACE = os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE')
-GLEANERIO_CSV_CONFIG_URL = os.environ.get('GLEANERIO_CSV_CONFIG_URL')
 
 MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
 
@@ -38,12 +40,6 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
                }
 
 
-def _graphSummaryEndpoint(community_summary):
-    if community_summary == "all":
-        url = f"{GLEANERIO_GRAPH_URL}/namespace/{GLEANERIO_GRAPH_SUMMARY_NAMESPACE}/sparql"
-    else:
-        url = f"{GLEANERIO_GRAPH_URL}/namespace/{community_summary}/sparql"
-    return url
 @asset(group_name="community",key_prefix=f"{PROJECT}_task",
        required_resource_keys={"triplestore"},
        auto_materialize_policy=AutoMaterializePolicy.eager())
@@ -61,6 +57,21 @@ def task_tenant_sources(context) ->Any:
         #         # The `MetadataValue` class has useful static methods to build Metadata
         #     }
         # )
+@asset(group_name="community",key_prefix=f"{PROJECT}_task",
+       required_resource_keys={"triplestore"},
+       auto_materialize_policy=AutoMaterializePolicy.eager())
+def task_sources_config(context) -> Any:
+    """The sources: list from gleanerconfig.yaml.
+
+    tenant.yaml names which sources are in a community; this is where the rest
+    of a source lives -- propername, domain, url, logo, active -- which the
+    community report used to take from the published sources sheet.
+    """
+    sources = context.resources.triplestore.s3.getSourcesInfo().get('sources', [])
+    get_dagster_logger().info(f"{len(sources)} sources in gleanerconfig")
+    return sources
+
+
 @asset(group_name="community",key_prefix=f"{PROJECT}_task",
        #name='task_tenant_names',
        required_resource_keys={"triplestore"},
@@ -139,42 +150,85 @@ def getName(name):
 
 # set a prefix so we can have some named stats file
 
+def _sources_by_name(sources_config):
+    """{name: source dict} from a parsed gleanerconfig.yaml sources list."""
+    return {s['name']: s for s in sources_config if s.get('name')}
+
+
+def _expand_tenant_sources(tenant_sources, sources_by_name, logger=None):
+    """A tenant's sources: list resolved to concrete source names.
+
+    'all' means every active source in gleanerconfig, matching what the ingest
+    workflow does with it (assets/tenant.py). Both tenant.yaml and
+    tenant_prod.yaml declare a geocodesall community exactly that way, so this
+    is load bearing. A name with no gleanerconfig entry is dropped with a
+    warning -- the two files are edited independently and do drift, and one
+    stale name should not take a whole community's report down with it.
+    """
+    log = logger or get_dagster_logger()
+    tenant_sources = tenant_sources or []
+
+    if any(str(name).casefold() == "all" for name in tenant_sources):
+        return [name for name, source in sources_by_name.items() if source.get('active')]
+
+    names = []
+    for name in tenant_sources:
+        if name in sources_by_name:
+            if name not in names:
+                names.append(name)
+        else:
+            log.warning(f"tenant source {name} is not in gleanerconfig, skipping")
+    return names
+
+
 #@asset( group_name="load")
 @asset(partitions_def=community_partitions_def,
-      deps=[AssetKey([f"{PROJECT}_task","task_tenant_sources"])],
        group_name="community",
-        key_prefix=f"{PROJECT}_task",
-       required_resource_keys={"triplestore"} )
-def loadstatsCommunity(context, task_tenant_sources) -> str:
-    if GLEANERIO_CSV_CONFIG_URL is None:
-        raise Exception("GLEANERIO_CSV_CONFIG_URL is not defined")
-    prefix="history"
+       key_prefix=f"{PROJECT}_task",
+       required_resource_keys={"triplestore"},
+       ins={
+           "task_tenant_sources": AssetIn(
+               key=AssetKey([f"{PROJECT}_task", "task_tenant_sources"])),
+           "task_sources_config": AssetIn(
+               key=AssetKey([f"{PROJECT}_task", "task_sources_config"])),
+           "source_release_counts": AssetIn(
+               key=AssetKey([f"{PROJECT}_task", "source_release_counts"])),
+       })
+def loadstatsCommunity(context, task_tenant_sources, task_sources_config,
+                       source_release_counts) -> Output[str]:
+    """Harvest history and the source cards report, for one community.
+
+    Both come from the config the pipeline already runs on: tenant.yaml for
+    which sources are in the community, gleanerconfig.yaml for what each source
+    is, and the releases for how many records it has.
+    """
     logger = get_dagster_logger()
     s3_config = context.resources.triplestore.s3
-    s3Client = context.resources.triplestore.s3.s3.get_client()
     s3Minio = s3.MinioDatastore(_pythonMinioUrl(s3_config.GLEANERIO_MINIO_ADDRESS), MINIO_OPTIONS)
- #   sourcelist = list(s3Minio.listPath(GLEANER_MINIO_BUCKET, ORG_PATH,recursive=False))
-    community_code= context.asset_partition_key_for_output()
-    stats = []
-    ts = task_tenant_sources
-    t = list(filter(lambda a: a['community'] == community_code, ts["tenant"]))
-    s = t[0]["sources"]
-    g = t[0]['graph']
-    try:
-        # ts = task_tenant_sources
-        # t =list(filter ( lambda a: a['community']== community_code, ts["tenant"] ))
-        # s = t[0]["sources"]
+    community_code = context.partition_key
 
-        for source in s:
-            dirs = s3Minio.listPath(GLEANER_MINIO_BUCKET,path=f"{REPORT_PATH}{source}/",recursive=False )
+    tenant = pydash.find(task_tenant_sources["tenant"],
+                         lambda t: t['community'] == community_code)
+    if tenant is None:
+        raise Exception(f"community {community_code} is not in the tenant file")
+
+    sources_by_name = _sources_by_name(task_sources_config)
+    names = _expand_tenant_sources(tenant.get("sources"), sources_by_name, context.log)
+    context.log.info(f"community {community_code} resolves to {len(names)} sources: {names}")
+
+    # ---- harvest history -> all_stats.csv
+    stats = []
+    for source in names:
+        try:
+            dirs = s3Minio.listPath(s3_config.GLEANERIO_MINIO_BUCKET,
+                                    path=f"{REPORT_PATH}{source}/", recursive=False)
             for d in dirs:
                 latestpath = f"{REPORT_PATH}{source}/latest/"
                 if (d.object_name.casefold() == latestpath.casefold()) or (d.is_dir == False):
                     continue
                 path = f"{d.object_name}{STAT_FILE_NAME}"
-                s3ObjectInfo = {"bucket_name": GLEANER_MINIO_BUCKET, "object_name": path}
+                s3ObjectInfo = {"bucket_name": s3_config.GLEANERIO_MINIO_BUCKET, "object_name": path}
                 try:
-                   # resp = s3Client.getFile(path=path)
                     resp = s3Minio.getFileFromStore(s3ObjectInfo)
                     stat = json.loads(resp)
                     stat = pick(stat, 'source', 'sitemap', 'date', 'sitemap_count', 'summoned_count',
@@ -182,60 +236,49 @@ def loadstatsCommunity(context, task_tenant_sources) -> str:
                                 'graph_urn_count', 'missing_summon_graph_count')
                     stats.append(stat)
                 except Exception as ex:
-                    context.log.info(f"Failed to get source {source} for tennant {community_code}  {ex}")
-    except Exception as ex:
-        context.log.info(f"Failed to get tenant {community_code}  {ex}")
-    # for source in task_tenant_sources["tennant"]:
-    #     try:
-    #        # stat = s3Minio.getReportFile(GLEANER_MINIO_BUCKET,source.get("name"), STAT_FILE_NAME )
-    #        repo = community_code
-    #        dirs = s3Minio.listPath( path=f"{REPORT_PATH}{repo}/",recursive=False )
-    #        for d in dirs:
-    #            latestpath = f"{REPORT_PATH}{repo}/latest/"
-    #            if (d.object_name.casefold() == latestpath.casefold()) or (d.is_dir == False):
-    #                continue
-    #            path = f"/{d.object_name}{STAT_FILE_NAME}"
-    #
-    #            try:
-    #                resp = s3Minio.getFile(path=path)
-    #                stat = json.loads(resp)
-    #                stat = pick(stat, 'source', 'sitemap', 'date', 'sitemap_count', 'summoned_count',
-    #                            'missing_sitemap_summon_count',
-    #                            'graph_urn_count', 'missing_summon_graph_count')
-    #                stats.append(stat)
-    #            except Exception as ex:
-    #                logger.info(f"no missing graph report {source.get('name')}  {ex}")
-    #     except Exception as ex:
-    #         logger.info(f"Failed to get { source.get('name')}  {ex}")
-    context.log.info(stats)
-    df = pd.DataFrame(stats)
-    context.log.info(df)
-    # try:
-    #     os.mkdir(f"data/{community_code}")
-    # except FileExistsError:
-    #     logger.debug(f"directory data/{community_code} exists")
-    # except FileNotFoundError:
-    #     logger.error(f"error creating directory. Fix community name.  'data/{community_code}' ")
-    #df.to_csv(f"data/{community_code}/all_stats.csv")
+                    context.log.info(f"Failed to get report {path} for tenant {community_code}  {ex}")
+        except Exception as ex:
+            context.log.info(f"Failed to list reports for source {source} in tenant {community_code}  {ex}")
 
+    df = pd.DataFrame(stats)
     df_csv = df.to_csv()
 
-    # stringio = StringIO(df_csv)
-    # s3Client.upload_fileobj(stringio, s3_config.GLEANERIO_MINIO_BUCKET, f"data/{community_code}/all_stats.csv")
-    # humm, should we just have an EC utils resource
-    s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}", f"all_stats.csv", df_csv)
-    # with open(stringio, "rb") as f:
-    #     s3.upload_fileobj(f, s3.GLEANERIO_MINIO_BUCKET, f"data/all/all_stats.csv")
-    context.log.info(f"all_stats.csv uploaded using ec.datastore.putReportFile {s3_config.GLEANERIO_MINIO_BUCKET}tenant/{community_code} ")
-    #return df_csv # now checking return types
-
-    context.log.info(f"GLEANERIO_CSV_CONFIG_URL {GLEANERIO_CSV_CONFIG_URL}  ")
-    graphendpoint = g['summary_namespace']
-    report = generateReportStats(GLEANERIO_CSV_CONFIG_URL, s3_config.GLEANERIO_MINIO_BUCKET, s3Minio,
-                                _graphSummaryEndpoint(graphendpoint) , community_code)
-    bucket, object = s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}",
-                                           f"report_stats.json", report)
+    s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}",
+                          f"all_stats.csv", df_csv)
     context.log.info(
-        f"report_stats.json uploaded using ec.datastore.putReportFile {s3_config.GLEANERIO_MINIO_BUCKET}tenant/{community_code} ")
+        f"all_stats.csv uploaded using ec.datastore.putReportFile "
+        f"{s3_config.GLEANERIO_MINIO_BUCKET} tenant/{community_code} ")
 
-    return df_csv
+    # ---- source cards -> report_stats.json
+    # counts come from the shared source_release_counts asset. A source added to
+    # tenant.yaml since that last ran is counted here rather than reported as 0.
+    counts = dict(source_release_counts or {})
+    for name in names:
+        if name not in counts:
+            context.log.info(f"{name} is not in source_release_counts, counting it now")
+            counts[name] = release_record_count(s3_config, name, context.log)
+
+    sources = [sources_by_name[name] for name in names]
+    report = generateReportStats(sources, counts, community_code)
+
+    if sources:
+        s3Minio.putReportFile(s3_config.GLEANERIO_MINIO_BUCKET, f"tenant/{community_code}",
+                              f"report_stats.json", report)
+        context.log.info(
+            f"report_stats.json uploaded using ec.datastore.putReportFile "
+            f"{s3_config.GLEANERIO_MINIO_BUCKET} tenant/{community_code} ")
+    else:
+        # an empty report would overwrite a good one with []
+        context.log.warning(
+            f"community {community_code} resolved to no sources, "
+            f"leaving the existing report_stats.json alone")
+
+    return Output(
+        df_csv,
+        metadata={
+            "community": community_code,
+            "sources": len(names),
+            "records": sum(counts.get(name, 0) for name in names),
+            "sources_without_a_release": [n for n in names if not counts.get(n)],
+        },
+    )

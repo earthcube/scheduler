@@ -2,7 +2,9 @@ import json
 import os
 from typing import List, Any
 import pandas as pd
-from dagster import asset, get_dagster_logger, define_asset_job, AutoMaterializePolicy
+from io import StringIO
+from dagster import (asset, get_dagster_logger, define_asset_job, AutoMaterializePolicy,
+                     asset_check, AssetCheckExecutionContext, AssetCheckResult)
 from ec.datastore import s3
 from pydash import pick
 from ..utils import strtobool
@@ -86,6 +88,9 @@ def loadstatsHistory(context,source_list) -> str:
         except Exception as ex:
             logger.info(f"Failed to get { source.get('name')}  {ex}")
     df = pd.DataFrame(stats)
+    # source_list happens to create this, but nothing here guarantees the two
+    # ran in the same process
+    os.makedirs("data", exist_ok=True)
     df.to_csv(f"data/all_stats.csv")
     df_csv = df.to_csv()
     s3Minio.putReportFile(GLEANER_MINIO_BUCKET, "all", f"all_stats.csv", df_csv)
@@ -94,3 +99,64 @@ def loadstatsHistory(context,source_list) -> str:
     return df_csv
 
 
+# reports/{repo}/{date}/{filename}, per MinioDatastore.putReportFile
+STAT_HISTORY_OBJECT = f"{REPORT_PATH}all/latest/all_stats.csv"
+
+
+def _csv_data_row_count(csv_text) -> int:
+    """Data rows in a csv, header and index column excluded.
+
+    pandas writes an empty frame as "\n", which naive line counting scores as a
+    row, so parse it rather than splitting.
+    """
+    if not csv_text or not csv_text.strip():
+        return 0
+    try:
+        return len(pd.read_csv(StringIO(csv_text)))
+    except pd.errors.EmptyDataError:
+        return 0
+
+
+def _object_size(gleaner_s3, object_name):
+    """Size of an object, or None if it cannot be determined."""
+    try:
+        head = gleaner_s3.s3.get_client().head_object(
+            Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET, Key=object_name
+        )
+        return head.get("ContentLength")
+    except Exception as ex:
+        get_dagster_logger().info(f"Could not size {object_name}: {ex}")
+        return None
+
+
+def _non_zero_length_check_result(gleaner_s3, object_name):
+    size = _object_size(gleaner_s3, object_name)
+    metadata = {
+        "bucket_name": gleaner_s3.GLEANERIO_MINIO_BUCKET,
+        "object_name": object_name,
+    }
+    if size is not None:
+        metadata["size_bytes"] = size
+    return AssetCheckResult(
+        passed=size is not None and size > 0,
+        metadata=metadata,
+    )
+
+
+# Two checks rather than one, because they fail for different reasons and want
+# different fixes: the harvest produced no rows, versus the harvest produced
+# rows and the write to s3 did not land.
+@asset_check(asset=loadstatsHistory, name="non_zero_rows")
+def loadstatsHistory_non_zero_rows(
+    context: AssetCheckExecutionContext, loadstatsHistory
+) -> AssetCheckResult:
+    rows = _csv_data_row_count(loadstatsHistory)
+    return AssetCheckResult(passed=rows > 0, metadata={"data_rows": rows})
+
+
+@asset_check(asset=loadstatsHistory, name="non_zero_length",
+             required_resource_keys={"s3"})
+def loadstatsHistory_non_zero_length(
+    context: AssetCheckExecutionContext,
+) -> AssetCheckResult:
+    return _non_zero_length_check_result(context.resources.s3, STAT_HISTORY_OBJECT)
