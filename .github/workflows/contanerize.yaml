@@ -15,8 +15,8 @@ on:
       - main
       - dev
       - dev_eco
-      - v0_generated_code
-      - 173_dev_graphreport
+      - feature/*
+      - fix/*
     tags:
       - "v*.*.*"
   # so a build can be kicked off by hand on any branch
