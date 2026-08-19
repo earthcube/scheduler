@@ -7,6 +7,7 @@ from .gleaner_summon_assets import (
     spatial_release_quads,
     release_nabu_run_non_zero_length,
     release_summary_non_zero_length,
+    delete_stale_s3_files,
     SUMMARY_PATH,RELEASE_PATH,SPATIAL_PATH
 )
 from .gleaner_sources import (

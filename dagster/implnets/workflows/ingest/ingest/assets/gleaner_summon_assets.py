@@ -1,6 +1,7 @@
 # a test asset to see that all the resource configurations load.
 # basically runs the first step, of gleaner on geocodes demo datasets
 from typing import Any
+import io
 import json
 import pandas as pd
 import csv
@@ -8,8 +9,10 @@ import gc
 import shutil
 import tempfile
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from urllib.error import HTTPError
 from pathlib import Path
+import requests as _requests
 
 from dagster import (
     asset,op, Config, Output,AssetKey,
@@ -566,6 +569,171 @@ def bucket_urls(context):
     s3Minio.putReportFile(bucket, source_name, "bucketutil_urls.csv", bucketurls)
     get_dagster_logger().info(f"bucker urls report  returned  {r} ")
     return
+
+
+REPORT_PATH_PREFIX = "reports"
+
+
+def _check_url_status(url):
+    """Return the HTTP status code for *url*, or None on network/connection error.
+
+    Uses HEAD first; falls back to GET when the server returns 405 (Method Not Allowed).
+    A return value of ``None`` means the request could not be completed (timeout,
+    DNS failure, etc.) and the caller should treat the object as *keep*.
+    """
+    try:
+        resp = _requests.head(url, timeout=10, allow_redirects=True)
+        # Some servers don't support HEAD; fall back to GET
+        if resp.status_code == 405:
+            resp = _requests.get(url, timeout=10, allow_redirects=True, stream=True)
+        return resp.status_code
+    except Exception:
+        return None
+
+
+@asset(group_name="load", key_prefix=f"{PROJECT}_ingest",
+       deps=[load_report_s3, bucket_urls],
+       op_tags={"ingest": "report"},
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+       )
+def delete_stale_s3_files(context):
+    """Delete files from S3 that are no longer in the source sitemap (extra_in_summon)
+    and return any HTTP error other than 403.  URLs that return 403 (auth required) or
+    that cannot be reached (network error) are skipped so that harvested data is
+    preserved when there is a transient connectivity problem.  A report of what was
+    deleted / skipped is written to ``reports/{source}/latest/deleted_s3.json``.
+    """
+    gleaner_s3 = context.resources.gleanerio.gs3
+    s3_resource = gleaner_s3.s3
+    s3Minio = utils_s3.MinioDatastore(
+        PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS, gleaner_s3.GLEANERIO_MINIO_PORT),
+        gleaner_s3.MinioOptions()
+    )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+    source_name = context.asset_partition_key_for_output()
+    logger = get_dagster_logger()
+
+    # Read the load_report_s3.json written by the load_report_s3 asset
+    report_key = f"{REPORT_PATH_PREFIX}/{source_name}/latest/load_report_s3.json"
+    try:
+        report_json = s3Minio.getFileFromStore({"bucket_name": bucket, "object_name": report_key})
+        load_report = json.loads(report_json)
+    except Exception as ex:
+        logger.error(f"delete_stale_s3_files: could not read {report_key}: {ex}")
+        raise
+
+    extra_urls = load_report.get("extra_in_summon", [])
+    logger.info(f"delete_stale_s3_files: {len(extra_urls)} extra URLs found in {source_name}")
+
+    if not extra_urls:
+        report = json.dumps({"source": source_name, "date": datetime.now(timezone.utc).isoformat(),
+                             "deleted_count": 0, "deleted": [],
+                             "skipped_count": 0, "skipped": []}, indent=2)
+        s3Minio.putReportFile(bucket, source_name, "deleted_s3.json", report)
+        return
+
+    # Read bucketutil_urls.csv to build a mapping from URL -> S3 object name
+    csv_key = f"{REPORT_PATH_PREFIX}/{source_name}/latest/bucketutil_urls.csv"
+    try:
+        csv_content = s3Minio.getFileFromStore({"bucket_name": bucket, "object_name": csv_key})
+        reader = csv.DictReader(io.StringIO(csv_content))
+        rows = list(reader)
+        fieldnames = reader.fieldnames or []
+    except Exception as ex:
+        logger.error(f"delete_stale_s3_files: could not read {csv_key}: {ex}")
+        raise
+
+    # Build a URL -> object_name map; the CSV produced by bucket_urls uses whatever
+    # columns listSummonedUrls returns.  The URL column is expected to be named 'url'.
+    url_col = "url"
+    # Detect the object key column: prefer 'object_name', fall back to 'sha'
+    if "object_name" in fieldnames:
+        key_col = "object_name"
+    elif "sha" in fieldnames:
+        key_col = "sha"
+    else:
+        other_cols = [c for c in fieldnames if c != url_col]
+        key_col = other_cols[0] if other_cols else None
+
+    if key_col is None:
+        logger.error(f"delete_stale_s3_files: cannot determine object key column in {csv_key}")
+        raise ValueError(f"Cannot determine object key column in {csv_key}")
+
+    url_to_key = {str(row.get(url_col, "")): str(row.get(key_col, "")) for row in rows}
+
+    s3_client = s3_resource.get_client()
+    deleted = []
+    skipped = []
+
+    extra_set = set(extra_urls)
+    for url in extra_set:
+        http_status = _check_url_status(url)
+
+        # None means a network/connection error — keep the object to be safe
+        if http_status is None:
+            reason = "network error (no response)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": None})
+            continue
+
+        # 403 means auth-required — the resource may still exist, keep it
+        if http_status == 403:
+            reason = "HTTP 403 (auth required)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # 2xx/3xx — resource still accessible, keep it
+        if http_status < 400:
+            reason = f"HTTP {http_status} (resource accessible)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # Any other HTTP error (4xx except 403, 5xx) — treat as stale, delete
+        object_name = url_to_key.get(url)
+        if not object_name:
+            reason = f"HTTP {http_status} but no S3 key found"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # object_name may already be a full key (e.g. summoned/source/sha.jsonld)
+        # or just a sha; if it looks like a plain sha, prepend the standard prefix
+        if "/" not in object_name:
+            object_name = f"summoned/{source_name}/{object_name}.jsonld"
+
+        # Fetch creation date from S3 before deleting
+        created_at = None
+        try:
+            head = s3_client.head_object(Bucket=bucket, Key=object_name)
+            last_modified = head.get("LastModified")
+            if last_modified is not None:
+                created_at = last_modified.isoformat()
+        except Exception as ex:
+            logger.warning(f"delete_stale_s3_files: could not get metadata for {object_name}: {ex}")
+
+        try:
+            s3_client.delete_object(Bucket=bucket, Key=object_name)
+            logger.info(f"delete_stale_s3_files: deleted {object_name} ({url}) [HTTP {http_status}]")
+            deleted.append({"url": url, "object_name": object_name,
+                            "http_status": http_status, "created_at": created_at})
+        except Exception as ex:
+            logger.error(f"delete_stale_s3_files: failed to delete {object_name}: {ex}")
+
+    report_data = {
+        "source": source_name,
+        "date": datetime.now(timezone.utc).isoformat(),
+        "deleted_count": len(deleted),
+        "deleted": deleted,
+        "skipped_count": len(skipped),
+        "skipped": skipped,
+    }
+    report = json.dumps(report_data, indent=2)
+    s3Minio.putReportFile(bucket, source_name, "deleted_s3.json", report)
+    logger.info(f"delete_stale_s3_files: deleted {len(deleted)} files for {source_name}")
+    return
+
 
 # original code. inlined.
 # def _releaseUrl( source, path=RELEASE_PATH, extension="nq"):
