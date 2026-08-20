@@ -951,7 +951,7 @@ wheels = [
 [[package]]
 name = "earthcube-utilities"
 version = "0.2.3"
-source = { git = "https://github.com/earthcube/earthcube_utilities?subdirectory=earthcube_utilities&rev=feature%2Floadstats_fixes#df5b897f3cf7d6f2b237962eafa6491d591ed59b" }
+source = { git = "https://github.com/earthcube/earthcube_utilities?subdirectory=earthcube_utilities&rev=v0.2.3#a3f936c52aa9101c292dec08273ddc9b4f2a717f" }
 dependencies = [
     { name = "advertools" },
     { name = "jinja2" },
@@ -1183,7 +1183,7 @@ requires-dist = [
     { name = "dagster-webserver", specifier = ">=1.7.10" },
     { name = "dagstermill", specifier = ">=0.23.10" },
     { name = "docker", specifier = ">=6.1.0" },
-    { name = "earthcube-utilities", git = "https://github.com/earthcube/earthcube_utilities?subdirectory=earthcube_utilities&rev=feature%2Floadstats_fixes" },
+    { name = "earthcube-utilities", git = "https://github.com/earthcube/earthcube_utilities?subdirectory=earthcube_utilities&rev=v0.2.3" },
     { name = "ipython-genutils", specifier = "==0.2.0" },
     { name = "minio", specifier = "==7.1.13" },
     { name = "notebook" },
