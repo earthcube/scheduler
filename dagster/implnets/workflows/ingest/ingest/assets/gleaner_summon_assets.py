@@ -185,6 +185,35 @@ And how many made it into milled (this is how good the conversion at a single js
 It then compares what identifiers are in the S3 store (summon path), and the Named Graph URI's
 '''
 
+# graph urns used to come from a SPARQL query against GLEANERIO_GRAPH_NAMESPACE.
+# Nothing in this pipeline ever created that namespace or loaded anything into
+# it -- createNamespace only runs for tenant.yaml namespaces and per source temp
+# namespaces, and upload_release writes to the tenant main_namespace -- so the
+# asset queried an orphan namespace and was disabled in summon_asset_job because
+# of it. The release is exactly the set of named graphs the query was asking
+# for, and qlever loads from the release files anyway, so read it there instead.
+RELEASE_REPORT_KEY_RENAMES = {
+    "graph": "release",
+    "graph_urn_count": "release_urn_count",
+    "missing_summon_graph_count": "missing_summon_release_count",
+    "missing_summon_graph": "missing_summon_release",
+    "graph_sha_urn_time": "release_sha_urn_time",
+}
+
+
+def release_graph_urns(store):
+    """The named graph urns in a release -- what a graph loaded from it holds."""
+    return [g.value for g in store.named_graphs()]
+
+
+def _as_release_report(response, object_name):
+    """Rename the graph named keys, so the report does not read as a claim
+    about a live graph. It compares summon to release, one step upstream."""
+    renamed = {RELEASE_REPORT_KEY_RENAMES.get(k, k): v for k, v in response.items()}
+    renamed["release"] = object_name
+    return renamed
+
+
 @asset(
 key_prefix=f"{PROJECT}_ingest",
     group_name="load",
@@ -192,14 +221,10 @@ op_tags={"ingest": "report"},
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
   #  , backfill_policy=BackfillPolicy.single_run()
 )
-def load_report_graph(context):
-    gleaner_resource = context.resources.gleanerio
-    s3_resource = context.resources.gleanerio.gs3.s3
-    gleaner_s3 =  context.resources.gleanerio.gs3
-    gleaner_triplestore = context.resources.gleanerio.triplestore
+def load_report_release(context):
+    gleaner_s3 = context.resources.gleanerio.gs3
 
     source_name = context.asset_partition_key_for_output()
-    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
     source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
@@ -207,16 +232,29 @@ def load_report_graph(context):
                                        gleaner_s3.MinioOptions()
                                       )
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+    object_name = f"{RELEASE_PATH}/{source_name}_release.nq"
 
-    graphendpoint = gleaner_triplestore.GraphEndpoint(gleaner_resource.GLEANERIO_GRAPH_NAMESPACE)
-    milled = False
-    summon = True
-    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=False) # summon false. we want the graph
-    r = str('load repoort graph returned value:{}'.format(returned_value))
+    try:
+        with _release_store(gleaner_s3, object_name) as store:
+            graph_urns = release_graph_urns(store)
+    except Exception as ex:
+        # a source that has never been harvested is a normal state, and
+        # release_nabu_run_non_zero_length is where a missing release gets
+        # reported properly. Report zero urns rather than failing the partition.
+        context.log.warning(f"Could not read {object_name}, reporting no urns: {ex}")
+        graph_urns = []
+
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio,
+                                   milled=False, summon=False, graph_urns=graph_urns)
+    returned_value = _as_release_report(returned_value, object_name)
+
     report = json.dumps(returned_value, indent=2)
-    s3Minio.putReportFile(bucket, source_name, "load_report_graph.json", report)
-    get_dagster_logger().info(f"load  report to graph returned  {r} ")
+    s3Minio.putReportFile(bucket, source_name, "load_report_release.json", report)
+    get_dagster_logger().info(
+        f"load report from release {object_name}: {len(graph_urns)} urns")
     return
+
+
 class S3ObjectInfo:
     bucket_name=""
     object_name=""

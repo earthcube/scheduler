@@ -122,7 +122,7 @@ REPORT_PATH = "reports/"
 COMMUNITY_PATH = "reports/community/"
 TASKS_PATH="tasks/"
 ORG_PATH = "orgs/"
-STAT_FILE_NAME = "load_report_graph.json"
+STAT_FILE_NAME = "load_report_release.json"
 
 def _pythonMinioUrl(url):
 
@@ -202,15 +202,23 @@ def loadstatsCommunity(context, task_tenant_sources, task_sources_config,
     which sources are in the community, gleanerconfig.yaml for what each source
     is, and the releases for how many records it has.
     """
-    logger = get_dagster_logger()
-    s3_config = context.resources.triplestore.s3
-    s3Minio = s3.MinioDatastore(_pythonMinioUrl(s3_config.GLEANERIO_MINIO_ADDRESS), MINIO_OPTIONS)
     community_code = context.partition_key
 
+    # before anything else, so a partition for a community that no longer
+    # exists costs nothing
     tenant = pydash.find(task_tenant_sources["tenant"],
                          lambda t: t['community'] == community_code)
     if tenant is None:
-        raise Exception(f"community {community_code} is not in the tenant file")
+        # community_sensor adds dynamic partitions and never removes them, so a
+        # community deleted from tenant.yaml leaves its partition behind and it
+        # would otherwise fail on every run from here on.
+        context.log.warning(
+            f"community {community_code} is no longer in the tenant file, skipping")
+        return Output("", metadata={"community": community_code,
+                                    "skipped": "not in the tenant file"})
+
+    s3_config = context.resources.triplestore.s3
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(s3_config.GLEANERIO_MINIO_ADDRESS), MINIO_OPTIONS)
 
     sources_by_name = _sources_by_name(task_sources_config)
     names = _expand_tenant_sources(tenant.get("sources"), sources_by_name, context.log)
@@ -233,7 +241,7 @@ def loadstatsCommunity(context, task_tenant_sources, task_sources_config,
                     stat = json.loads(resp)
                     stat = pick(stat, 'source', 'sitemap', 'date', 'sitemap_count', 'summoned_count',
                                 'missing_sitemap_summon_count',
-                                'graph_urn_count', 'missing_summon_graph_count')
+                                'release_urn_count', 'missing_summon_release_count')
                     stats.append(stat)
                 except Exception as ex:
                     context.log.info(f"Failed to get report {path} for tenant {community_code}  {ex}")

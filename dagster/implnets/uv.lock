@@ -950,8 +950,8 @@ wheels = [
 
 [[package]]
 name = "earthcube-utilities"
-version = "0.2.2"
-source = { git = "https://github.com/earthcube/earthcube_utilities?subdirectory=earthcube_utilities&rev=feature%2Floadstats_fixes#afde641d1a469aeeedecbaade4b0c5642ba91ed2" }
+version = "0.2.3"
+source = { git = "https://github.com/earthcube/earthcube_utilities?subdirectory=earthcube_utilities&rev=feature%2Floadstats_fixes#df5b897f3cf7d6f2b237962eafa6491d591ed59b" }
 dependencies = [
     { name = "advertools" },
     { name = "jinja2" },

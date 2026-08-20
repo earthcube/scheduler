@@ -83,3 +83,38 @@ def test_duplicates_are_removed_and_order_preserved():
 def test_no_sources_resolves_to_nothing():
     assert _expand_tenant_sources(None, _sources_by_name(SOURCES_CONFIG), _Logger()) == []
     assert _expand_tenant_sources([], _sources_by_name(SOURCES_CONFIG), _Logger()) == []
+
+
+
+def test_a_community_missing_from_the_tenant_file_skips_instead_of_failing():
+    """community_sensor adds dynamic partitions and never removes them, so a
+    community deleted from tenant.yaml leaves a partition that would otherwise
+    fail on every run. On dev this was an IndexError on t[0].
+
+    The stub resource raises on any attribute access, so this also pins that
+    the skip happens before any resource is touched.
+    """
+    from dagster import build_asset_context
+
+    from workflows.tasks.tasks.assets.tenants import loadstatsCommunity
+
+    class _Unusable:
+        """Raises on the attributes the asset would use. Dagster introspects
+        private ones while building the context, so those fall through."""
+
+        def __getattr__(self, name):
+            if name.startswith("_"):
+                raise AttributeError(name)
+            raise AssertionError(
+                f"a skipped partition must not touch resources (asked for {name})")
+
+    tenants = {"tenant": [{"community": "geocodesall", "sources": ["all"]}]}
+
+    context = build_asset_context(partition_key="dev",
+                                  resources={"triplestore": _Unusable()})
+    result = loadstatsCommunity(context, tenants, SOURCES_CONFIG, {})
+
+    assert result.value == ""
+    # dagster wraps metadata values
+    assert result.metadata["skipped"].value == "not in the tenant file"
+    assert result.metadata["community"].value == "dev"

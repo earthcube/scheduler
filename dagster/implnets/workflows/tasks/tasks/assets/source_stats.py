@@ -24,7 +24,7 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
 REPORT_PATH = "reports/"
 TASKS_PATH="tasks/"
 ORG_PATH = "orgs/"
-STAT_FILE_NAME = "load_report_graph.json"
+STAT_FILE_NAME = "load_report_release.json"
 def _pythonMinioUrl(url):
 
     if (url.endswith(".amazonaws.com")):
@@ -81,7 +81,7 @@ def loadstatsHistory(context,source_list) -> str:
                    stat = json.loads(resp)
                    stat = pick(stat, 'source', 'sitemap', 'date', 'sitemap_count', 'summoned_count',
                                'missing_sitemap_summon_count',
-                               'graph_urn_count', 'missing_summon_graph_count')
+                               'release_urn_count', 'missing_summon_release_count')
                    stats.append(stat)
                except Exception as ex:
                    logger.info(f"no missing graph report {source.get('name')}  {ex}")
