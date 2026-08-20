@@ -30,7 +30,7 @@ dependencies = [
   "pyoxigraph>=0.4",
   # if we want to use an non-released branch, pin the commit, eg:
   # "earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@a3acbe4#subdirectory=earthcube_utilities",
-  "earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@199_dev_fixgraphreports#subdirectory=earthcube_utilities",
+  "earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@feature/loadstats_fixes#subdirectory=earthcube_utilities",
 ]
 
 [dependency-groups]

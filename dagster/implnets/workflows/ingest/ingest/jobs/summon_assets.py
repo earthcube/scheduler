@@ -12,10 +12,13 @@ import os
 PROJECT=os.environ.get('PROJECT')
 
 
-# disabling load_graph report until we can move it to tenant build runs.
+# load_report_release is back in: it was disabled because it queried
+# GLEANERIO_GRAPH_NAMESPACE, a namespace nothing here creates or loads. It now
+# reads the release it already depends on, so there is no graph to wait for.
 summon_asset_job = define_asset_job(
     name=f"{PROJECT}_summon_and_release_job",
     selection=AssetSelection.assets(validate_sitemap_url, gleanerio_run, release_nabu_run, load_report_s3,
+                                    load_report_release,
                                     release_summarize, spatial_release_quads, identifier_stats, bucket_urls,
                                     graph_stats_report #, upload_release
                                     ),

@@ -1,5 +1,6 @@
 import os
-from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext
+from dagster import (Definitions, load_assets_from_modules,
+                     load_asset_checks_from_modules, EnvVar, RunFailureSensorContext)
 from dagster_aws.s3 import  S3Resource
 #from dagster_slack import SlackResource, make_slack_on_run_failure_sensor
 from . import assets
@@ -34,6 +35,7 @@ def _awsEndpointAddress(url, port=None, use_ssl=True):
         return  f"{protocol}://{url}"
 
 all_assets = load_assets_from_modules([assets])
+all_asset_checks = load_asset_checks_from_modules([assets])
 # as noted: https://docs.dagster.io/concepts/assets/software-defined-assets#from-assets-in-a-sub-module
 # tried to use load_assets_from_modules([assets] , key_prefix=["tasks"])
 # this meant that the prefix had to included in the code... so, just add it individually
@@ -56,7 +58,8 @@ minio=gleanerS3Resource(
     GLEANERIO_MINIO_ACCESS_KEY=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
     GLEANERIO_CONFIG_PATH=os.environ.get('GLEANERIO_CONFIG_PATH'),
-    GLEANERIO_TENANT_FILENAME=os.environ.get('GLEANERIO_TENANT_FILENAME')
+    GLEANERIO_TENANT_FILENAME=os.environ.get('GLEANERIO_TENANT_FILENAME'),
+    GLEANERIO_SOURCES_FILENAME=os.environ.get('GLEANERIO_SOURCES_FILENAME', 'gleanerconfig.yaml')
 
 )
 triplestore=BlazegraphResource(
@@ -87,6 +90,7 @@ deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 
 defs = Definitions(
     assets=all_assets,
+    asset_checks=all_asset_checks,
     schedules=weekly_data_schedule,
      resources=resources[deployment_name],
     sensors=[community_sensor, tenant_s3_sensor, slack_on_run_failure]
