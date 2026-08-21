@@ -60,6 +60,15 @@ both engines.
   project's schedule, and let the qlever rebuild (pipeline project) or a
   per-community Qleverfile point at the now-primary release files.
 
+## Deployment image
+
+The simple stack (geocodes `deployment/simple`) runs webserver, daemon, and
+both code locations from one image: **`nsfearthcube/dagster-summon`**, built
+from `build/Dockerfile_summon` by the `containerize_summon.yaml` GitHub
+workflow. It pip-installs `pipeline` and `pysummon` as top-level packages
+(what workspace.yaml's `python_module` entries load). The legacy
+`dagster-gleanerio` images are unchanged and remain for the gleaner stack.
+
 ## Running locally
 
 ```

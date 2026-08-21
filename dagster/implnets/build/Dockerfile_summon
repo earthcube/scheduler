@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+# dagster-summon: the image for the "simple" deployment stack
+# (geocodes/deployment/simple). One image serves the dagster webserver, the
+# daemon, and both in-process code locations — workspace.yaml loads
+# pipeline.definitions and pysummon.definitions as python_modules, so both
+# packages are pip-installed here as top-level packages.
+#
+# Harvesting browsers are remote: pysummon connects crawl4ai/Playwright to
+# the chromedp/headless-shell service over CDP, or uses crawl4ai's HTTP-only
+# strategy. Do NOT add `playwright install` or `crawl4ai-setup` here.
+
+# git for the git-pinned requirements (earthcube-utilities); gcc for wheels
+# that need compiling on arm64
+RUN apt-get update && apt-get install -y git gcc python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --upgrade pip
+
+## dependency layer first, code layers after, for build caching
+COPY ./requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+
+COPY ./workflows/pipeline /usr/src/pkgs/pipeline
+COPY ./workflows/pysummon /usr/src/pkgs/pysummon
+RUN pip install /usr/src/pkgs/pipeline /usr/src/pkgs/pysummon
+
+COPY ./deployment/dagster.yaml /usr/src/app/
+
+WORKDIR /usr/src/app
+ENV DAGSTER_HOME=/usr/src/app
+
+# the daemon service overrides this command in docker-compose
+CMD ["dagster-webserver", "-w", "workspace.yaml", "-h", "0.0.0.0", "-p", "3000"]

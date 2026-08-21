@@ -1,0 +1,67 @@
+name: Dockerize dagster-summon
+# Builds the image for the "simple" deployment stack
+# (geocodes/deployment/simple): dagster webserver + daemon + the pipeline
+# and pysummon packages pip-installed for in-process code locations.
+# The legacy dagster-gleanerio images are built by contanerize.yaml and are
+# unaffected by this workflow.
+on:
+  push:
+    branches:
+      - main
+      - dev
+      # parallel-run testing branch; remove once merged
+      - claude/geocodes-deployment-stack-3ciqh3
+    tags:
+      - "v*.*.*"
+
+defaults:
+  run:
+    working-directory: dagster/implnets
+
+jobs:
+  build_summon:
+    name: Dockerize dagster-summon
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set variables
+        run: |
+            REGISTRY_IMAGE=nsfearthcube/dagster-summon
+            echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
+        working-directory: /
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          flavor: |
+            latest=true
+          tags: |
+            type=ref,event=tag
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          file: ./build/Dockerfile_summon
+          context: "{{defaultContext}}:dagster/implnets"
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+
+      - name: Image digest
+        run: echo ${{ steps.build.outputs.digest }}

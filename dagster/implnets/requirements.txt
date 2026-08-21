@@ -36,7 +36,10 @@ crawl4ai>=0.7
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@f3f100a#subdirectory=earthcube_utilities
 # this egg thing had issues.
 #earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@dev#egg=earthcube_utilities&subdirectory=earthcube_utilities
-earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@199_dev_fixgraphreports#subdirectory=earthcube_utilities
+# the 199_dev_fixgraphreports branch was merged and deleted; pin the dev
+# commit it landed in (immutable sha — dead branch refs break image builds)
+earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@f9f508f0250c8548392696c4e0efaac68114f4a4#subdirectory=earthcube_utilities
+#earthcube-utilities @ git+https://github.com/earthcube/earthcube_utilities@199_dev_fixgraphreports#subdirectory=earthcube_utilities
 
 
 # if we want to use an non-released branch 2c1dcab is the commit
