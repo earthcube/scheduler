@@ -10,7 +10,6 @@ chromedp/headless-shell container; no browser is installed in this image.
 import json
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
 import requests
@@ -109,16 +108,10 @@ def extract_jsonld(html):
     return docs
 
 
-def fetch_page(url, accept=DEFAULT_ACCEPT, timeout=DEFAULT_TIMEOUT):
-    """Fetch one page and return its JSON-LD documents.
-
-    A response that is already JSON(-LD) is used directly (sources whose
-    sitemap points at .json/.jsonld resources); HTML goes through
-    extract_jsonld."""
-    resp = _get(url, accept=accept, timeout=timeout)
-    resp.raise_for_status()
-    content_type = resp.headers.get("Content-Type", "")
-    body = resp.text
+def docs_from_body(body, content_type=""):
+    """JSON-LD documents from a response body: a body that is already
+    JSON(-LD) is used directly (sources whose sitemap points at
+    .json/.jsonld resources); anything else goes through extract_jsonld."""
     if "json" in content_type or body.lstrip()[:1] in ("{", "["):
         try:
             doc = _loads_tolerant(body)
@@ -129,6 +122,13 @@ def fetch_page(url, accept=DEFAULT_ACCEPT, timeout=DEFAULT_TIMEOUT):
         except Exception:
             pass  # fall through and try HTML extraction
     return extract_jsonld(body)
+
+
+def fetch_page(url, accept=DEFAULT_ACCEPT, timeout=DEFAULT_TIMEOUT):
+    """Fetch one page and return its JSON-LD documents."""
+    resp = _get(url, accept=accept, timeout=timeout)
+    resp.raise_for_status()
+    return docs_from_body(resp.text, resp.headers.get("Content-Type", ""))
 
 
 class HeadlessRenderer:
@@ -173,14 +173,19 @@ class HeadlessRenderer:
             self._playwright = None
 
 
-def summon_source(source, sink, summoner=None, renderer=None, logger=None):
+def summon_source(source, sink, summoner=None, renderer=None, engine=None,
+                  logger=None):
     """Harvest one source and hand every JSON-LD doc to sink(doc, page_url).
 
     source:   a gleanerconfig source entry (sourcetype, url, headless,
               headlesswait, delay, acceptcontenttype, ...)
     sink:     callable(doc: dict, url: str) — the asset layer writes S3
     summoner: the gleanerconfig 'summoner' section ({threads: N, ...})
-    renderer: HeadlessRenderer (required when source.headless is true)
+    renderer: HeadlessRenderer (required when source.headless is true and
+              no engine is given — the default native engine uses it)
+    engine:   fetch engine with fetch_all(urls, *, accept, headless,
+              headlesswait, delay_ms, threads, logger) yielding FetchResult;
+              None means the native requests/Playwright engine
 
     Returns SummonStats.
     """
@@ -210,49 +215,30 @@ def summon_source(source, sink, summoner=None, renderer=None, logger=None):
     stats.sitemap_urls = len(urls)
     log(f"{source['name']}: {len(urls)} urls in sitemap")
 
-    if headless and renderer is None:
-        raise ValueError(
-            f"source {source.get('name')} requires headless rendering but no "
-            "renderer was provided (is the headless service running?)")
+    if engine is None:
+        if headless and renderer is None:
+            raise ValueError(
+                f"source {source.get('name')} requires headless rendering but no "
+                "renderer was provided (is the headless service running?)")
+        from .engines.native import NativeEngine
+        engine = NativeEngine(renderer=renderer)
 
     # a per-request delay forces sequential fetching (politeness);
     # headless also runs sequentially over one CDP connection
     threads = 1 if (delay_ms or headless) else int(summoner.get("threads") or DEFAULT_THREADS)
 
-    def fetch_one(url):
-        if headless:
-            html = renderer.render(url, headlesswait=headlesswait)
+    for result in engine.fetch_all(
+            urls, accept=accept, headless=headless, headlesswait=headlesswait,
+            delay_ms=delay_ms, threads=threads, logger=log):
+        if result.error is not None:
+            stats.pages_failed += 1
+            stats.failed_urls.append(result.url)
+            log(f"fetch failed {result.url}: {result.error}")
+            continue
+        stats.pages_fetched += 1
+        if result.rendered:
             stats.headless_rendered += 1
-            return extract_jsonld(html)
-        return fetch_page(url, accept=accept)
-
-    def handle(url):
-        docs = fetch_one(url)
-        for doc in docs:
-            sink(doc, url)
-        return len(docs)
-
-    if threads == 1:
-        for url in urls:
-            try:
-                stats.docs += handle(url)
-                stats.pages_fetched += 1
-            except Exception as e:
-                stats.pages_failed += 1
-                stats.failed_urls.append(url)
-                log(f"fetch failed {url}: {e}")
-            if delay_ms:
-                time.sleep(delay_ms / 1000.0)
-    else:
-        with ThreadPoolExecutor(max_workers=threads) as pool:
-            futures = {pool.submit(handle, url): url for url in urls}
-            for future in as_completed(futures):
-                url = futures[future]
-                try:
-                    stats.docs += future.result()
-                    stats.pages_fetched += 1
-                except Exception as e:
-                    stats.pages_failed += 1
-                    stats.failed_urls.append(url)
-                    log(f"fetch failed {url}: {e}")
+        for doc in result.docs or []:
+            sink(doc, result.url)
+            stats.docs += 1
     return stats

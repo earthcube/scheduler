@@ -10,6 +10,9 @@ setup(
         "beautifulsoup4",
         "lxml",
         "playwright",
+        # default fetch engine; connects over CDP or uses its HTTP-only
+        # strategy, so no `crawl4ai-setup` browser download is needed
+        "crawl4ai>=0.7",
         "orjson",
         "pyyaml",
         # shared pure modules (jsonld_utils, steps, reporting, rdf_utils);

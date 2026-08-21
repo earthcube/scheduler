@@ -20,15 +20,32 @@ re3data/wikidata `@id` found in their own identifier/sameAs/url values;
 skolemize mints deterministic IRIs for whatever is left). Overridable per
 source in `pipelineconfig.yaml`, same file the pipeline project reads.
 
+## Fetch engines
+
+Harvesting runs through a pluggable fetch engine (`pysummon/engines/`):
+
+- **crawl4ai** (default): non-headless sources use crawl4ai's HTTP-only
+  strategy (httpx, no browser); headless sources connect its browser over
+  CDP. Its dispatcher adds politeness delays and **retry with backoff on
+  429/503**. Do not run `crawl4ai-setup` — no local browser is needed.
+- **native**: the original requests + ThreadPoolExecutor path, with
+  Playwright `connect_over_cdp` for headless sources. Also the automatic
+  fallback (with a logged warning) when crawl4ai isn't installed.
+
+Select globally in gleanerconfig's `summoner:` section (`engine: crawl4ai`
+or `engine: native`) or per source with `fetcher: native` /
+`fetcher: crawl4ai` on the source entry (gleaner ignores the extra key).
+The asset's `engine` metadata records which one a run used.
+
 ## Headless sources
 
 Sources flagged `headless: true` in gleanerconfig.yaml render through a
-`chromedp/headless-shell` container over CDP (Playwright
-`connect_over_cdp`) — no chromium in the Dagster image. Endpoint:
-`PYSUMMON_HEADLESS_ENDPOINT` (default `http://headless:9222`).
-Per-source `headlesswait` and `delay` are honored; `delay` or `headless`
-forces sequential fetching, otherwise the summoner uses the gleanerconfig
-`summoner.threads` (default 5).
+`chromedp/headless-shell` container over CDP — no chromium in the Dagster
+image. Endpoint: `PYSUMMON_HEADLESS_ENDPOINT` (default
+`http://headless:9222`). Per-source `headlesswait` and `delay` are honored;
+`delay` or `headless` forces sequential fetching, otherwise the summoner
+uses the gleanerconfig `summoner.threads` (default 5). These knobs apply to
+both engines.
 
 ## Parallel running & promotion
 

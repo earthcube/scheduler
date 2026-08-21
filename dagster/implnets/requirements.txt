@@ -21,12 +21,14 @@ pyld
 rdflib
 pandas
 # pysummon workflow (workflows/pysummon): python summoner replacing Gleaner.
-# playwright connects to the remote headless-shell over CDP; no browser
-# download needed in this image (do NOT run `playwright install`).
+# playwright and crawl4ai connect to the remote headless-shell over CDP; no
+# browser download needed in this image (do NOT run `playwright install` or
+# `crawl4ai-setup` — non-headless sources use crawl4ai's HTTP-only strategy).
 playwright
 beautifulsoup4
 lxml
 requests
+crawl4ai>=0.7
 
 
 #earthcube-utilities>=0.1.28

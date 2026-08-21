@@ -44,6 +44,27 @@ def validate_sitemap_url(context):
         return source['url']
 
 
+def _build_engine(context, source, summoner_cfg):
+    """Pick the fetch engine for a source: per-source `fetcher:` overrides
+    the summoner section's `engine:` (default crawl4ai). Returns
+    (engine, name); engine None means the native path inside summon_source.
+    Falls back to native with a warning when crawl4ai is not installed."""
+    name = (source.get("fetcher") or summoner_cfg.get("engine")
+            or "crawl4ai").lower()
+    if name == "crawl4ai":
+        try:
+            from ..engines.crawl4ai_engine import Crawl4aiEngine, _imports
+            _imports()
+        except ImportError as e:
+            context.log.warning(
+                f"crawl4ai engine requested but not importable ({e}); "
+                "falling back to native fetch engine")
+            return None, "native (crawl4ai unavailable)"
+        cdp = context.resources.headless.HEADLESS_ENDPOINT
+        return Crawl4aiEngine(cdp_endpoint=cdp), "crawl4ai"
+    return None, "native"
+
+
 @asset(group_name="summon", key_prefix=PREFIX,
        op_tags={"ingest": "summon"},
        deps=[validate_sitemap_url],
@@ -70,13 +91,14 @@ def summon_source(context) -> Output[Any]:
             content_type="application/ld+json",
             metadata={"url": url, "date": date, "summoner": "pysummon"})
 
+    engine, engine_name = _build_engine(context, source, summoner_cfg)
     renderer = None
-    if source.get("headless"):
+    if engine is None and source.get("headless"):
         renderer = context.resources.headless.renderer()
     try:
         stats = summon_lib.summon_source(
             source, sink, summoner=summoner_cfg, renderer=renderer,
-            logger=lambda msg: context.log.info(msg))
+            engine=engine, logger=lambda msg: context.log.info(msg))
     finally:
         if renderer is not None:
             renderer.close()
@@ -87,6 +109,7 @@ def summon_source(context) -> Output[Any]:
 
     return Output(f"{SUMMONED_PATH}/{source_name}/", metadata={
         "source": source_name,
+        "engine": engine_name,
         "sitemap_urls": stats.sitemap_urls,
         "pages_fetched": stats.pages_fetched,
         "pages_failed": stats.pages_failed,
