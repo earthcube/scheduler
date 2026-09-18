@@ -277,6 +277,10 @@ def _construct_to_quads(ntriples_text, graph_iri):
     return "\n".join(quads) + ("\n" if quads else "")
 
 
+def _count_construct_rows(ntriples_text):
+    return sum(1 for line in ntriples_text.splitlines() if line.strip())
+
+
 def _bulk_load(store, release):
     """Load an n-quads release, from bytes or a readable, into ``store``.
 
@@ -505,10 +509,16 @@ def spatial_release_quads(context):
     graph_iri = SPATIAL_GRAPH_NAMESPACE.format(source=source_name)
     try:
         with _release_store(gleaner_s3, f"{RELEASE_PATH}/{source_name}_release.nq") as release_store:
-            spatial_nq = "".join(
-                _construct_to_quads(_run_construct_query(release_store, _spatial_query_text(query_file)), graph_iri)
-                for query_file in SPATIAL_QUERY_FILES
-            )
+            spatial_parts = []
+            for query_file in SPATIAL_QUERY_FILES:
+                query_text = _spatial_query_text(query_file)
+                ntriples_text = _run_construct_query(release_store, query_text)
+                row_count = _count_construct_rows(ntriples_text)
+                get_dagster_logger().info(
+                    f"Spatial. {source_name} {query_file}: {row_count} construct rows"
+                )
+                spatial_parts.append(_construct_to_quads(ntriples_text, graph_iri))
+            spatial_nq = "".join(spatial_parts)
         objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"
         # a source with no spatial coverage produces no quads. writing that as an
         # empty object just publishes a zero byte file for nabu to pick up, so
