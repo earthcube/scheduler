@@ -1,0 +1,557 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="../README_LOCAL_DEVELOPMENT/" rel="prev"/>
+<link href="../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.7" name="generator"/>
+<title>Troubleshooting Workflows - Gleaner IO Scheduler</title>
+<link href="../assets/stylesheets/main.ec1eaa64.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#monitoring-workfows">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Gleaner IO Scheduler" class="md-header__button md-logo" data-md-component="logo" href=".." title="Gleaner IO Scheduler">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Gleaner IO Scheduler
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Troubleshooting Workflows
+            
+          </span>
+</div>
+</div>
+</div>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Gleaner IO Scheduler" class="md-nav__button md-logo" data-md-component="logo" href=".." title="Gleaner IO Scheduler">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+    Gleaner IO Scheduler
+  </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_1" type="checkbox"/>
+<label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+<span class="md-ellipsis">
+    
+  
+    Gleaner IO Scheduler
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_1_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_1">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    Gleaner IO Scheduler
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="..">
+<span class="md-ellipsis">
+    
+  
+    Scheduler
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../ingest_workflow/">
+<span class="md-ellipsis">
+    
+  
+    Ingest Workflow
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../add_containers.md">
+<span class="md-ellipsis">
+    
+  
+    Add Containers
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../eco_deploy/">
+<span class="md-ellipsis">
+    
+  
+    Scheduler Deployment
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_1_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_1_5" id="__nav_1_5_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_1_5_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_1_5">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../README_LOCAL_DEVELOPMENT/">
+<span class="md-ellipsis">
+    
+  
+    Local Development
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    
+  
+    Troubleshooting Workflows
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    
+  
+    Troubleshooting Workflows
+  
+
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#scheduler-interface">
+<span class="md-ellipsis">
+      
+        scheduler interface
+      
+    </span>
+</a>
+<nav aria-label="scheduler interface" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#check-the-run-interface">
+<span class="md-ellipsis">
+      
+        check the run interface
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#portainer-status">
+<span class="md-ellipsis">
+      
+        portainer status
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#issues">
+<span class="md-ellipsis">
+      
+        Issues
+      
+    </span>
+</a>
+<nav aria-label="Issues" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#why-did-it-fail">
+<span class="md-ellipsis">
+      
+        why did it fail
+      
+    </span>
+</a>
+<nav aria-label="why did it fail" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#sitemap-issue">
+<span class="md-ellipsis">
+      
+        Sitemap issue
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#409_error">
+<span class="md-ellipsis">
+      
+        409_error
+      
+    </span>
+</a>
+<nav aria-label="409_error" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#source_not_found">
+<span class="md-ellipsis">
+      
+        source_not_found
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#sumarize-is-there-data">
+<span class="md-ellipsis">
+      
+        sumarize is there data
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#scheduler-interface">
+<span class="md-ellipsis">
+      
+        scheduler interface
+      
+    </span>
+</a>
+<nav aria-label="scheduler interface" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#check-the-run-interface">
+<span class="md-ellipsis">
+      
+        check the run interface
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#portainer-status">
+<span class="md-ellipsis">
+      
+        portainer status
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#issues">
+<span class="md-ellipsis">
+      
+        Issues
+      
+    </span>
+</a>
+<nav aria-label="Issues" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#why-did-it-fail">
+<span class="md-ellipsis">
+      
+        why did it fail
+      
+    </span>
+</a>
+<nav aria-label="why did it fail" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#sitemap-issue">
+<span class="md-ellipsis">
+      
+        Sitemap issue
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#409_error">
+<span class="md-ellipsis">
+      
+        409_error
+      
+    </span>
+</a>
+<nav aria-label="409_error" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#source_not_found">
+<span class="md-ellipsis">
+      
+        source_not_found
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#sumarize-is-there-data">
+<span class="md-ellipsis">
+      
+        sumarize is there data
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1 id="monitoring-workfows">Monitoring workfows</h1>
+<h2 id="scheduler-interface">scheduler interface</h2>
+<h3 id="check-the-run-interface">check the run interface</h3>
+<p>http://localhost:3000/runs</p>
+<p>If there is a failure, click on the runid of the run, then you can look at the run log</p>
+<h2 id="portainer-status">portainer status</h2>
+<p>The gleaner and nabu are run as services are prefixed with sch_
+pattern is</p>
+<p>sch_PROJECT_step</p>
+<p>so if it looks like something is not working, find the container starting with sch_project_step,</p>
+<p>then go into a terminal, </p>
+<p>you may need to use bin/sh</p>
+<pre class="highlight"><code class="language-shell">cd logs
+ls -l 
+tail some log name</code></pre>
+<h2 id="issues">Issues</h2>
+<div class="mermaid">---
+title: Some Debugging Logic
+---
+flowchart TB
+    Failed[Failed]
+    409_error[HTTP 409 error - dupe container]
+    source_not_found[Missing source in a gleaner config two for now]
+    logs[logs in minio]
+    s3[ did data make it to s3]
+
+</div>
+<h3 id="why-did-it-fail">why did it fail</h3>
+<p>Server:
+* is disk full... [find in minio logs]
+Basic Source issues
+* does sitemap exist [ check url]
+* do urls in sitemap have jsonld [ from sitemap check some urls on validator.schema.org ]
+* are the JSONLD's types we handle [@type dataset, datacatalog]</p>
+<p>Basic Failure in gleaner
+* Nonexistent partition keys [ add source gleaner configs, and run s3 job manually if needed ]
+* 409_error[HTTP 409 error - dupe container running in portainer, remove old container]
+* source_not_found[Missing source in a gleaner config two for now]
+* logs[logs in minio]
+* s3[ did data make it to s3]</p>
+<p>release
+* is there data in s3
+* is there a release file in s3</p>
+<p>summarize
+* is there data in s3
+* is this data a dataset?</p>
+<h4 id="sitemap-issue">Sitemap issue</h4>
+<p><code>``{"file":"/home/runner/work/gleaner/gleaner/internal/summoner/acquire/resources.go:75","func":"github.com/gleanerio/gleaner/internal/summoner/acquire.ResourceURLs","level":"error","msg":"Error getting sitemap urls for: wodbXML syntax error on line 1800: element \u003clink\u003e closed by \u003c/head\u003e","time":"2024-11-21T17:44:43Z"}
+                                                                                                                                                                                                                                                                         logs/gleaner-runstats-2024-11-21-17-44-43.log                                                       0000644 0000000 0000000 00000000541 14717670613 016147  0                                                                                                    ustar 00                                                                0000000 0000000                                                                                                                                                                        RunStats:
+  Start: 2024-11-21 17:44:41.875835094 +0000 UTC m=+0.627571534
+  Reason: Complete
+  Soruce:
+    - name: wodb
+      Start: 2024-11-21 17:44:43.81414505 +0000 UTC m=+2.565881545
+      End: 2024-11-21 17:44:43.874671482 +0000 UTC m=+2.626407982
+      SitemapCount: 0 
+      SitemapHttpError: 0 
+      SitemapIssues: 0 
+      SitemapSummoned: 0 
+                                                                                                                                                               logs/repo-wodb-loaded-2024-11-21-17-44-43.log                                                       0000644 0000000 0000000 00000000104 14717670613 015770  0                                                                                                    ustar 00                                                                0000000 0000000                                                                                                                                                                        level=info msg="Queuing URLs for wodb"
+level=info msg="URL Count 0"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            logs/repo-wodb-stats-2024-11-21-17-44-43.log                                                        0000644 0000000 0000000 00000000411 14717670613 015677  0                                                                                                    ustar 00                                                                0000000 0000000                                                                                                                                                                        SourceStats:</code></p>
+<h4 id="409_error">409_error</h4>
+<p>this will be found in the error in dagster</p>
+<h5 id="source_not_found">source_not_found</h5>
+<p>this is found in the logs for a gleaner on minio
+<code>{"file":"/home/runner/work/gleaner/gleaner/cmd/gleaner/main.go:125","func":"main.main","level":"error","msg":"CAUTION:  no matching source, did your -source VALUE match a sources.name VALUE in your config file?","time":"2024-11-21T17:46:22Z"}</code></p>
+<h5 id="sumarize-is-there-data">sumarize is there data</h5>
+<p>no data returned from a summary qeury 
+error in dagster
+<code>loading Summary graph failed. argument of type 'numpy.float64' is not iterabl</code>e</p>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>
