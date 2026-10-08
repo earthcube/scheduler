@@ -28,6 +28,10 @@ defaults:
   run:
     working-directory:  dagster/implnets
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   build:
     name: ${{ matrix.name }} (${{ matrix.arch }})
