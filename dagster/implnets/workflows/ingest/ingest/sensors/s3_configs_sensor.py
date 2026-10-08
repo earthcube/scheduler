@@ -9,6 +9,7 @@ DefaultSensorStatus
 )
 from dagster_aws.s3.sensor import get_s3_keys
 from typing import List, Dict
+from botocore.exceptions import ClientError
 from pydantic import Field
 
 from ..resources.gleanerio import GleanerioResource
@@ -34,6 +35,39 @@ PROJECT=os.environ.get('PROJECT')
 
 
 
+def _config_file_run_requests(context, gleaner_s3, filename):
+    """Request a run when the config file at `filename` is newer than the cursor.
+
+    head_object raises rather than returning an empty result when the key is
+    missing, so a config file that has not been uploaded yet has to be caught
+    and turned into a SkipReason. Anything else (403, connection errors) is
+    still a real failure and is re-raised.
+    """
+    since_key = context.cursor or None
+    get_dagster_logger().info(f"sinceKey: {since_key}")
+
+    try:
+        metadata = gleaner_s3.s3.get_client().head_object(
+            Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET,
+            Key=filename,
+        )
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
+            return SkipReason(
+                f"No config file {filename} in bucket {gleaner_s3.GLEANERIO_MINIO_BUCKET}."
+            )
+        raise
+
+    get_dagster_logger().info(f"metadata {metadata}")
+    last_key = str(metadata['LastModified'])
+    get_dagster_logger().info(f"last_modified: {last_key}")
+    run_requests = []
+    if since_key is None or since_key < last_key:
+        run_requests = [RunRequest(run_key=last_key, run_config={})]
+        context.update_cursor(last_key)
+    return run_requests
+
+
 #@sensor(job=build_community,minimum_interval_seconds=60)
 
 # https://docs.dagster.io/concepts/partitions-schedules-sensors/sensors#using-resources-in-sensors
@@ -51,42 +85,10 @@ PROJECT=os.environ.get('PROJECT')
               )
 def sources_s3_sensor(context
                         ):
-    gleaner_resource = context.resources.gleanerio
-    s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
-    triplestore = context.resources.gleanerio.triplestore
-    since_key = context.cursor or None
-    get_dagster_logger().info(f"sinceKey: {since_key}")
-    config_path=f"{gleaner_s3.GLEANERIO_CONFIG_PATH}"
     filename = f"{gleaner_s3.GLEANERIO_CONFIG_PATH}{gleaner_s3.GLEANERIO_SOURCES_FILENAME}"
 
-    new_s3_keys = s3_resource.get_client().head_object(
-            Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET,
-            Key=filename,
-
-        )
-
-    # new_s3_keys = s3_resource.resource.ObjectSummary(
-    #     Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET,
-    #     Key=filename,
-    #
-    # )
-
-    # since_key = context.cursor or None
-   # new_s3_keys = get_s3_keys("my_s3_bucket", since_key=since_key)
-
-    if not new_s3_keys:
-        return SkipReason(f"No new s3 files found for bucket {gleaner_s3.GLEANERIO_MINIO_BUCKET}. {filename}")
-    get_dagster_logger().info(f"metadata {new_s3_keys}")
-    #new_s3_keys = list(new_s3_keys)
-    last_key = str(new_s3_keys['LastModified'])
-    get_dagster_logger().info(f"last_modified: {last_key}")
-    run_requests =[]
-    if since_key is None or  since_key < last_key:
-        #run_requests = [RunRequest(run_key=s3_key, run_config={}) for s3_key in new_s3_keys]
-        run_requests = [RunRequest(run_key=last_key, run_config={})]
-        context.update_cursor(last_key)
-    return run_requests
+    return _config_file_run_requests(context, gleaner_s3, filename)
 
 @sensor(name="s3_configs_tenant__sensor",
     default_status=DefaultSensorStatus.RUNNING,
@@ -97,39 +99,7 @@ def sources_s3_sensor(context
               )
 def tenant_s3_sensor(context
                         ):
-    gleaner_resource = context.resources.gleanerio
-    s3_resource = context.resources.gleanerio.gs3.s3
     gleaner_s3 = context.resources.gleanerio.gs3
-    triplestore = context.resources.gleanerio.triplestore
-    since_key = context.cursor or None
-    get_dagster_logger().info(f"sinceKey: {since_key}")
-    config_path=f"{gleaner_s3.GLEANERIO_CONFIG_PATH}"
     filename = f"{gleaner_s3.GLEANERIO_CONFIG_PATH}{gleaner_s3.GLEANERIO_TENANT_FILENAME}"
 
-    new_s3_keys = s3_resource.get_client().head_object(
-            Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET,
-            Key=filename,
-
-        )
-
-    # new_s3_keys = s3_resource.resource.ObjectSummary(
-    #     Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET,
-    #     Key=filename,
-    #
-    # )
-
-    # since_key = context.cursor or None
-   # new_s3_keys = get_s3_keys("my_s3_bucket", since_key=since_key)
-
-    if not new_s3_keys:
-        return SkipReason(f"No new s3 files found for bucket {gleaner_s3.GLEANERIO_MINIO_BUCKET}. {filename}")
-    get_dagster_logger().info(f"metadata {new_s3_keys}")
-    #new_s3_keys = list(new_s3_keys)
-    last_key = str(new_s3_keys['LastModified'])
-    get_dagster_logger().info(f"last_modified: {last_key}")
-    run_requests =[]
-    if since_key is None or  since_key < last_key:
-        #run_requests = [RunRequest(run_key=s3_key, run_config={}) for s3_key in new_s3_keys]
-        run_requests = [RunRequest(run_key=last_key, run_config={})]
-        context.update_cursor(last_key)
-    return run_requests
+    return _config_file_run_requests(context, gleaner_s3, filename)

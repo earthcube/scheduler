@@ -1,18 +1,28 @@
 # a test asset to see that all the resource configurations load.
 # basically runs the first step, of gleaner on geocodes demo datasets
 from typing import Any
+import io
 import json
 import pandas as pd
 import csv
+import gc
+import shutil
+import tempfile
+from contextlib import contextmanager
+from datetime import datetime, timezone
 from urllib.error import HTTPError
+from pathlib import Path
+import requests as _requests
 
 from dagster import (
     asset,op, Config, Output,AssetKey,
     define_asset_job, AssetSelection,
-get_dagster_logger,BackfillPolicy
+get_dagster_logger,BackfillPolicy, asset_check, AssetCheckExecutionContext,
+AssetCheckResult
 )
 from ec.datastore import s3 as utils_s3
 from ec.sitemap import Sitemap
+import pyoxigraph as ox
 from .gleaner_sources import sources_partitions_def
 from ..utils import PythonMinioAddress
 
@@ -25,6 +35,30 @@ PROJECT=os.environ.get('PROJECT')
 from ec.graph.manageGraph import ManageBlazegraph
 SUMMARY_PATH = 'graphs/summary'
 RELEASE_PATH = 'graphs/latest'
+SPATIAL_PATH = 'graphs/latest'
+SPATIAL_GRAPH_NAMESPACE = "https://gleaner.io/enhancement/spatial/{source}"
+
+SPATIAL_QUERY_FILES = (
+    "spatial_construct_bbox.rq",
+    "spatial_construct_multipoint.rq",
+)
+
+# Releases at or above this size are loaded into a temporary on disk store rather
+# than an in memory one. Measured on r2r, the largest release at 462MB / 2.45M
+# quads, on disk is worse on every axis than streaming into memory:
+#
+#   in memory, whole file read into bytes   2.50 GB rss   3.0s
+#   in memory, streamed                     2.02 GB rss   3.8s
+#   on disk, streamed                       2.53 GB rss   9.0s   + 918 MB disk
+#
+# RocksDB's write buffers during a bulk load cost more than the on disk
+# representation saves, so the default sits above every current release and this
+# is a safety valve for growth rather than something that fires today. Lower
+# GLEANERIO_SPATIAL_ONDISK_THRESHOLD_BYTES if a worker is memory bound and would
+# rather trade wall clock and disk for headroom.
+SPATIAL_ONDISK_THRESHOLD_BYTES = int(
+    os.environ.get("GLEANERIO_SPATIAL_ONDISK_THRESHOLD_BYTES", 2 * 1024 ** 3)
+)
 
 class HarvestOpConfig(Config):
     source_name: str
@@ -154,6 +188,35 @@ And how many made it into milled (this is how good the conversion at a single js
 It then compares what identifiers are in the S3 store (summon path), and the Named Graph URI's
 '''
 
+# graph urns used to come from a SPARQL query against GLEANERIO_GRAPH_NAMESPACE.
+# Nothing in this pipeline ever created that namespace or loaded anything into
+# it -- createNamespace only runs for tenant.yaml namespaces and per source temp
+# namespaces, and upload_release writes to the tenant main_namespace -- so the
+# asset queried an orphan namespace and was disabled in summon_asset_job because
+# of it. The release is exactly the set of named graphs the query was asking
+# for, and qlever loads from the release files anyway, so read it there instead.
+RELEASE_REPORT_KEY_RENAMES = {
+    "graph": "release",
+    "graph_urn_count": "release_urn_count",
+    "missing_summon_graph_count": "missing_summon_release_count",
+    "missing_summon_graph": "missing_summon_release",
+    "graph_sha_urn_time": "release_sha_urn_time",
+}
+
+
+def release_graph_urns(store):
+    """The named graph urns in a release -- what a graph loaded from it holds."""
+    return [g.value for g in store.named_graphs()]
+
+
+def _as_release_report(response, object_name):
+    """Rename the graph named keys, so the report does not read as a claim
+    about a live graph. It compares summon to release, one step upstream."""
+    renamed = {RELEASE_REPORT_KEY_RENAMES.get(k, k): v for k, v in response.items()}
+    renamed["release"] = object_name
+    return renamed
+
+
 @asset(
 key_prefix=f"{PROJECT}_ingest",
     group_name="load",
@@ -161,14 +224,10 @@ op_tags={"ingest": "report"},
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
   #  , backfill_policy=BackfillPolicy.single_run()
 )
-def load_report_graph(context):
-    gleaner_resource = context.resources.gleanerio
-    s3_resource = context.resources.gleanerio.gs3.s3
-    gleaner_s3 =  context.resources.gleanerio.gs3
-    gleaner_triplestore = context.resources.gleanerio.triplestore
+def load_report_release(context):
+    gleaner_s3 = context.resources.gleanerio.gs3
 
     source_name = context.asset_partition_key_for_output()
-    # source = getSitemapSourcesFromGleaner(gleaner_resource.GLEANERIO_GLEANER_CONFIG_PATH, sourcename=source_name)
     source = getSource(context, source_name)
     source_url = source.get('url')
     s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
@@ -176,19 +235,156 @@ def load_report_graph(context):
                                        gleaner_s3.MinioOptions()
                                       )
     bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+    object_name = f"{RELEASE_PATH}/{source_name}_release.nq"
 
-    graphendpoint = gleaner_triplestore.GraphEndpoint(gleaner_resource.GLEANERIO_GRAPH_NAMESPACE)
-    milled = False
-    summon = True
-    returned_value = missingReport(source_url, bucket, source_name, s3Minio, graphendpoint, milled=milled, summon=False) # summon false. we want the graph
-    r = str('load repoort graph returned value:{}'.format(returned_value))
+    try:
+        with _release_store(gleaner_s3, object_name) as store:
+            graph_urns = release_graph_urns(store)
+    except Exception as ex:
+        # a source that has never been harvested is a normal state, and
+        # release_nabu_run_non_zero_length is where a missing release gets
+        # reported properly. Report zero urns rather than failing the partition.
+        context.log.warning(f"Could not read {object_name}, reporting no urns: {ex}")
+        graph_urns = []
+
+    returned_value = missingReport(source_url, bucket, source_name, s3Minio,
+                                   milled=False, summon=False, graph_urns=graph_urns)
+    returned_value = _as_release_report(returned_value, object_name)
+
     report = json.dumps(returned_value, indent=2)
-    s3Minio.putReportFile(bucket, source_name, "load_report_graph.json", report)
-    get_dagster_logger().info(f"load  report to graph returned  {r} ")
+    s3Minio.putReportFile(bucket, source_name, "load_report_release.json", report)
+    get_dagster_logger().info(
+        f"load report from release {object_name}: {len(graph_urns)} urns")
     return
+
+
 class S3ObjectInfo:
     bucket_name=""
     object_name=""
+
+
+def _spatial_query_text(filename):
+    return (Path(__file__).resolve().parent.parent / "files" / filename).read_text()
+
+
+def _construct_to_quads(ntriples_text, graph_iri):
+    quads = []
+    for line in ntriples_text.splitlines():
+        triple = line.strip()
+        if not triple:
+            continue
+        quads.append(f"{triple.removesuffix(' .')} <{graph_iri}> .")
+    return "\n".join(quads) + ("\n" if quads else "")
+
+
+def _count_construct_rows(ntriples_text):
+    return sum(1 for line in ntriples_text.splitlines() if line.strip())
+
+
+def _bulk_load(store, release):
+    """Load an n-quads release, from bytes or a readable, into ``store``.
+
+    rdflib parsed this fine, but its SPARQL evaluator is roughly quadratic in
+    graph size: 23k quads took 45s of query time, 46k took 179s, so a real
+    release never finished. Oxigraph does 2.45M quads in ~4s end to end.
+
+    lenient: releases in the wild contain named graph URNs that nabu mints from
+    the identifier, like <urn:gleaner.io:eco:geocodes_examples:data:[OTLAS.1]>.
+    Square brackets are reserved for IPv6 literals and are not legal in an IRI,
+    so a validating parser rejects them -- and one bad quad aborts the whole
+    load, not just that line. rdflib accepted them, so this keeps the previous
+    behaviour rather than dropping sources on the floor. 756 of the 2920 quads
+    in the geocodes_examples release are affected.
+    """
+    store.bulk_load(release, format=ox.RdfFormat.N_QUADS, lenient=True)
+    return store
+
+
+def _load_release_store(release_bytes):
+    """In memory store from a release already held in memory. Used by the tests."""
+    return _bulk_load(ox.Store(), release_bytes)
+
+
+def _release_object_size(gleaner_s3, object_name):
+    """Size of the release object, or None if it cannot be determined."""
+    try:
+        head = gleaner_s3.s3.get_client().head_object(
+            Bucket=gleaner_s3.GLEANERIO_MINIO_BUCKET, Key=object_name
+        )
+        return head.get("ContentLength")
+    except Exception as ex:  # a missing size only costs us the on disk decision
+        get_dagster_logger().info(f"Spatial. Could not size {object_name}: {ex}")
+        return None
+
+
+def _non_zero_length_check_result(gleaner_s3, object_name):
+    size = _release_object_size(gleaner_s3, object_name)
+    metadata = {
+        "bucket_name": gleaner_s3.GLEANERIO_MINIO_BUCKET,
+        "object_name": object_name,
+    }
+    if size is not None:
+        metadata["size_bytes"] = size
+    return AssetCheckResult(
+        passed=size is not None and size > 0,
+        metadata=metadata,
+    )
+
+
+@asset_check(
+    asset=release_nabu_run,
+    name="non_zero_length",
+    partitions_def=sources_partitions_def,
+    required_resource_keys={"gleanerio"},
+)
+def release_nabu_run_non_zero_length(
+    context: AssetCheckExecutionContext,
+) -> AssetCheckResult:
+    source_name = context.partition_key
+    return _non_zero_length_check_result(
+        context.resources.gleanerio.gs3,
+        f"{RELEASE_PATH}/{source_name}_release.nq",
+    )
+
+
+@contextmanager
+def _release_store(gleaner_s3, object_name):
+    """Open a store over a release, on disk if the release is big enough.
+
+    The body is streamed straight from s3 into the parser rather than read into
+    a bytes object first. On r2r that is 480MB of peak RSS saved for ~0.8s of
+    wall clock, and it is the difference that actually moves the needle -- see
+    SPATIAL_ONDISK_THRESHOLD_BYTES for why the on disk path is not the default.
+    """
+    size = _release_object_size(gleaner_s3, object_name)
+    on_disk = size is not None and size >= SPATIAL_ONDISK_THRESHOLD_BYTES
+    tempdir = tempfile.mkdtemp(prefix="spatial_release_") if on_disk else None
+    store = None
+    try:
+        store = ox.Store(path=str(Path(tempdir) / "store")) if on_disk else ox.Store()
+        get_dagster_logger().info(
+            f"Spatial. Loading {object_name} ({size} bytes) into "
+            f"{'an on disk store at ' + tempdir if on_disk else 'an in memory store'}"
+        )
+        _bulk_load(store, gleaner_s3.getFile(object_name))
+        yield store
+    finally:
+        if tempdir is not None:
+            # the store holds the rocksdb files open and pyoxigraph exposes no
+            # close(), so drop the reference and collect before unlinking
+            store = None
+            gc.collect()
+            shutil.rmtree(tempdir, ignore_errors=True)
+
+
+def _run_construct_query(store, query):
+    # the release puts every dataset in its own named graph, and nothing in the
+    # default graph. rdflib's ConjunctiveGraph queried the union implicitly;
+    # oxigraph is spec correct and would otherwise match nothing at all.
+    triples = store.query(query, use_default_graph_as_union=True)
+    return ox.serialize(triples, format=ox.RdfFormat.N_TRIPLES).decode("utf-8")
+
+
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        name="release_summarize",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -282,6 +478,87 @@ def release_summarize(context) :
 
     return
 
+
+@asset_check(
+    asset=release_summarize,
+    name="non_zero_length",
+    partitions_def=sources_partitions_def,
+    required_resource_keys={"gleanerio"},
+)
+def release_summary_non_zero_length(
+    context: AssetCheckExecutionContext,
+) -> AssetCheckResult:
+    source_name = context.partition_key
+    return _non_zero_length_check_result(
+        context.resources.gleanerio.gs3,
+        f"{SUMMARY_PATH}/{source_name}_release_summary.ttl",
+    )
+
+
+@asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
+       deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+       )
+def spatial_release_quads(context):
+    gleaner_s3 = context.resources.gleanerio.gs3
+    source_name = context.asset_partition_key_for_output()
+    s3Minio = utils_s3.MinioDatastore(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
+                                                          gleaner_s3.GLEANERIO_MINIO_PORT),
+                                       gleaner_s3.MinioOptions()
+                                      )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+    graph_iri = SPATIAL_GRAPH_NAMESPACE.format(source=source_name)
+    try:
+        with _release_store(gleaner_s3, f"{RELEASE_PATH}/{source_name}_release.nq") as release_store:
+            spatial_parts = []
+            for query_file in SPATIAL_QUERY_FILES:
+                query_text = _spatial_query_text(query_file)
+                ntriples_text = _run_construct_query(release_store, query_text)
+                row_count = _count_construct_rows(ntriples_text)
+                get_dagster_logger().info(
+                    f"Spatial. {source_name} {query_file}: {row_count} construct rows"
+                )
+                spatial_parts.append(_construct_to_quads(ntriples_text, graph_iri))
+            spatial_nq = "".join(spatial_parts)
+        objectname = f"{SPATIAL_PATH}/{source_name}_spatial.nq"
+        # a source with no spatial coverage produces no quads. writing that as an
+        # empty object just publishes a zero byte file for nabu to pick up, so
+        # skip the upload and say so in the metadata instead.
+        if not spatial_nq.strip():
+            get_dagster_logger().info(
+                f"Spatial. No spatial quads constructed for {source_name}, skipping upload of {objectname}"
+            )
+            context.add_output_metadata(
+                metadata={
+                    "source": source_name,
+                    "run": "spatial_release_quads",
+                    "bucket_name": bucket,
+                    "object_name": "",
+                    "line_count": 0,
+                    "graph": graph_iri,
+                    "uploaded": False,
+                }
+            )
+            return
+        s3ObjectInfo = S3ObjectInfo()
+        s3ObjectInfo.bucket_name = bucket
+        s3ObjectInfo.object_name = objectname
+        bucket_name, object_name = s3Minio.putTextFileToStore(spatial_nq, s3ObjectInfo)
+        context.add_output_metadata(
+            metadata={
+                "source": source_name,
+                "run": "spatial_release_quads",
+                "bucket_name": bucket_name,
+                "object_name": object_name,
+                "line_count": len(spatial_nq.splitlines()),
+                "graph": graph_iri,
+                "uploaded": True,
+            }
+        )
+    except Exception as e:
+        get_dagster_logger().error(f"Spatial. Issue creating graph  {str(e)} ")
+        raise Exception(f"Loading spatial graph failed. {str(e)}")
+    return
+
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        deps=[gleanerio_run],
 op_tags={"ingest": "report"},
@@ -340,6 +617,171 @@ def bucket_urls(context):
     s3Minio.putReportFile(bucket, source_name, "bucketutil_urls.csv", bucketurls)
     get_dagster_logger().info(f"bucker urls report  returned  {r} ")
     return
+
+
+REPORT_PATH_PREFIX = "reports"
+
+
+def _check_url_status(url):
+    """Return the HTTP status code for *url*, or None on network/connection error.
+
+    Uses HEAD first; falls back to GET when the server returns 405 (Method Not Allowed).
+    A return value of ``None`` means the request could not be completed (timeout,
+    DNS failure, etc.) and the caller should treat the object as *keep*.
+    """
+    try:
+        resp = _requests.head(url, timeout=10, allow_redirects=True)
+        # Some servers don't support HEAD; fall back to GET
+        if resp.status_code == 405:
+            resp = _requests.get(url, timeout=10, allow_redirects=True, stream=True)
+        return resp.status_code
+    except Exception:
+        return None
+
+
+@asset(group_name="load", key_prefix=f"{PROJECT}_ingest",
+       deps=[load_report_s3, bucket_urls],
+       op_tags={"ingest": "report"},
+       partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
+       )
+def delete_stale_s3_files(context):
+    """Delete files from S3 that are no longer in the source sitemap (extra_in_summon)
+    and return any HTTP error other than 403.  URLs that return 403 (auth required) or
+    that cannot be reached (network error) are skipped so that harvested data is
+    preserved when there is a transient connectivity problem.  A report of what was
+    deleted / skipped is written to ``reports/{source}/latest/deleted_s3.json``.
+    """
+    gleaner_s3 = context.resources.gleanerio.gs3
+    s3_resource = gleaner_s3.s3
+    s3Minio = utils_s3.MinioDatastore(
+        PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS, gleaner_s3.GLEANERIO_MINIO_PORT),
+        gleaner_s3.MinioOptions()
+    )
+    bucket = gleaner_s3.GLEANERIO_MINIO_BUCKET
+    source_name = context.asset_partition_key_for_output()
+    logger = get_dagster_logger()
+
+    # Read the load_report_s3.json written by the load_report_s3 asset
+    report_key = f"{REPORT_PATH_PREFIX}/{source_name}/latest/load_report_s3.json"
+    try:
+        report_json = s3Minio.getFileFromStore({"bucket_name": bucket, "object_name": report_key})
+        load_report = json.loads(report_json)
+    except Exception as ex:
+        logger.error(f"delete_stale_s3_files: could not read {report_key}: {ex}")
+        raise
+
+    extra_urls = load_report.get("extra_in_summon", [])
+    logger.info(f"delete_stale_s3_files: {len(extra_urls)} extra URLs found in {source_name}")
+
+    if not extra_urls:
+        report = json.dumps({"source": source_name, "date": datetime.now(timezone.utc).isoformat(),
+                             "deleted_count": 0, "deleted": [],
+                             "skipped_count": 0, "skipped": []}, indent=2)
+        s3Minio.putReportFile(bucket, source_name, "deleted_s3.json", report)
+        return
+
+    # Read bucketutil_urls.csv to build a mapping from URL -> S3 object name
+    csv_key = f"{REPORT_PATH_PREFIX}/{source_name}/latest/bucketutil_urls.csv"
+    try:
+        csv_content = s3Minio.getFileFromStore({"bucket_name": bucket, "object_name": csv_key})
+        reader = csv.DictReader(io.StringIO(csv_content))
+        rows = list(reader)
+        fieldnames = reader.fieldnames or []
+    except Exception as ex:
+        logger.error(f"delete_stale_s3_files: could not read {csv_key}: {ex}")
+        raise
+
+    # Build a URL -> object_name map; the CSV produced by bucket_urls uses whatever
+    # columns listSummonedUrls returns.  The URL column is expected to be named 'url'.
+    url_col = "url"
+    # Detect the object key column: prefer 'object_name', fall back to 'sha'
+    if "object_name" in fieldnames:
+        key_col = "object_name"
+    elif "sha" in fieldnames:
+        key_col = "sha"
+    else:
+        other_cols = [c for c in fieldnames if c != url_col]
+        key_col = other_cols[0] if other_cols else None
+
+    if key_col is None:
+        logger.error(f"delete_stale_s3_files: cannot determine object key column in {csv_key}")
+        raise ValueError(f"Cannot determine object key column in {csv_key}")
+
+    url_to_key = {str(row.get(url_col, "")): str(row.get(key_col, "")) for row in rows}
+
+    s3_client = s3_resource.get_client()
+    deleted = []
+    skipped = []
+
+    extra_set = set(extra_urls)
+    for url in extra_set:
+        http_status = _check_url_status(url)
+
+        # None means a network/connection error — keep the object to be safe
+        if http_status is None:
+            reason = "network error (no response)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": None})
+            continue
+
+        # 403 means auth-required — the resource may still exist, keep it
+        if http_status == 403:
+            reason = "HTTP 403 (auth required)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # 2xx/3xx — resource still accessible, keep it
+        if http_status < 400:
+            reason = f"HTTP {http_status} (resource accessible)"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # Any other HTTP error (4xx except 403, 5xx) — treat as stale, delete
+        object_name = url_to_key.get(url)
+        if not object_name:
+            reason = f"HTTP {http_status} but no S3 key found"
+            logger.info(f"delete_stale_s3_files: {url} — {reason}, skipping")
+            skipped.append({"url": url, "reason": reason, "http_status": http_status})
+            continue
+
+        # object_name may already be a full key (e.g. summoned/source/sha.jsonld)
+        # or just a sha; if it looks like a plain sha, prepend the standard prefix
+        if "/" not in object_name:
+            object_name = f"summoned/{source_name}/{object_name}.jsonld"
+
+        # Fetch creation date from S3 before deleting
+        created_at = None
+        try:
+            head = s3_client.head_object(Bucket=bucket, Key=object_name)
+            last_modified = head.get("LastModified")
+            if last_modified is not None:
+                created_at = last_modified.isoformat()
+        except Exception as ex:
+            logger.warning(f"delete_stale_s3_files: could not get metadata for {object_name}: {ex}")
+
+        try:
+            s3_client.delete_object(Bucket=bucket, Key=object_name)
+            logger.info(f"delete_stale_s3_files: deleted {object_name} ({url}) [HTTP {http_status}]")
+            deleted.append({"url": url, "object_name": object_name,
+                            "http_status": http_status, "created_at": created_at})
+        except Exception as ex:
+            logger.error(f"delete_stale_s3_files: failed to delete {object_name}: {ex}")
+
+    report_data = {
+        "source": source_name,
+        "date": datetime.now(timezone.utc).isoformat(),
+        "deleted_count": len(deleted),
+        "deleted": deleted,
+        "skipped_count": len(skipped),
+        "skipped": skipped,
+    }
+    report = json.dumps(report_data, indent=2)
+    s3Minio.putReportFile(bucket, source_name, "deleted_s3.json", report)
+    logger.info(f"delete_stale_s3_files: deleted {len(deleted)} files for {source_name}")
+    return
+
 
 # original code. inlined.
 # def _releaseUrl( source, path=RELEASE_PATH, extension="nq"):

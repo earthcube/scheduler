@@ -1,5 +1,3 @@
-from ..utils import strtobool
-import logging
 import time
 
 from dagster import job, op, graph,In, Nothing, get_dagster_logger
@@ -9,7 +7,7 @@ from urllib import request
 from urllib.error import HTTPError
 
 from docker.types import RestartPolicy, ServiceMode
-from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner, endpointUpdateNamespace
+from ec.gleanerio.gleaner import getGleaner, getSitemapSourcesFromGleaner
 import json
 
 from minio import Minio
@@ -17,8 +15,6 @@ from minio.error import S3Error
 from datetime import datetime
 from ec.reporting.report import missingReport, generateGraphReportsRepo, reportTypes, generateIdentifierRepo
 from ec.datastore import s3
-from ec.summarize import summaryDF2ttl, get_summary4graph, get_summary4repoSubset
-from ec.graph.manageGraph import ManageBlazegraph as mg
 import requests
 import logging as log
 from urllib.error import HTTPError
@@ -46,16 +42,28 @@ DAGSTER_GLEANER_CONFIG_PATH = os.environ.get('DAGSTER_GLEANER_CONFIG_PATH', "/sc
 # Vars and Envs
 GLEANER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_HEADLESS_NETWORK', "headless_gleanerio")
 # env items
-URL = os.environ.get('GLEANERIO_DOCKER_URL')
-APIKEY = os.environ.get('GLEANERIO_PORTAINER_APIKEY')
+URL = os.environ.get('PORTAINER_URL')
+APIKEY = os.environ.get('PORTAINER_KEY')
 
 
 GLEANER_MINIO_ADDRESS = str(os.environ.get('GLEANERIO_MINIO_ADDRESS'))
 GLEANER_MINIO_PORT = str(os.environ.get('GLEANERIO_MINIO_PORT'))
+def strtobool(val):
+    """Convert a string representation of truth to 1 (true) or 0 (false).
+
+    Replacement for distutils.util.strtobool, removed in Python 3.12.
+    """
+    val = str(val).lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return 1
+    if val in ("n", "no", "f", "false", "off", "0"):
+        return 0
+    raise ValueError(f"invalid truth value {val!r}")
+
 GLEANER_MINIO_USE_SSL = bool(strtobool(os.environ.get('GLEANERIO_MINIO_USE_SSL')))
 GLEANER_MINIO_SECRET_KEY = str(os.environ.get('GLEANERIO_MINIO_SECRET_KEY'))
 GLEANER_MINIO_ACCESS_KEY = str(os.environ.get('GLEANERIO_MINIO_ACCESS_KEY'))
-GLEANER_MINIO_BUCKET =str( os.environ.get('ECRR_MINIO_BUCKET'))
+GLEANER_MINIO_BUCKET =str( os.environ.get('GLEANERIO_MINIO_BUCKET'))
 
 # set for the earhtcube utiltiies
 MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
@@ -67,7 +75,7 @@ MINIO_OPTIONS={"secure":GLEANER_MINIO_USE_SSL
 GLEANER_HEADLESS_ENDPOINT = str(os.environ.get('GLEANERIO_HEADLESS_ENDPOINT', "http://headless:9222"))
 # using GLEANER, even though this is a nabu property... same prefix seems easier
 GLEANER_GRAPH_URL = str(os.environ.get('GLEANERIO_GRAPH_URL'))
-GLEANER_GRAPH_NAMESPACE = str(os.environ.get('ECRR_GRAPH_NAMESPACE'))
+GLEANER_GRAPH_NAMESPACE = str(os.environ.get('GLEANERIO_GRAPH_NAMESPACE'))
 GLEANERIO_GLEANER_CONFIG_PATH= str(os.environ.get('GLEANERIO_GLEANER_CONFIG_PATH', "/gleaner/gleanerconfig.yaml"))
 GLEANERIO_NABU_CONFIG_PATH= str(os.environ.get('GLEANERIO_NABU_CONFIG_PATH', "/nabu/nabuconfig.yaml"))
 GLEANERIO_GLEANER_IMAGE =str( os.environ.get('GLEANERIO_GLEANER_IMAGE', 'nsfearthcube/gleaner:latest'))
@@ -77,27 +85,18 @@ GLEANERIO_GLEANER_ARCHIVE_OBJECT = str(os.environ.get('GLEANERIO_GLEANER_ARCHIVE
 GLEANERIO_GLEANER_ARCHIVE_PATH = str(os.environ.get('GLEANERIO_GLEANER_ARCHIVE_PATH', '/gleaner/'))
 GLEANERIO_NABU_ARCHIVE_OBJECT=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_OBJECT', 'scheduler/configs/NabuCfg.tgz'))
 GLEANERIO_NABU_ARCHIVE_PATH=str(os.environ.get('GLEANERIO_NABU_ARCHIVE_PATH', '/nabu/'))
-GLEANERIO_GLEANER_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_DOCKER_GLEANER_CONFIG', 'gleaner'))
-GLEANERIO_NABU_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_DOCKER_NABU_CONFIG', 'nabu'))
-#GLEANERIO_SUMMARY_GRAPH_ENDPOINT = os.environ.get('GLEANERIO_SUMMARY_GRAPH_ENDPOINT')
-GLEANERIO_SUMMARY_GRAPH_NAMESPACE = os.environ.get('GLEANERIO_SUMMARY_GRAPH_NAMESPACE',f"{GLEANER_GRAPH_NAMESPACE}_summary" )
-
-SUMMARY_PATH = 'graphs/summary'
-RELEASE_PATH = 'graphs/latest'
+GLEANERIO_GLEANER_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_GLEANER_DOCKER_CONFIG', 'gleaner'))
+GLEANERIO_NABU_DOCKER_CONFIG=str(os.environ.get('GLEANERIO_NABU_DOCKER_CONFIG', 'nabu'))
 def _graphEndpoint():
     url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANER_GRAPH_NAMESPACE}/sparql"
     return url
-def _graphSummaryEndpoint():
-    url = f"{GLEANER_GRAPH_URL}/namespace/{GLEANERIO_SUMMARY_GRAPH_NAMESPACE}/sparql"
-    return url
-def _pythonMinioAddress(url, port = None):
+
+def _pythonMinioUrl(url):
 
     if (url.endswith(".amazonaws.com")):
         PYTHON_MINIO_URL = "s3.amazonaws.com"
     else:
         PYTHON_MINIO_URL = url
-    if port is not None:
-        PYTHON_MINIO_URL = f"{PYTHON_MINIO_URL}:{port}"
     return PYTHON_MINIO_URL
 def read_file_bytestream(image_path):
     data = open(image_path, 'rb').read()
@@ -115,7 +114,7 @@ def load_data(file_or_url):
 
 
 def s3reader(object):
-    server =  _pythonMinioAddress(GLEANER_MINIO_ADDRESS,GLEANER_MINIO_PORT )
+    server =  _pythonMinioUrl(GLEANER_MINIO_ADDRESS) + ":" + GLEANER_MINIO_PORT
     get_dagster_logger().info(f"S3 URL    : {GLEANER_MINIO_ADDRESS}")
     get_dagster_logger().info(f"S3 PYTHON SERVER : {server}")
     get_dagster_logger().info(f"S3 PORT   : {GLEANER_MINIO_PORT}")
@@ -140,8 +139,15 @@ def s3reader(object):
 
 def s3loader(data, name):
     secure= GLEANER_MINIO_USE_SSL
-
-    server = _pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT)
+    if (GLEANER_MINIO_PORT and GLEANER_MINIO_PORT == "80"
+             and secure == False):
+        server = _pythonMinioUrl(GLEANER_MINIO_ADDRESS)
+    elif (GLEANER_MINIO_PORT and GLEANER_MINIO_PORT == "443"
+                and secure == True):
+        server = _pythonMinioUrl(GLEANER_MINIO_ADDRESS)
+    else:
+        # it's not on a normal port
+        server = f"{_pythonMinioUrl(GLEANER_MINIO_ADDRESS)}:{GLEANER_MINIO_PORT}"
 
     client = Minio(
         server,
@@ -174,7 +180,7 @@ def s3loader(data, name):
                       content_type="text/plain"
                          )
     get_dagster_logger().info(f"Log uploaded: {str(objPrefix)}")
-def post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=_graphEndpoint()):
+def postRelease(source):
     # revision of EC utilities, will have a insertFromURL
     #instance =  mg.ManageBlazegraph(os.environ.get('GLEANER_GRAPH_URL'),os.environ.get('GLEANER_GRAPH_NAMESPACE') )
     proto = "http"
@@ -182,45 +188,24 @@ def post_to_graph(source, path=RELEASE_PATH, extension="nq", graphendpoint=_grap
     if GLEANER_MINIO_USE_SSL:
         proto = "https"
     port = GLEANER_MINIO_PORT
-    address = _pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT)
+    address = GLEANER_MINIO_ADDRESS
     bucket = GLEANER_MINIO_BUCKET
-    release_url = f"{proto}://{address}/{bucket}/{path}/{source}_release.{extension}"
-    # BLAZEGRAPH SPECIFIC
-    # url = f"{_graphEndpoint()}?uri={release_url}"  # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
-    # get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-    # r = requests.post(url)
-    # log.debug(f' status:{r.status_code}')  # status:404
-    # get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
-    # if r.status_code == 200:
-    #     # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
-    #     if 'data modified="0"' in r.text:
-    #         get_dagster_logger().info(f'graph: no data inserted ')
-    #         raise Exception("No Data Added: " + r.text)
-    #     return True
-    # else:
-    #     get_dagster_logger().info(f'graph: error')
-    #     raise Exception(f' graph: insert failed: status:{r.status_code}')
-
-    ### GENERIC LOAD FROM
-    url = f"{graphendpoint}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
+    path = "graphs/latest"
+    release_url = f"{proto}://{address}:{port}/{bucket}/{path}/{source}_release.nq"
+    url = f"{_graphEndpoint()}?uri={release_url}" # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql?uri={release_url}"
     get_dagster_logger().info(f'graph: insert "{source}" to {url} ')
-    loadfrom = {'update': f'LOAD <{release_url}>'}
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    r = requests.post(url, headers=headers, data=loadfrom )
+    r = requests.post(url)
     log.debug(f' status:{r.status_code}')  # status:404
-    get_dagster_logger().info(f'graph: LOAD from {release_url}: status:{r.status_code}')
+    get_dagster_logger().info(f'graph: insert: status:{r.status_code}')
     if r.status_code == 200:
-        get_dagster_logger().info(f'graph load response: {str(r.text)} ')
         # '<?xml version="1.0"?><data modified="0" milliseconds="7"/>'
-        if 'mutationCount=0' in r.text:
+        if 'data modified="0"' in r.text:
             get_dagster_logger().info(f'graph: no data inserted ')
-            #raise Exception("No Data Added: " + r.text)
+            raise Exception("No Data Added: " + r.text)
         return True
     else:
-        get_dagster_logger().info(f'graph: error {str(r.text)}')
-        raise Exception(f' graph: failed,  LOAD from {release_url}: status:{r.status_code}')
+        get_dagster_logger().info(f'graph: error')
+        raise Exception(f' graph: insert failed: status:{r.status_code}')
 
 def _get_client(docker_container_context: DockerContainerContext):
     headers = {'X-API-Key': APIKEY}
@@ -349,6 +334,14 @@ def gleanerio(context, mode, source):
         WorkingDir = "/nabu/"
         Entrypoint = "nabu"
         # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
+    elif (str(mode) == "object"):
+        IMAGE = GLEANERIO_NABU_IMAGE
+        rg = str("/graphs/latest/{}_release.nq").format(source)
+        ARGS = ["--cfg",  GLEANERIO_NABU_CONFIG_PATH, "object", rg]
+        NAME = f"sch_{source}_{str(mode)}"
+        WorkingDir = "/nabu/"
+        Entrypoint = "nabu"
+        # LOGFILE = 'log_nabu.txt'  # only used for local log file writing
     else:
 
         returnCode = 1
@@ -411,7 +404,7 @@ def gleanerio(context, mode, source):
 
         # TODO: Build SPARQL_ENDPOINT from  GLEANER_GRAPH_URL, GLEANER_GRAPH_NAMESPACE
         enva = []
-        enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS))) # the python needs to be wrapped, this does not
+        enva.append(str("MINIO_ADDRESS={}".format(GLEANER_MINIO_ADDRESS)))
         enva.append(str("MINIO_PORT={}".format(GLEANER_MINIO_PORT)))
         enva.append(str("MINIO_USE_SSL={}".format(GLEANER_MINIO_USE_SSL)))
         enva.append(str("MINIO_SECRET_KEY={}".format(GLEANER_MINIO_SECRET_KEY)))
@@ -514,7 +507,7 @@ def gleanerio(context, mode, source):
         get_dagster_logger().info(f"container Logs to s3: ")
 
 ## get log files
-        url = URL + 'containers/' + cid + '/archive'
+        url = URL + '/containers/' + cid + '/archive'
         params = {
             'path': f"{WorkingDir}/logs"
         }
@@ -587,7 +580,7 @@ def gleanerio(context, mode, source):
     return returnCode
 
 @op
-def ecrr_examples_getImage(context):
+def SOURCEVAL_getImage(context):
     run_container_context = DockerContainerContext.create_for_run(
         context.dagster_run,
         context.instance.run_launcher
@@ -599,54 +592,62 @@ def ecrr_examples_getImage(context):
     client.images.pull(GLEANERIO_GLEANER_IMAGE)
     client.images.pull(GLEANERIO_NABU_IMAGE)
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_gleaner(context):
-    returned_value = gleanerio(context, ("gleaner"), "ecrr_examples")
+def SOURCEVAL_gleaner(context):
+    returned_value = gleanerio(context, ("gleaner"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"Gleaner returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_nabu_prune(context):
-    returned_value = gleanerio(context,("prune"), "ecrr_examples")
+def SOURCEVAL_nabu_prune(context):
+    returned_value = gleanerio(context,("prune"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu prune returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_nabuprov(context):
-    returned_value = gleanerio(context,("prov"), "ecrr_examples")
+def SOURCEVAL_nabuprov(context):
+    returned_value = gleanerio(context,("prov"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu prov returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_nabuorg(context):
-    returned_value = gleanerio(context,("orgs"), "ecrr_examples")
+def SOURCEVAL_nabuorg(context):
+    returned_value = gleanerio(context,("orgs"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu org load returned  {r} ")
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_naburelease(context):
-    returned_value = gleanerio(context,("release"), "ecrr_examples")
+def SOURCEVAL_naburelease(context):
+    returned_value = gleanerio(context,("release"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
     get_dagster_logger().info(f"nabu release returned  {r} ")
     return
+
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_uploadrelease(context):
-    returned_value = post_to_graph("ecrr_examples", extension="nq")
+def SOURCEVAL_uploadrelease(context):
+    returned_value = gleanerio(context, ("object"), "SOURCEVAL")
     r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"upload release returned  {r} ")
+    get_dagster_logger().info(f"nabu release returned  {r} ")
     return
 
+# @op(ins={"start": In(Nothing)})
+# def SOURCEVAL_uploadrelease(context):
+#     returned_value = postRelease("SOURCEVAL")
+#     r = str('returned value:{}'.format(returned_value))
+#     get_dagster_logger().info(f"upload release returned  {r} ")
+#     return
+
 
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_missingreport_s3(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_examples")
+def SOURCEVAL_missingreport_s3(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_examples"
+    source_name = "SOURCEVAL"
     graphendpoint = None
     milled = False
     summon = True
@@ -657,12 +658,12 @@ def ecrr_examples_missingreport_s3(context):
     get_dagster_logger().info(f"missing s3 report  returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_missingreport_graph(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_examples")
+def SOURCEVAL_missingreport_graph(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_examples"
+    source_name = "SOURCEVAL"
 
     graphendpoint = _graphEndpoint()# f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -676,12 +677,12 @@ def ecrr_examples_missingreport_graph(context):
     get_dagster_logger().info(f"missing graph  report  returned  {r} ")
     return
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_graph_reports(context) :
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_examples")
+def SOURCEVAL_graph_reports(context) :
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
     #source_url = source.get('url')
-    s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_examples"
+    source_name = "SOURCEVAL"
 
     graphendpoint = _graphEndpoint() # f"{os.environ.get('GLEANER_GRAPH_URL')}/namespace/{os.environ.get('GLEANER_GRAPH_NAMESPACE')}/sparql"
 
@@ -696,11 +697,11 @@ def ecrr_examples_graph_reports(context) :
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_identifier_stats(context):
-    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="ecrr_examples")
-    s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
+def SOURCEVAL_identifier_stats(context):
+    source = getSitemapSourcesFromGleaner(DAGSTER_GLEANER_CONFIG_PATH, sourcename="SOURCEVAL")
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_examples"
+    source_name = "SOURCEVAL"
 
     returned_value = generateIdentifierRepo(source_name, bucket, s3Minio)
     r = str('returned value:{}'.format(returned_value))
@@ -711,10 +712,10 @@ def ecrr_examples_identifier_stats(context):
     return
 
 @op(ins={"start": In(Nothing)})
-def ecrr_examples_bucket_urls(context):
-    s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
+def SOURCEVAL_bucket_urls(context):
+    s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), MINIO_OPTIONS)
     bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_examples"
+    source_name = "SOURCEVAL"
 
     res = s3Minio.listSummonedUrls(bucket, source_name)
     r = str('returned value:{}'.format(res))
@@ -723,59 +724,15 @@ def ecrr_examples_bucket_urls(context):
     get_dagster_logger().info(f"bucker urls report  returned  {r} ")
     return
 
-class S3ObjectInfo:
-    bucket_name=""
-    object_name=""
-
-@op(ins={"start": In(Nothing)})
-def ecrr_examples_summarize(context) :
-    s3Minio = s3.MinioDatastore(_pythonMinioAddress(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
-    bucket = GLEANER_MINIO_BUCKET
-    source_name = "ecrr_examples"
-    endpoint = _graphEndpoint() # getting data, not uploading data
-    summary_namespace = _graphSummaryEndpoint()
-
-
-    try:
-
-        summarydf = get_summary4repoSubset(endpoint, source_name)
-        nt, g = summaryDF2ttl(summarydf, source_name)  # let's try the new generator
-        summaryttl = g.serialize(format='longturtle')
-        # Lets always write out file to s3, and insert as a separate process
-        # we might be able to make this an asset..., but would need to be acessible by http
-        # if not stored in s3
-        objectname = f"{SUMMARY_PATH}/{source_name}_release.ttl" # needs to match that is expected by post
-        s3ObjectInfo= S3ObjectInfo()
-        s3ObjectInfo.bucket_name=bucket
-        s3ObjectInfo.object_name=objectname
-
-        s3Minio.putTextFileToStore(summaryttl, s3ObjectInfo )
-        #inserted = sumnsgraph.insert(bytes(summaryttl, 'utf-8'), content_type="application/x-turtle")
-        #if not inserted:
-        #    raise Exception("Loading to graph failed.")
-    except Exception as e:
-        # use dagster logger
-        get_dagster_logger().error(f"Summary. Issue creating graph  {str(e)} ")
-        raise Exception(f"Loading Summary graph failed. {str(e)}")
-        return 1
-
-    return
-
-@op(ins={"start": In(Nothing)})
-def ecrr_examples_upload_summarize(context):
-    returned_value = post_to_graph("ecrr_examples",path=SUMMARY_PATH, extension="ttl", graphendpoint=_graphSummaryEndpoint())
-    r = str('returned value:{}'.format(returned_value))
-    get_dagster_logger().info(f"upload summary returned  {r} ")
-    return
 
 #Can we simplify and use just a method. Then import these methods?
-# def missingreport_s3(context, msg: str, source="ecrr_examples"):
+# def missingreport_s3(context, msg: str, source="SOURCEVAL"):
 #
 #     source= getSitemapSourcesFromGleaner("/scheduler/gleanerconfig.yaml", sourcename=source)
 #     source_url = source.get('url')
-#     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS, GLEANER_MINIO_PORT), MINIO_OPTIONS)
+#     s3Minio = s3.MinioDatastore(_pythonMinioUrl(GLEANER_MINIO_ADDRESS), None)
 #     bucket = GLEANER_MINIO_BUCKET
-#     source_name="ecrr_examples"
+#     source_name="SOURCEVAL"
 #
 #     graphendpoint = None
 #     milled = False
@@ -784,16 +741,29 @@ def ecrr_examples_upload_summarize(context):
 #     r = str('returned value:{}'.format(returned_value))
 #     return msg + r
 @graph
-def reload_ecrr_examples():
-    containers = ecrr_examples_getImage()
-    harvest = ecrr_examples_gleaner(start=containers)
-    load_release = ecrr_examples_naburelease(start=harvest)
-    load_uploadrelease = ecrr_examples_uploadrelease(start=load_release)
-   # report_graph = ecrr_examples_graph_reports(start=load_uploadrelease)
+def harvest_SOURCEVAL():
+    containers = SOURCEVAL_getImage()
+    harvest = SOURCEVAL_gleaner(start=containers)
 
+# defingin nothing dependencies
+    # https://docs.dagster.io/concepts/ops-jobs-graphs/graphs#defining-nothing-dependencies
 
+    report_ms3 = SOURCEVAL_missingreport_s3(start=harvest)
+    report_idstat = SOURCEVAL_identifier_stats(start=report_ms3)
+    # for some reason, this causes a msg parameter missing
+    report_bucketurl = SOURCEVAL_bucket_urls(start=report_idstat)
 
+    #report1 = missingreport_s3(harvest, source="SOURCEVAL")
+    load_release = SOURCEVAL_naburelease(start=harvest)
+    load_uploadrelease = SOURCEVAL_uploadrelease(start=load_release)
 
+    load_prune = SOURCEVAL_nabu_prune(start=load_uploadrelease)
+    load_prov = SOURCEVAL_nabuprov(start=load_prune)
+    load_org = SOURCEVAL_nabuorg(start=load_prov)
+
+# run after load
+    report_msgraph=SOURCEVAL_missingreport_graph(start=load_org)
+    report_graph=SOURCEVAL_graph_reports(start=report_msgraph)
 
 
 

@@ -1,0 +1,14 @@
+# the local build (make wf-build) uses . as its context, which otherwise ships
+# ~1GB of venv and harvested data to the daemon before the build even starts.
+.venv
+.tmp_dagster_home_*
+__pycache__/
+*.pyc
+
+generatedCode/
+workflows/*/data/
+workflows/**/*.log
+tests/
+
+.git
+.idea

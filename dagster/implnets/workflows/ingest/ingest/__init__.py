@@ -16,7 +16,7 @@
 
 import os
 
-from dagster import Definitions, load_assets_from_modules, EnvVar,RunFailureSensorContext
+from dagster import Definitions, load_asset_checks_from_modules, load_assets_from_modules, EnvVar,RunFailureSensorContext
 from dagster_aws.s3.resources import S3Resource
 from dagster_aws.s3.ops import S3Coordinate
 from dagster import (
@@ -43,13 +43,15 @@ from .jobs import (
                    release_asset_job,
                    tenant_rebuild_namespaces_job
 )
+from .sensors.long_running_runs import long_running_runs_alert_job
 
 jobs = [
 summon_asset_job, sources_asset_job,
                 tenant_asset_job,
                    tenant_namespaces_job,
                    release_asset_job,
-                   tenant_rebuild_namespaces_job
+                   tenant_rebuild_namespaces_job,
+                   long_running_runs_alert_job,
 ]
 from pydantic import Field
 
@@ -58,6 +60,7 @@ from .utils import PythonMinioAddress
 
 
 all_assets = load_assets_from_modules([assets])
+all_asset_checks = load_asset_checks_from_modules([assets])
 
 #harvest_job = define_asset_job(name="harvest_job", selection="harvest_and_release")
 
@@ -68,6 +71,7 @@ release_file_sensor_v2,
     tenant_names_sensor,
     sources_s3_sensor,
     tenant_s3_sensor,
+    long_running_runs_alert_schedule,
 #tenant_names_sensor_v2
 )
 def slack_message_fn(context: RunFailureSensorContext) -> str:
@@ -94,7 +98,7 @@ release_file_sensor_v2,
 
 from .sensors.gleaner_summon import sources_schedule
 
-all_schedules = [sources_schedule]
+all_schedules = [sources_schedule, long_running_runs_alert_schedule]
 
 def _awsEndpointAddress(url, port=None, use_ssl=True):
     if use_ssl:
@@ -239,6 +243,7 @@ deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 
 defs = Definitions(
     assets=all_assets,
+    asset_checks=all_asset_checks,
     resources=resources[deployment_name],
     sensors=all_sensors,
     jobs=jobs,
