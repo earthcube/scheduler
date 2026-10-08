@@ -20,6 +20,7 @@ import pydash
 from ec.graph.manageGraph import ManageBlazegraph
 from ..assets import gleanerio_tenants, tenant_partitions_def, sources_partitions_def
 from .gleaner_summon_assets import RELEASE_PATH, SUMMARY_PATH
+from .qlever import is_qlever_tenant, update_qlever_service
 
 import os
 
@@ -78,6 +79,15 @@ def upload_release(context ):
     for tenant in tenants:
         #tenant["graph"]['main_namespace']
         #bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, tenant["graph"]['main_namespace'])
+        if is_qlever_tenant(tenant):
+            service = tenant['graph'].get('qlever_service')
+            try:
+                update_qlever_service(gleaner_resource.GLEANERIO_DOCKER_URL,
+                                      gleaner_resource.GLEANERIO_PORTAINER_APIKEY, service)
+                context.log.info(f"updated qlever service {service} for {source_name} tenant {tenant['community']}")
+            except Exception as ex:
+                raise Exception(f"qlever update of {service} for {source_name} failed {ex}")
+            continue
         try:
             #bg.upload_nq_file()
             namespace = tenant['graph']['main_namespace']
