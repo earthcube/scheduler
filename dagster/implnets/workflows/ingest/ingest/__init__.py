@@ -147,15 +147,29 @@ triplestore_summary=BlazegraphResource(
        gs3=gleaners3,
         )
 
+# How gleaner/nabu containers are started (see resources/gleanerio.py):
+# GLEANERIO_LAUNCHER=docker uses the Portainer/docker swarm API, k8s uses dagster-k8s.
+launcher_settings = {
+    "GLEANERIO_LAUNCHER": os.environ.get('GLEANERIO_LAUNCHER', 'docker'),
+    "GLEANERIO_DOCKER_URL": os.environ.get('GLEANERIO_DOCKER_URL', ''),
+    "GLEANERIO_DOCKER_HEADLESS_NETWORK": os.environ.get('GLEANERIO_DOCKER_HEADLESS_NETWORK', ''),
+    "GLEANERIO_K8S_NAMESPACE": os.environ.get('GLEANERIO_K8S_NAMESPACE', ''),
+    "GLEANERIO_K8S_SERVICE_ACCOUNT": os.environ.get('GLEANERIO_K8S_SERVICE_ACCOUNT', ''),
+    "GLEANERIO_K8S_S3_SECRET": os.environ.get('GLEANERIO_K8S_S3_SECRET', ''),
+    "GLEANERIO_K8S_LOG_SIDECAR_IMAGE": os.environ.get('GLEANERIO_K8S_LOG_SIDECAR_IMAGE', 'docker.io/rclone/rclone:1'),
+    "GLEANERIO_K8S_POD_TIMEOUT": os.environ.get('GLEANERIO_K8S_POD_TIMEOUT', 86400),
+}
+# EnvVar keeps the key out of the dagster UI, but fails when unset, so only use it when set
+if os.environ.get('GLEANERIO_PORTAINER_APIKEY'):
+    launcher_settings["GLEANERIO_PORTAINER_APIKEY"] = EnvVar('GLEANERIO_PORTAINER_APIKEY')
+
 resources = {
     "local": {
         "gleanerio": GleanerioResource(
 #            DEBUG=os.environ.get('DEBUG'),
             DEBUG_CONTAINER=False,
-            GLEANERIO_DOCKER_URL=EnvVar('GLEANERIO_DOCKER_URL'),
-            GLEANERIO_PORTAINER_APIKEY=EnvVar('GLEANERIO_PORTAINER_APIKEY'),
 
-            GLEANERIO_DOCKER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_DOCKER_HEADLESS_NETWORK'),
+            **launcher_settings,
             GLEANERIO_HEADLESS_ENDPOINT=os.environ.get('GLEANERIO_HEADLESS_ENDPOINT'),
 
             GLEANERIO_GLEANER_IMAGE=os.environ.get('GLEANERIO_GLEANER_IMAGE'),
@@ -200,10 +214,7 @@ resources = {
         "gleanerio": GleanerioResource(
             DEBUG_CONTAINER=False,
 
-            GLEANERIO_DOCKER_URL=EnvVar('GLEANERIO_DOCKER_URL'),
-            GLEANERIO_PORTAINER_APIKEY=EnvVar('GLEANERIO_PORTAINER_APIKEY'),
-
-            GLEANERIO_DOCKER_HEADLESS_NETWORK=os.environ.get('GLEANERIO_DOCKER_HEADLESS_NETWORK'),
+            **launcher_settings,
             GLEANERIO_HEADLESS_ENDPOINT=os.environ.get('GLEANERIO_HEADLESS_ENDPOINT'),
 
             GLEANERIO_GLEANER_IMAGE=os.environ.get('GLEANERIO_GLEANER_IMAGE'),
