@@ -110,12 +110,34 @@ def _awsEndpointAddress(url, port=None, use_ssl=True):
     else:
         return  f"{protocol}://{url}"
 
+
+def _env_bool(name, default=False):
+    """Parse a boolean env var.
+
+    Must not be a bare os.environ.get: the value arrives as a string, and
+    bool("false") is True. That silently turns on TLS -- and every scheme,
+    including the gleaner/nabu configURL -- for anyone who sets the variable
+    to "false", which is the opposite of what they asked for.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
+
 s3=S3Resource(
     endpoint_url =_awsEndpointAddress(
         EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(),
         port=EnvVar('GLEANERIO_MINIO_PORT').get_value(),
-        use_ssl=EnvVar('GLEANERIO_MINIO_USE_SSL').get_value()
+        use_ssl=_env_bool('GLEANERIO_MINIO_USE_SSL')
         ),
+    # Set the resource's own flag too. Passing it only into endpoint_url above
+    # leaves S3Resource.use_ssl at its default of True, and _container_env() in
+    # resources/gleanerio.py hands that attribute to the gleaner/nabu containers
+    # as MINIO_USE_SSL. A plain-HTTP endpoint then gets MINIO_USE_SSL=True, the
+    # client speaks TLS to a non-TLS server, and Gleaner dies at startup with
+    # "error when reading config: HTTP request failed with status code 403".
+    use_ssl=_env_bool('GLEANERIO_MINIO_USE_SSL'),
     aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
 )
@@ -126,7 +148,7 @@ gleaners3=gleanerS3Resource(
     GLEANERIO_MINIO_BUCKET=os.environ.get('GLEANERIO_MINIO_BUCKET'),
     GLEANERIO_MINIO_ADDRESS=os.environ.get('GLEANERIO_MINIO_ADDRESS'),
     GLEANERIO_MINIO_PORT=os.environ.get('GLEANERIO_MINIO_PORT'),
-    GLEANERIO_MINIO_USE_SSL=os.environ.get('GLEANERIO_MINIO_USE_SSL', "True"),
+    GLEANERIO_MINIO_USE_SSL=_env_bool('GLEANERIO_MINIO_USE_SSL', True),
     GLEANERIO_MINIO_ACCESS_KEY=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
     GLEANERIO_CONFIG_PATH=os.environ.get('GLEANERIO_CONFIG_PATH'),
@@ -139,18 +161,20 @@ gleaners3=gleanerS3Resource(
 triplestore=BlazegraphResource(
             GLEANERIO_GRAPH_URL=os.environ.get('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_NAMESPACE'),
+            GLEANERIO_GRAPH_ENGINE=os.environ.get('GLEANERIO_GRAPH_ENGINE', 'blazegraph'),
        gs3=gleaners3,
         )
 triplestore_summary=BlazegraphResource(
             GLEANERIO_GRAPH_URL=os.environ.get('GLEANERIO_GRAPH_URL'),
             GLEANERIO_GRAPH_NAMESPACE=os.environ.get('GLEANERIO_GRAPH_SUMMARY_NAMESPACE'),
+            GLEANERIO_GRAPH_ENGINE=os.environ.get('GLEANERIO_GRAPH_ENGINE', 'blazegraph'),
        gs3=gleaners3,
         )
 
 # How gleaner/nabu containers are started (see resources/gleanerio.py):
 # GLEANERIO_LAUNCHER=docker uses the Portainer/docker swarm API, k8s uses dagster-k8s.
 launcher_settings = {
-    "GLEANERIO_LAUNCHER": os.environ.get('GLEANERIO_LAUNCHER', 'docker'),
+    "GLEANERIO_LAUNCHER": os.environ.get('GLEANERIO_LAUNCHER', ''),
     "GLEANERIO_DOCKER_URL": os.environ.get('GLEANERIO_DOCKER_URL', ''),
     "GLEANERIO_DOCKER_HEADLESS_NETWORK": os.environ.get('GLEANERIO_DOCKER_HEADLESS_NETWORK', ''),
     "GLEANERIO_K8S_NAMESPACE": os.environ.get('GLEANERIO_K8S_NAMESPACE', ''),
@@ -158,10 +182,15 @@ launcher_settings = {
     "GLEANERIO_K8S_S3_SECRET": os.environ.get('GLEANERIO_K8S_S3_SECRET', ''),
     "GLEANERIO_K8S_LOG_SIDECAR_IMAGE": os.environ.get('GLEANERIO_K8S_LOG_SIDECAR_IMAGE', 'docker.io/rclone/rclone:1'),
     "GLEANERIO_K8S_POD_TIMEOUT": os.environ.get('GLEANERIO_K8S_POD_TIMEOUT', 86400),
+    "GLEANERIO_K8S_CHROME_IMAGE": os.environ.get('GLEANERIO_K8S_CHROME_IMAGE', 'docker.io/chromedp/headless-shell:105.0.5195.127'),
+    "GLEANERIO_K8S_CHROME_SHM_SIZE": os.environ.get('GLEANERIO_K8S_CHROME_SHM_SIZE', '512Mi'),
+    # Portainer API key, docker launcher only. Passed as a plain value, not
+    # EnvVar: EnvVar makes Dagster resolve the variable while building the
+    # resource for *every* sensor and code-location load, and raises when it is
+    # unset. That breaks the k8s launcher and anything that does not use
+    # Portainer, since the field is optional and empty means "not used".
+    "GLEANERIO_PORTAINER_APIKEY": os.environ.get('GLEANERIO_PORTAINER_APIKEY', ''),
 }
-# EnvVar keeps the key out of the dagster UI, but fails when unset, so only use it when set
-if os.environ.get('GLEANERIO_PORTAINER_APIKEY'):
-    launcher_settings["GLEANERIO_PORTAINER_APIKEY"] = EnvVar('GLEANERIO_PORTAINER_APIKEY')
 
 resources = {
     "local": {
@@ -251,11 +280,41 @@ resources = {
 deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 
 
+def _make_io_manager():
+    """IO manager for asset values that cross process boundaries.
+
+    Without this, Dagster falls back to fs_io_manager, which writes to
+    $DAGSTER_HOME/storage/. That only worked when dagit, the daemon and the code
+    servers shared a volume, as they did on Docker Swarm. On Kubernetes each pod
+    has its own filesystem, so an asset materialised in one pod is invisible to
+    another: `validate_sitemap_url` fails loading `sources_all` with
+    FileNotFoundError, and so does anything else that calls load_asset_value.
+
+    Set GLEANERIO_IO_MANAGER=s3 to use the same object store the rest of the
+    pipeline uses. Anything else (the default) keeps the filesystem manager.
+    """
+    if os.environ.get("GLEANERIO_IO_MANAGER", "").strip().lower() in ("1", "true", "s3", "yes", "on"):
+        # imported here so the default path does not need dagster-aws loaded
+        from dagster_aws.s3 import S3PickleIOManager
+
+        return S3PickleIOManager(
+            s3_resource=s3,
+            s3_bucket=os.environ.get("GLEANERIO_MINIO_BUCKET"),
+            s3_prefix=os.environ.get("GLEANERIO_IO_MANAGER_PREFIX", "dagster/io"),
+        )
+    return None
+
+
+_io_manager = _make_io_manager()
+resources_for_deployment = dict(resources[deployment_name])
+if _io_manager is not None:
+    resources_for_deployment["io_manager"] = _io_manager
+
 
 defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
-    resources=resources[deployment_name],
+    resources=resources_for_deployment,
     sensors=all_sensors,
     jobs=jobs,
     schedules=all_schedules

@@ -78,6 +78,27 @@ from .gleanerS3 import gleanerS3Resource
 
 import os
 PROJECT=os.environ.get('PROJECT')
+
+# Standard in-cluster Kubernetes ServiceAccount token path. Its presence (plus the
+# KUBERNETES_SERVICE_HOST env the kubelet injects) is the reliable signal that this
+# process is running inside a cluster, and so a gleaner/nabu launch should use
+# dagster-k8s pods rather than a docker/Portainer service.
+_IN_CLUSTER_TOKEN = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+
+def _in_cluster() -> bool:
+    return bool(os.environ.get("KUBERNETES_SERVICE_HOST")) and os.path.exists(_IN_CLUSTER_TOKEN)
+
+
+def default_launcher() -> str:
+    """Pick a launcher when GLEANERIO_LAUNCHER is not explicitly set.
+
+    Prefer k8s when we are running inside a cluster (the common production
+    deployment); fall back to docker otherwise (the historic compose/swarm path).
+    """
+    return "k8s" if _in_cluster() else "docker"
+
+
 # this will probably need to handle the client, and the
 class GleanerioResource(ConfigurableResource):
 
@@ -86,7 +107,8 @@ class GleanerioResource(ConfigurableResource):
     #   docker - a docker swarm service, through the Portainer API
     #   k8s    - a kubernetes pod, through dagster-k8s (see gleanerio_k8s.py)
     GLEANERIO_LAUNCHER: str = Field(
-        description="Container launcher: docker or k8s.", default="docker")
+        description="Container launcher: docker or k8s. Empty = auto-detect "
+                    "(k8s inside a cluster, docker otherwise).", default="")
     # docker/portainer API (docker launcher only)
     GLEANERIO_DOCKER_URL: str =  Field(
          description="Docker Endpoint URL.", default="")
@@ -105,6 +127,17 @@ class GleanerioResource(ConfigurableResource):
         default="docker.io/rclone/rclone:1")
     GLEANERIO_K8S_POD_TIMEOUT: int = Field(
         description="Seconds to wait for a gleaner/nabu pod to finish. 0 = no limit.", default=86400)
+    GLEANERIO_K8S_CHROME_IMAGE: str = Field(
+        description="Headless Chrome image, run as a container in the gleaner/nabu pod so "
+                    "GLEANER_HEADLESS_ENDPOINT can be localhost. Chrome's DevTools endpoint "
+                    "rejects a Host header that is not an IP or localhost, so a Service name "
+                    "does not work. Pinned to 105: later versions break Gleaner with "
+                    "'Using unsafe HTTP verb GET to invoke /json/new'.",
+        default="docker.io/chromedp/headless-shell:105.0.5195.127")
+    GLEANERIO_K8S_CHROME_SHM_SIZE: str = Field(
+        description="Size of the tmpfs mounted at /dev/shm for the Chrome container. "
+                    "Chrome crashes with the container runtime default of 64Mi.",
+        default="512Mi")
     # Dokcerhub container images
     GLEANERIO_GLEANER_IMAGE: str = Field(
         description="GLEANERIO_GLEANER_IMAGE.")
@@ -262,8 +295,12 @@ class GleanerioResource(ConfigurableResource):
 
     def _container_env(self):
         """Environment for the gleaner/nabu containers, shared by both launchers."""
-        # TODO: Build SPARQL_ENDPOINT from  GLEANER_GRAPH_URL, GLEANER_GRAPH_NAMESPACE
-        return {
+        # Only set the headless endpoint when the caller configured one. Passing
+        # an empty string would still make Gleaner attempt DevTools against a
+        # malformed "" endpoint ("unsupported protocol scheme \"\""), instead of
+        # skipping the browser and fetching JSON directly. build_pod additionally
+        # drops GLEANER_HEADLESS_ENDPOINT for headless:false sources.
+        env = {
             "MINIO_ADDRESS": self.gs3.GLEANERIO_MINIO_ADDRESS,
             "MINIO_PORT": self.gs3.GLEANERIO_MINIO_PORT,
             "MINIO_USE_SSL": self.gs3.s3.use_ssl,
@@ -271,8 +308,43 @@ class GleanerioResource(ConfigurableResource):
             "MINIO_ACCESS_KEY": self.gs3.s3.aws_access_key_id,
             "MINIO_BUCKET": self.gs3.GLEANERIO_MINIO_BUCKET,
             "SPARQL_ENDPOINT": self.triplestore.GraphEndpoint(self.GLEANERIO_GRAPH_NAMESPACE),
-            "GLEANER_HEADLESS_ENDPOINT": self.GLEANERIO_HEADLESS_ENDPOINT,
         }
+        if self.GLEANERIO_HEADLESS_ENDPOINT:
+            env["GLEANER_HEADLESS_ENDPOINT"] = self.GLEANERIO_HEADLESS_ENDPOINT
+        return env
+
+    def _source_needs_headless(self, mode, source):
+        """Whether this step needs a Chrome container.
+
+        Only the `gleaner` mode scrapes, so the nabu modes never do. For gleaner
+        the source's own `headless` flag decides, read from gleanerconfig.yaml.
+
+        getSourcesFile() swallows S3 errors and returns None, so that has to be
+        handled as well as an exception. On any problem reading the config this
+        returns True: a pod with an unused Chrome costs a container, while a pod
+        missing a needed one fails the harvest.
+        """
+        if str(mode) != "gleaner":
+            return False
+        try:
+            import yaml
+
+            body = self.gs3.getSourcesFile()
+            if body is None:
+                raise ValueError("gleaner config could not be read (getSourcesFile returned None)")
+            sources = yaml.safe_load(body.read()).get("sources", [])
+            for entry in sources:
+                if entry.get("name") == source:
+                    return bool(entry.get("headless"))
+            get_dagster_logger().warning(
+                f"source {source} not found in the gleaner config; assuming it needs Chrome"
+            )
+        except Exception as ex:
+            get_dagster_logger().warning(
+                f"could not read the gleaner config to check whether {source} needs "
+                f"Chrome ({ex}); assuming it does"
+            )
+        return True
 
     def _execute_k8s(self, context, image, args, working_dir, name, mode, source, date_string):
         """Run a gleaner/nabu step as a kubernetes pod (GLEANERIO_LAUNCHER=k8s)."""
@@ -307,6 +379,9 @@ class GleanerioResource(ConfigurableResource):
             sync_interval=self.GLEANERIO_DOCKER_CONTAINER_WAIT_TIMEOUT,
             pod_timeout=self.GLEANERIO_K8S_POD_TIMEOUT,
             keep_pod=self.DEBUG_CONTAINER,
+            headless=self._source_needs_headless(mode, source),
+            chrome_image=self.GLEANERIO_K8S_CHROME_IMAGE,
+            chrome_shm_size=self.GLEANERIO_K8S_CHROME_SHM_SIZE,
         )
         exit_code, logs = run_pod(context, launch)
         self.s3loader(logs.encode(), name, date_string=date_string)
@@ -379,10 +454,13 @@ class GleanerioResource(ConfigurableResource):
             returnCode = 1
             return returnCode
 
-        if self.GLEANERIO_LAUNCHER == "k8s":
+        # Resolve the launcher: an explicit GLEANERIO_LAUNCHER wins; otherwise
+        # auto-detect (k8s inside a cluster, docker otherwise).
+        launcher = self.GLEANERIO_LAUNCHER or default_launcher()
+        if launcher == "k8s":
             return self._execute_k8s(context, IMAGE, ARGS, WorkingDir, NAME, mode, source, date_string)
-        elif self.GLEANERIO_LAUNCHER != "docker":
-            raise Exception(f"Unknown GLEANERIO_LAUNCHER '{self.GLEANERIO_LAUNCHER}', expected docker or k8s")
+        elif launcher != "docker":
+            raise Exception(f"Unknown GLEANERIO_LAUNCHER '{launcher}', expected docker or k8s")
 
         # from docker0dagster
         run_container_context = DockerContainerContext.create_for_run(

@@ -8,6 +8,8 @@ from dagster import (get_dagster_logger,
                      In, Nothing, Config,DynamicPartitionsDefinition, sensor,
                      AutomationCondition, AutoMaterializePolicy)
 import yaml
+import contextlib
+import ec.sitemap.sitemap as _ec_sitemap
 from ec.sitemap import Sitemap
 import os
 PROJECT=os.environ.get('PROJECT')
@@ -70,24 +72,66 @@ def gleanerio_tenants(context):
 """
 check a soruce list, return invalid and valid sources lists
 """
+# SITEMAP_VALIDATE_TIMEOUT: per-source cap on validating a sitemap URL.
+#
+# ec.sitemap.Sitemap() calls requests.get()/requests.head()/sitemap_to_df() with
+# **no timeout** (see ec/sitemap/sitemap.py `_urlExists`, `_urlResponse`). A dead
+# or slow sitemap host (e.g. get.iedadata.org) then makes the whole
+# eco_sources_config_updated_job step block forever, eating a global run slot and
+# stalling every later source. We temporarily force a timeout on every HTTP call
+# the ec module makes, so such a host fails (→ marked invalid) in a bounded time
+# instead of hanging for hours.
+SITEMAP_VALIDATE_TIMEOUT = 15
+
+
+@contextlib.contextmanager
+def _sitemap_requests_timeout(seconds: float):
+    """Temporarily give the requests calls in ec.sitemap.sitemap a timeout.
+
+    A Python ThreadPoolExecutor won't help here: its worker threads are
+    non-daemon, so even with shutdown(wait=False) the interpreter still blocks on
+    exit waiting for a wedged request thread. Forcing a timeout on the HTTP layer
+    is deterministic and leaves nothing running.
+    """
+    requests = _ec_sitemap.requests
+    real_get, real_head = requests.get, requests.head
+
+    def _get(url, *a, **kw):
+        kw.setdefault("timeout", seconds)
+        return real_get(url, *a, **kw)
+
+    def _head(url, *a, **kw):
+        kw.setdefault("timeout", seconds)
+        return real_head(url, *a, **kw)
+
+    requests.get, requests.head = _get, _head
+    try:
+        yield
+    finally:
+        requests.get, requests.head = real_get, real_head
+
+
 def check_for_valid_sitemap( sources_active):
     validated_sources=[]
-    for source in sources_active:
-        if source['sourcetype'] == "sitegraph":
-            source['sm_url_is_valid'] = True
-            validated_sources.append(source)
-            get_dagster_logger().info(f" sitegraph url valid {source['sm_url_is_valid']} for {source['name']} {source['url']}")
-        else:
-            try:
-                sm = Sitemap(source['url'], no_progress_bar=True)
-                source['sm_url_is_valid'] = sm.validUrl()
+    with _sitemap_requests_timeout(SITEMAP_VALIDATE_TIMEOUT):
+        for source in sources_active:
+            if source['sourcetype'] == "sitegraph":
+                source['sm_url_is_valid'] = True
                 validated_sources.append(source)
-                get_dagster_logger().info(f" sitemap url valid {source['sm_url_is_valid']} for {source['name']} {source['url']}")
-            except Exception as e:
-                get_dagster_logger().error(f" sitemap url ERROR for {source['name']} {source['url']} exception {e}")
-                source['sm_url_is_valid'] = False
-                validated_sources.append(source)
+                get_dagster_logger().info(f" sitegraph url valid {source['sm_url_is_valid']} for {source['name']} {source['url']}")
+            else:
+                try:
+                    sm = Sitemap(source['url'], no_progress_bar=True)
+                    source['sm_url_is_valid'] = sm.validUrl()
+                    validated_sources.append(source)
+                    get_dagster_logger().info(f" sitemap url valid {source['sm_url_is_valid']} for {source['name']} {source['url']}")
+                except Exception as e:
+                    get_dagster_logger().error(f" sitemap url ERROR for {source['name']} {source['url']} exception {e}")
+                    source['sm_url_is_valid'] = False
+                    validated_sources.append(source)
     return validated_sources
+
+
 @multi_asset(
              outs=
              {

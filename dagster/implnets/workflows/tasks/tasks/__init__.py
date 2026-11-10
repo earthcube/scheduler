@@ -34,6 +34,18 @@ def _awsEndpointAddress(url, port=None, use_ssl=True):
     else:
         return  f"{protocol}://{url}"
 
+
+def _env_bool(name, default=False):
+    """Parse a boolean env var.
+
+    Not a bare os.environ.get, which returns a string and makes bool("false")
+    True -- that would force https on a plain-HTTP S3 endpoint.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
 all_assets = load_assets_from_modules([assets])
 all_asset_checks = load_asset_checks_from_modules([assets])
 # as noted: https://docs.dagster.io/concepts/assets/software-defined-assets#from-assets-in-a-sub-module
@@ -42,7 +54,11 @@ all_asset_checks = load_asset_checks_from_modules([assets])
 weekly_data_schedule=[ weekly_sch.loadstats_schedule, weekly_sch.all_graph_stats_schedule]
 s3 = S3Resource(
     endpoint_url=_awsEndpointAddress(EnvVar('GLEANERIO_MINIO_ADDRESS').get_value(),
-                                     port=EnvVar('GLEANERIO_MINIO_PORT').get_value()),
+                                     port=EnvVar('GLEANERIO_MINIO_PORT').get_value(),
+                                     use_ssl=_env_bool('GLEANERIO_MINIO_USE_SSL')),
+    # See the same field in workflows/ingest/ingest/__init__.py: without this the
+    # resource keeps its default of True and downstream code reads the wrong value.
+    use_ssl=_env_bool('GLEANERIO_MINIO_USE_SSL'),
     aws_access_key_id=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     aws_secret_access_key=EnvVar('GLEANERIO_MINIO_SECRET_KEY')
 )
@@ -55,6 +71,7 @@ minio=gleanerS3Resource(
     GLEANERIO_MINIO_BUCKET=os.environ.get('GLEANERIO_MINIO_BUCKET'),
     GLEANERIO_MINIO_ADDRESS=os.environ.get('GLEANERIO_MINIO_ADDRESS'),
     GLEANERIO_MINIO_PORT=os.environ.get('GLEANERIO_MINIO_PORT'),
+    GLEANERIO_MINIO_USE_SSL=_env_bool('GLEANERIO_MINIO_USE_SSL'),
     GLEANERIO_MINIO_ACCESS_KEY=EnvVar('GLEANERIO_MINIO_ACCESS_KEY'),
     GLEANERIO_MINIO_SECRET_KEY=EnvVar('GLEANERIO_MINIO_SECRET_KEY'),
     GLEANERIO_CONFIG_PATH=os.environ.get('GLEANERIO_CONFIG_PATH'),
@@ -88,10 +105,35 @@ resources = {
 
 deployment_name = os.environ.get("DAGSTER_DEPLOYMENT", "local")
 
+
+def _make_io_manager():
+    """See the same function in workflows/ingest/ingest/__init__.py.
+
+    Asset values that cross pods must not live on a container filesystem.
+    tasks/assets/tenants.py also calls load_asset_value, so this module needs
+    the same manager or that call fails the same way.
+    """
+    if os.environ.get("GLEANERIO_IO_MANAGER", "").strip().lower() in ("1", "true", "s3", "yes", "on"):
+        from dagster_aws.s3 import S3PickleIOManager
+
+        return S3PickleIOManager(
+            s3_resource=s3,
+            s3_bucket=os.environ.get("GLEANERIO_MINIO_BUCKET"),
+            s3_prefix=os.environ.get("GLEANERIO_IO_MANAGER_PREFIX", "dagster/io"),
+        )
+    return None
+
+
+_io_manager = _make_io_manager()
+resources_for_deployment = dict(resources[deployment_name])
+if _io_manager is not None:
+    resources_for_deployment["io_manager"] = _io_manager
+
+
 defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
     schedules=weekly_data_schedule,
-     resources=resources[deployment_name],
+     resources=resources_for_deployment,
     sensors=[community_sensor, tenant_s3_sensor, slack_on_run_failure]
 )

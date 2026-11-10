@@ -8,6 +8,7 @@ from workflows.ingest.ingest.assets.gleaner_summon_assets import (
     SPATIAL_GRAPH_NAMESPACE,
     _construct_to_quads,
     _load_release_store,
+    _qlever_summary_dataframe,
     _release_store,
     _run_construct_query,
     _spatial_query_text,
@@ -360,3 +361,49 @@ def test_multipoint_query_groups_points_per_dataset():
 
     assert "MULTIPOINT((-100.5 30.5))" in result
     assert "<https://example.org/ds/geometry>" in result
+
+
+def test_qlever_summary_dataframe_reads_release_named_graphs():
+    """The QLever release_summarize adapter turns a release store into the
+    DataFrame summaryDF2ttl expects (same shape Blazegraph's repo_summary_query).
+    """
+    # two Datasets in their own named graphs under the source graph
+    graph = "<https://gleaner.io/graphs/geocodes_examples>"
+    rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+    schema = "https://schema.org/"
+    nq = (
+        f'<https://example.org/ds1> <{rdf}> <{schema}Dataset> {graph} .\n'
+        f'<https://example.org/ds1> <{schema}name> "Alpha Dataset" {graph} .\n'
+        f'<https://example.org/ds1> <{schema}description> "First one" {graph} .\n'
+        f'<https://example.org/ds1> <{schema}keywords> "geology" {graph} .\n'
+        f'<https://example.org/ds1> <{schema}datePublished> "2023-01-01" {graph} .\n'
+        f'<https://example.org/ds1> <{schema}publisher> _:p {graph} .\n'
+        f'_:p <{schema}name> "EC Publisher" {graph} .\n'
+        f'<https://example.org/ds1> <{schema}variableMeasured> _:d {graph} .\n'
+        f'_:d <{rdf}> <{schema}PropertyValue> {graph} .\n'
+        f'_:d <{schema}name> "depth" {graph} .\n'
+        f'_:d <{schema}maxValue> "1200" {graph} .\n'
+        f'_:d <{schema}minValue> "10" {graph} .\n'
+        f'<https://example.org/ds2> <{rdf}> <{schema}Dataset> {graph} .\n'
+        f'<https://example.org/ds2> <{schema}name> "Beta Dataset" {graph} .\n'
+        f'<https://example.org/ds2> <{schema}description> "Second" {graph} .\n'
+    )
+
+    store = _store(nq)
+    df = _qlever_summary_dataframe(store, "geocodes_examples")
+
+    # both datasets summarized, one row each, with the required columns present
+    assert len(df) == 2
+    for required in ("g", "sosType", "subj", "name", "description", "pubname",
+                     "kw", "datep", "minDepth", "maxDepth"):
+        assert required in df.columns, f"missing column {required}"
+    row = df[df["name"] == "Alpha Dataset"].iloc[0]
+    assert row["g"] == graph.strip("<>")
+    assert row["sosType"] == f"{schema}Dataset"
+    assert row["pubname"] == "EC Publisher"
+    assert row["kw"] == "geology"
+    assert float(row["maxDepth"]) == 1200.0
+    assert float(row["minDepth"]) == 10.0
+    # dataset without a publisher falls back to "No Publisher" like Blazegraph
+    beta = df[df["name"] == "Beta Dataset"].iloc[0]
+    assert beta["pubname"] == "No Publisher"

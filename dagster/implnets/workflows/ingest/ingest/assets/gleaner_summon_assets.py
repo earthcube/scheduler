@@ -385,6 +385,93 @@ def _run_construct_query(store, query):
     return ox.serialize(triples, format=ox.RdfFormat.N_TRIPLES).decode("utf-8")
 
 
+# The subset of columns release_summarize's summaryDF2ttl actually touches, by
+# key. Kept in a single place so the QLever adapter and the Blazegraph path stay
+# in lock step. Values that are never bound (e.g. no variableMeasured depth) fall
+# back to None/NaN, which summaryDF2ttl already tolerates.
+_QLEVER_SUMMARY_COLUMNS = [
+    "g", "resourceType", "name", "description", "pubname", "placenames", "kw",
+    "datep", "sosType", "subj", "url", "maxlat", "maxlon", "encodingFormat",
+    "minDepth", "maxDepth", "temporalCoverage",
+]
+
+
+def _oxterm_value(term):
+    """Render a pyoxigraph solution value like Blazegraph's sparql-results JSON:
+    NamedNode -> its bare IRI string, Literal -> its lexical value, else None.
+    """
+    if term is None:
+        return None
+    return getattr(term, "value", str(term))
+
+
+def _qlever_summary_dataframe(store, source_name):
+    """Run the repo_summary_query against a pyoxigraph store over the release.
+
+    QLever does not keep an on-demand, writable namespace the way Blazegraph's
+    temp-namespace flow does, and the release file is the source of truth for
+    the harvested data already on disk. So instead of loading the release into a
+    temporary graph and querying it over SPARQL, we query the release store
+    directly with pyoxigraph and produce the same DataFrame shape that
+    ec.summarize.summaryDF2ttl expects. Property paths, GROUP_CONCAT, MINUS,
+    BIND/COALESCE and the CONTAINS(GRAPH) subsetting all work in oxigraph.
+    """
+    query = (
+        "prefix schema: <https://schema.org/>\n"
+        "SELECT DISTINCT ?subj ?g ?resourceType ?name ?description ?pubname\n"
+        "        (GROUP_CONCAT(DISTINCT ?placename; SEPARATOR=\", \") AS ?placenames)\n"
+        "        (GROUP_CONCAT(DISTINCT ?kwu; SEPARATOR=\", \") AS ?kw) ?datep ?sosType\n"
+        "        (MAX(?maxDepth1) as ?maxDepth) (MIN(?minDepth1) as ?minDepth)\n"
+        "        WHERE {\n"
+        "          graph ?g {\n"
+        "            values ?sosType { schema:Dataset }\n"
+        "              ?subj    a    ?sosType .\n"
+        "             ?subj schema:name ?name .\n"
+        "             ?subj schema:description ?description .\n"
+        "            MINUS {?subj a schema:Person } .\n"
+        " BIND (IF (exists {?subj a schema:Dataset .} || exists {?subj a schema:DataCatalog .} , \"data\", \"tool\") AS ?resourceType).\n"
+        "            optional {?subj schema:distribution/schema:url|schema:subjectOf/schema:url ?url1 .}\n"
+        "            OPTIONAL {?subj schema:datePublished ?datep .}\n"
+        "            OPTIONAL {?subj schema:publisher/schema:name|schema:sdPublisher|schema:provider/schema:name ?pub_name .}\n"
+        "            OPTIONAL {?subj schema:spatialCoverage/schema:name ?place_name .}\n"
+        "            OPTIONAL {?subj schema:keywords ?kw1 .}\n"
+        "            OPTIONAL {?subj schema:variableMeasured ?vm .\n"
+        "               ?vm a  schema:PropertyValue  .\n"
+        "               ?vm schema:name \"depth\" .\n"
+        "                    ?vm schema:maxValue ?maxDepth1 .\n"
+        "                  ?vm schema:minValue ?minDepth1\n"
+        "           }\n"
+        "            bind ( COALESCE(?kw1, \"\") As ?kwu)\n"
+        "            bind ( COALESCE(?url1, \"\") As ?url)\n"
+        "            BIND ( IF ( BOUND(?pub_name), ?pub_name, \"No Publisher\") as ?pubname ) .\n"
+        "             }\n"
+        "        FILTER( CONTAINS(str(?g), \"" + source_name + "\") )\n"
+        "        }\n"
+        "       GROUP BY ?subj ?pubname  ?datep   ?name ?description  ?resourceType ?sosType  ?g\n"
+    )
+    rows = []
+    for sol in store.query(query, use_default_graph_as_union=True):
+        row = {}
+        for col in _QLEVER_SUMMARY_COLUMNS:
+            try:
+                v = sol[col]
+            except Exception:
+                v = None
+            row[col] = _oxterm_value(v)
+        rows.append(row)
+    df = pd.DataFrame(rows, columns=_QLEVER_SUMMARY_COLUMNS)
+    # summaryDF2ttl reads string columns directly (row['description'], row['kw'],
+    # ...). Coerce to string where they may have come back as None so that the
+    # downstream code sees the same empty strings Blazegraph produced.
+    for col in ("name", "description", "kw", "pubname", "placenames"):
+        if col in df:
+            df[col] = df[col].fillna("")
+    for col in ("minDepth", "maxDepth"):
+        if col in df:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
 @asset(group_name="load",key_prefix=f"{PROJECT}_ingest",
        name="release_summarize",
        deps=[release_nabu_run], partitions_def=sources_partitions_def, required_resource_keys={"gleanerio"}
@@ -410,34 +497,50 @@ def release_summarize(context) :
     #summary_namespace = _graphSummaryEndpoint()
 
     try:
-        temp_namespace = f"{source_name}_temp"
-        bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
-        try:
-            msg = bg.createNamespace(quads=True)
-            context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+        engine = str(triplestore.GLEANERIO_GRAPH_ENGINE).lower()
+        if engine == "qlever":
+            # QLever indexes the release at pod restart and does not support the
+            # on-demand "load a temp namespace then summarize" pattern Blazegraph
+            # used. Read the just-built release .nq directly with pyoxigraph (the
+            # same store spatial_release_quads uses) and run the summary query
+            # against it. This is self-contained and needs no running triplestore.
+            get_dagster_logger().info(
+                f"release_summarize: qlever engine, summarizing {source_name} from the release file"
+            )
+            with _release_store(gleaner_s3, f"{RELEASE_PATH}/{source_name}_release.nq") as release_store:
+                summarydf = _qlever_summary_dataframe(release_store, source_name)
+            get_dagster_logger().info(
+                f"release_summarize: summary rows for {source_name}: {len(summarydf)}"
+            )
+        else:
+            temp_namespace = f"{source_name}_temp"
+            bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
+            try:
+                msg = bg.createNamespace(quads=True)
+                context.log.info(f"temp graph creation  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
-        except Exception as ex:
-            context.log.error(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
-            raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
-        try:
-            filename = f"https://{PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,gleaner_s3.GLEANERIO_MINIO_PORT)}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
-            endpoint = triplestore.GraphEndpoint(temp_namespace)
-            triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
-            context.log.info(f"temp graph {filename}  loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+            except Exception as ex:
+                context.log.error(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+                raise Exception(f"temp graph creation failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            try:
+                filename = f"https://{PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,gleaner_s3.GLEANERIO_MINIO_PORT)}/{bucket}/{RELEASE_PATH}/{source_name}_release.nq"
+                endpoint = triplestore.GraphEndpoint(temp_namespace)
+                triplestore.post_to_graph(source_name, path=RELEASE_PATH, extension="nq", graphendpoint=endpoint)
+                context.log.info(f"temp graph {filename}  loaded  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
-        except Exception as ex:
-            context.log.error(f"temp graph {filename} load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
-            raise Exception(f"temp graph {filename}  load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            except Exception as ex:
+                context.log.error(f"temp graph {filename} load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+                raise Exception(f"temp graph {filename}  load failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
 
-        summarydf = get_summary4repoSubset(endpoint, source_name)
+            summarydf = get_summary4repoSubset(endpoint, source_name)
 
-        try:
-            msg = bg.deleteNamespace()
-            context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
+            try:
+                msg = bg.deleteNamespace()
+                context.log.info(f"temp graph deletion  {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {msg}")
 
-        except Exception as ex:
-            context.log.error(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
-            raise Exception(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+            except Exception as ex:
+                context.log.error(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
+                raise Exception(f"temp graph deletion failed {temp_namespace} {triplestore.GLEANERIO_GRAPH_URL} {ex}")
         # rg = ReleaseGraph()
         # rg.read_release(PythonMinioAddress(gleaner_s3.GLEANERIO_MINIO_ADDRESS,
         #                                                   gleaner_s3.GLEANERIO_MINIO_PORT),
@@ -826,6 +929,22 @@ def graph_stats_report(context) :
     # summary_namespace = _graphSummaryEndpoint()
 
     try:
+        engine = str(triplestore.GLEANERIO_GRAPH_ENGINE).lower()
+        if engine == "qlever":
+            # QLever has no on-demand writable namespace; read the release
+            # directly. generateGraphReportsRelease loads the release file into an
+            # rdflib dataset and runs the report queries against it, so no
+            # running triplestore or post_to_graph is needed.
+            get_dagster_logger().info(
+                f"graph_stats_report: qlever engine, reporting {source_name} from release file {s3FileUrl}"
+            )
+            returned_value = generateGraphReportsRelease(
+                source_name, s3FileUrl, reportList=reportTypes["repo"]
+            )
+            report = returned_value
+            s3Minio.putReportFile(bucket, source_name, "graph_stats.json", report)
+            get_dagster_logger().info(f"graph stats  returned  {str(returned_value)[:200]} ")
+            return
         temp_namespace = f"{source_name}_report_temp"
         bg = ManageBlazegraph(triplestore.GLEANERIO_GRAPH_URL, temp_namespace)
         endpoint = triplestore.GraphEndpoint(temp_namespace)
