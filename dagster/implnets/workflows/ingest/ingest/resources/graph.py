@@ -64,6 +64,13 @@ class GraphResource(ConfigurableResource):
          description="GLEANERIO_GRAPH_URL.")
     GLEANERIO_GRAPH_NAMESPACE: str =  Field(
          description="GLEANERIO_GRAPH_NAMESPACE.")
+    # Which triplestore GLEANERIO_GRAPH_URL points at. QLever indexes the release
+    # files it syncs at startup and does not need them pushed over SPARQL, so the
+    # load step is a no-op for it. See post_to_graph and the chart's
+    # qlever.projects[].s3Bucket / s3Path.
+    GLEANERIO_GRAPH_ENGINE: str = Field(
+        description="Triplestore behind GLEANERIO_GRAPH_URL: qlever or blazegraph.",
+        default="blazegraph")
     gs3: gleanerS3Resource
 
 # need multiple namespaces. let's do this.
@@ -73,6 +80,26 @@ class GraphResource(ConfigurableResource):
 
 
     def post_to_graph(self, source, path='graphs/latest', extension="nq", graphendpoint=None, suffix='release'):
+        """Load a release file into the triplestore.
+
+        For QLever this is a no-op. QLever does not ingest triples into a running
+        index the way Blazegraph does: an rclone initContainer syncs the release
+        files into the pod at start, and `qlever index` builds from those. The
+        triples therefore appear when the QLever pod restarts, and pushing them
+        again over SPARQL would either duplicate the work or, for LOAD, require a
+        public URL and an access token that the Blazegraph path never needed.
+
+        Leaving the call sites alone keeps the asset graph and its outputs intact
+        while the data path moves to index-on-restart.
+        """
+        if str(self.GLEANERIO_GRAPH_ENGINE).lower() == "qlever":
+            get_dagster_logger().info(
+                f"graph: skipping the SPARQL load of {source} ({path}) into QLever. "
+                f"QLever indexes {path} from its own S3 sync at startup, so the "
+                f"triples appear on the next restart of the QLever pod."
+            )
+            return True
+
         if graphendpoint is None:
             graphendpoint = self.GraphEndpoint()
         # revision of EC utilities, will have a insertFromURL
